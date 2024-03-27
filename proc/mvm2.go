@@ -25,6 +25,10 @@ func newMvm2(memoryBytes int) *mvm2 {
 	}
 }
 
+func (m *mvm2) context() *risc.Context {
+	return m.ctx
+}
+
 func (m *mvm2) run(app risc.Application) (float32, error) {
 	for m.ctx.Pc/4 < int32(len(app.Instructions)) {
 		idx := m.fetchInstruction()

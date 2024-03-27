@@ -11,7 +11,10 @@ import (
 func execute(t *testing.T, vm virtualMachine, instructions string) (float32, error) {
 	app, err := risc.Parse(instructions)
 	require.NoError(t, err)
-	return vm.run(app)
+	cycles, err := vm.run(app)
+	require.NoError(t, err)
+	require.Equal(t, int8(1), vm.context().Memory[4])
+	return cycles, nil
 }
 
 func TestPrimeNumber(t *testing.T) {

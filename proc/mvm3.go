@@ -316,6 +316,10 @@ func newMvm3(memoryBytes int) *mvm3 {
 	}
 }
 
+func (m *mvm3) context() *risc.Context {
+	return m.ctx
+}
+
 func (m *mvm3) run(app risc.Application) (float32, error) {
 	var cycles float32 = 0
 	for {
