@@ -11,8 +11,8 @@ const (
 )
 
 type bufferEntry[T any] struct {
-	fromCycle float32
-	data      T
+	availableFromCycle float32
+	t                  T
 }
 
 type bus[T any] struct {
@@ -38,8 +38,8 @@ func (bus *bus[T]) flush() {
 
 func (bus *bus[T]) add(t T, currentCycle float32) {
 	bus.buffer = append(bus.buffer, bufferEntry[T]{
-		fromCycle: currentCycle + 1,
-		data:      t,
+		availableFromCycle: currentCycle + 1,
+		t:                  t,
 	})
 }
 
@@ -80,10 +80,10 @@ func (bus *bus[T]) connect(currentCycle float32) {
 			break
 		}
 		entry := bus.buffer[i]
-		if entry.fromCycle > currentCycle {
+		if entry.availableFromCycle > currentCycle {
 			break
 		}
-		bus.queue = append(bus.queue, entry.data)
+		bus.queue = append(bus.queue, entry.t)
 	}
 	bus.buffer = bus.buffer[i:]
 }
