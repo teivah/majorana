@@ -19,7 +19,7 @@ type CPU struct {
 	executeUnit *comp.ExecuteUnit
 	writeBus    comp.Bus[comp.ExecutionContext]
 	writeUnit   *comp.WriteUnit
-	branchUnit  *comp.BranchUnit
+	branchUnit  *comp.SimpleBranchUnit
 }
 
 func NewCPU(memoryBytes int) *CPU {
@@ -32,7 +32,7 @@ func NewCPU(memoryBytes int) *CPU {
 		executeUnit: &comp.ExecuteUnit{},
 		writeBus:    comp.NewBufferedBus[comp.ExecutionContext](1, 1),
 		writeUnit:   &comp.WriteUnit{},
-		branchUnit:  &comp.BranchUnit{},
+		branchUnit:  &comp.SimpleBranchUnit{},
 	}
 }
 

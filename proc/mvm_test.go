@@ -1,8 +1,10 @@
 package proc
 
 import (
+	"fmt"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/teivah/ettore/proc/mvm1"
 	"github.com/teivah/ettore/proc/mvm2"
@@ -16,8 +18,29 @@ func execute(t *testing.T, vm virtualMachine, instructions string) (float32, err
 	require.NoError(t, err)
 	cycles, err := vm.Run(app)
 	require.NoError(t, err)
-	require.Equal(t, int8(1), vm.Context().Memory[4])
 	return cycles, nil
+}
+
+func isPrime(n int) bool {
+	if n <= 1 {
+		return false
+	}
+
+	if n <= 3 {
+		return true
+	}
+
+	if n%2 == 0 || n%3 == 0 {
+		return false
+	}
+
+	for i := 5; i*i <= n; i += 6 {
+		if n%i == 0 || n%(i+2) == 0 {
+			return false
+		}
+	}
+
+	return true
 }
 
 func TestPrimeNumber(t *testing.T) {
@@ -29,7 +52,56 @@ func TestPrimeNumber(t *testing.T) {
 		map[int]int8{4: 1})
 }
 
-func TestMvm1(t *testing.T) {
+func TestMvms(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name    string
+		factory func() virtualMachine
+	}{
+		{
+			name: "mvm1",
+			factory: func() virtualMachine {
+				return mvm1.NewCPU(5)
+			},
+		},
+		{
+			name: "mvm2",
+			factory: func() virtualMachine {
+				return mvm2.NewCPU(5)
+			},
+		},
+		{
+			name: "mvm3",
+			factory: func() virtualMachine {
+				return mvm3.NewCPU(5)
+			},
+		},
+	}
+
+	for _, tc := range cases {
+		for i := 2; i < 4096; i++ {
+			t.Run(fmt.Sprintf("%s - %d", tc.name, i), func(t *testing.T) {
+				t.Parallel()
+				vm := tc.factory()
+				instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-fix.asm"), i)
+				app, err := risc.Parse(instructions)
+				require.NoError(t, err)
+				_, err = vm.Run(app)
+				require.NoError(t, err)
+
+				want := isPrime(i)
+				if want {
+					assert.Equal(t, int8(1), vm.Context().Memory[4])
+				} else {
+					assert.Equal(t, int8(0), vm.Context().Memory[4])
+				}
+			})
+		}
+	}
+}
+
+func TestMvm1Execution(t *testing.T) {
 	vm := mvm1.NewCPU(5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)

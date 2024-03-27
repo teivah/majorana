@@ -10,7 +10,7 @@ func (wu *WriteUnit) Cycle(ctx *risc.Context, writeBus Bus[ExecutionContext]) {
 	}
 
 	execution := writeBus.Get()
-	if risc.WriteBack(execution.InstructionType) {
+	if risc.IsWriteBack(execution.InstructionType) {
 		ctx.Write(execution.Execution)
 		ctx.DeleteWriteRegisters(execution.WriteRegisters)
 	}

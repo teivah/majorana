@@ -32,7 +32,7 @@ func (m *CPU) Run(app risc.Application) (float32, error) {
 			return 0, err
 		}
 		m.ctx.Pc = exe.Pc
-		if risc.WriteBack(ins) {
+		if risc.IsWriteBack(ins) {
 			m.ctx.Write(exe)
 			m.cycles += cyclesRegisterAccess
 		}

@@ -121,7 +121,7 @@ var CyclesPerInstruction = map[InstructionType]float32{
 	Xori:  1.,
 }
 
-func WriteBack(ins InstructionType) bool {
+func IsWriteBack(ins InstructionType) bool {
 	switch ins {
 	case Sb, Sw, Sh:
 		return false
@@ -129,7 +129,7 @@ func WriteBack(ins InstructionType) bool {
 	return true
 }
 
-func Jump(ins InstructionType) bool {
+func IsJump(ins InstructionType) bool {
 	switch ins {
 	case Jal, Jalr:
 		return true
@@ -137,7 +137,7 @@ func Jump(ins InstructionType) bool {
 	return false
 }
 
-func ConditionalBranching(ins InstructionType) bool {
+func IsConditionalBranching(ins InstructionType) bool {
 	switch ins {
 	case Beq, Bne, Blt, Bge, Bgeu:
 		return true
@@ -145,7 +145,7 @@ func ConditionalBranching(ins InstructionType) bool {
 	return false
 }
 
-func RegisterChange(register RegisterType, value int32) (RegisterType, int32) {
+func IsRegisterChange(register RegisterType, value int32) (RegisterType, int32) {
 	if register == Zero {
 		return Zero, 0
 	}

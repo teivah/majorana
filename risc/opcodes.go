@@ -16,7 +16,7 @@ type add struct {
 }
 
 func (a add) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(a.rd, ctx.Registers[a.rs1]+ctx.Registers[a.rs2])
+	register, value := IsRegisterChange(a.rd, ctx.Registers[a.rs1]+ctx.Registers[a.rs2])
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -39,7 +39,7 @@ type addi struct {
 }
 
 func (a addi) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(a.rd, ctx.Registers[a.rs]+a.imm)
+	register, value := IsRegisterChange(a.rd, ctx.Registers[a.rs]+a.imm)
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -62,7 +62,7 @@ type and struct {
 }
 
 func (a and) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(a.rd, ctx.Registers[a.rs1]&ctx.Registers[a.rs2])
+	register, value := IsRegisterChange(a.rd, ctx.Registers[a.rs1]&ctx.Registers[a.rs2])
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -85,7 +85,7 @@ type andi struct {
 }
 
 func (a andi) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(a.rd, ctx.Registers[a.rs]&a.imm)
+	register, value := IsRegisterChange(a.rd, ctx.Registers[a.rs]&a.imm)
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -107,7 +107,7 @@ type auipc struct {
 }
 
 func (a auipc) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(a.rd, ctx.Pc+(a.imm<<12))
+	register, value := IsRegisterChange(a.rd, ctx.Pc+(a.imm<<12))
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -307,7 +307,7 @@ func (d div) Run(ctx *Context, _ map[string]int32) (Execution, error) {
 	if ctx.Registers[d.rs2] == 0 {
 		return Execution{}, fmt.Errorf("division by zero")
 	}
-	register, value := RegisterChange(d.rd, ctx.Registers[d.rs1]/ctx.Registers[d.rs2])
+	register, value := IsRegisterChange(d.rd, ctx.Registers[d.rs1]/ctx.Registers[d.rs2])
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -333,7 +333,7 @@ func (j jal) Run(ctx *Context, labels map[string]int32) (Execution, error) {
 	if !ok {
 		return Execution{}, fmt.Errorf("label %s does not exist", j.label)
 	}
-	register, value := RegisterChange(j.rd, ctx.Pc+4)
+	register, value := IsRegisterChange(j.rd, ctx.Pc+4)
 	return newExecution(register, value, addr), nil
 }
 
@@ -356,7 +356,7 @@ type jalr struct {
 }
 
 func (j jalr) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(j.rd, ctx.Pc+4)
+	register, value := IsRegisterChange(j.rd, ctx.Pc+4)
 	return newExecution(register, value, ctx.Registers[j.rs]+j.imm), nil
 }
 
@@ -378,7 +378,7 @@ type lui struct {
 }
 
 func (l lui) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(l.rd, l.imm<<12)
+	register, value := IsRegisterChange(l.rd, l.imm<<12)
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -404,7 +404,7 @@ func (l lb) Run(ctx *Context, _ map[string]int32) (Execution, error) {
 	idx := ctx.Registers[l.rs1] + l.offset
 	n := ctx.Memory[idx]
 
-	register, value := RegisterChange(l.rs2, int32(n))
+	register, value := IsRegisterChange(l.rs2, int32(n))
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -433,7 +433,7 @@ func (l lh) Run(ctx *Context, _ map[string]int32) (Execution, error) {
 	i2 := ctx.Memory[idx]
 
 	n := i32FromBytes(i1, i2, 0, 0)
-	register, value := RegisterChange(l.rs2, n)
+	register, value := IsRegisterChange(l.rs2, n)
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -466,7 +466,7 @@ func (l lw) Run(ctx *Context, _ map[string]int32) (Execution, error) {
 	i4 := ctx.Memory[idx]
 
 	n := i32FromBytes(i1, i2, i3, i4)
-	register, value := RegisterChange(l.rs2, n)
+	register, value := IsRegisterChange(l.rs2, n)
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -507,7 +507,7 @@ type mul struct {
 }
 
 func (m mul) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(m.rd, ctx.Registers[m.rs1]*ctx.Registers[m.rs2])
+	register, value := IsRegisterChange(m.rd, ctx.Registers[m.rs1]*ctx.Registers[m.rs2])
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -530,7 +530,7 @@ type or struct {
 }
 
 func (o or) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(o.rd, ctx.Registers[o.rs1]|ctx.Registers[o.rs2])
+	register, value := IsRegisterChange(o.rd, ctx.Registers[o.rs1]|ctx.Registers[o.rs2])
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -553,7 +553,7 @@ type ori struct {
 }
 
 func (o ori) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(o.rd, ctx.Registers[o.rs]|o.imm)
+	register, value := IsRegisterChange(o.rd, ctx.Registers[o.rs]|o.imm)
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -576,7 +576,7 @@ type rem struct {
 }
 
 func (r rem) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(r.rd, ctx.Registers[r.rs1]%ctx.Registers[r.rs2])
+	register, value := IsRegisterChange(r.rd, ctx.Registers[r.rs1]%ctx.Registers[r.rs2])
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -652,7 +652,7 @@ type sll struct {
 }
 
 func (s sll) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(s.rd, ctx.Registers[s.rs1]<<uint(ctx.Registers[s.rs2]))
+	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs1]<<uint(ctx.Registers[s.rs2]))
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -675,7 +675,7 @@ type slli struct {
 }
 
 func (s slli) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(s.rd, ctx.Registers[s.rs]<<uint(s.imm))
+	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs]<<uint(s.imm))
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -701,9 +701,9 @@ func (s slt) Run(ctx *Context, _ map[string]int32) (Execution, error) {
 	var register RegisterType
 	var value int32
 	if ctx.Registers[s.rs1] < ctx.Registers[s.rs2] {
-		register, value = RegisterChange(s.rd, 1)
+		register, value = IsRegisterChange(s.rd, 1)
 	} else {
-		register, value = RegisterChange(s.rd, 0)
+		register, value = IsRegisterChange(s.rd, 0)
 	}
 	return newExecution(register, value, ctx.Pc+4), nil
 }
@@ -730,9 +730,9 @@ func (s sltu) Run(ctx *Context, _ map[string]int32) (Execution, error) {
 	var register RegisterType
 	var value int32
 	if ctx.Registers[s.rs1] < ctx.Registers[s.rs2] {
-		register, value = RegisterChange(s.rd, 1)
+		register, value = IsRegisterChange(s.rd, 1)
 	} else {
-		register, value = RegisterChange(s.rd, 0)
+		register, value = IsRegisterChange(s.rd, 0)
 	}
 	return newExecution(register, value, ctx.Pc+4), nil
 }
@@ -759,9 +759,9 @@ func (s slti) Run(ctx *Context, _ map[string]int32) (Execution, error) {
 	var register RegisterType
 	var value int32
 	if ctx.Registers[s.rs] < s.imm {
-		register, value = RegisterChange(s.rd, 1)
+		register, value = IsRegisterChange(s.rd, 1)
 	} else {
-		register, value = RegisterChange(s.rd, 0)
+		register, value = IsRegisterChange(s.rd, 0)
 	}
 	return newExecution(register, value, ctx.Pc+4), nil
 }
@@ -785,7 +785,7 @@ type sra struct {
 }
 
 func (s sra) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(s.rd, ctx.Registers[s.rs1]>>ctx.Registers[s.rs2])
+	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs1]>>ctx.Registers[s.rs2])
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -808,7 +808,7 @@ type srai struct {
 }
 
 func (s srai) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(s.rd, ctx.Registers[s.rs]>>s.imm)
+	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs]>>s.imm)
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -831,7 +831,7 @@ type srl struct {
 }
 
 func (s srl) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(s.rd, ctx.Registers[s.rs1]>>ctx.Registers[s.rs2])
+	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs1]>>ctx.Registers[s.rs2])
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -854,7 +854,7 @@ type srli struct {
 }
 
 func (s srli) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(s.rd, ctx.Registers[s.rs]>>s.imm)
+	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs]>>s.imm)
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -877,7 +877,7 @@ type sub struct {
 }
 
 func (s sub) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(s.rd, ctx.Registers[s.rs1]-ctx.Registers[s.rs2])
+	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs1]-ctx.Registers[s.rs2])
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -932,7 +932,7 @@ type xor struct {
 }
 
 func (x xor) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(x.rd, ctx.Registers[x.rs1]^ctx.Registers[x.rs2])
+	register, value := IsRegisterChange(x.rd, ctx.Registers[x.rs1]^ctx.Registers[x.rs2])
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
@@ -955,7 +955,7 @@ type xori struct {
 }
 
 func (x xori) Run(ctx *Context, _ map[string]int32) (Execution, error) {
-	register, value := RegisterChange(x.rd, ctx.Registers[x.rs]^x.imm)
+	register, value := IsRegisterChange(x.rd, ctx.Registers[x.rs]^x.imm)
 	return newExecution(register, value, ctx.Pc+4), nil
 }
 
