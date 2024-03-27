@@ -6,67 +6,9 @@ import (
 )
 
 const (
-	mvm3CyclesL1Access          float32 = 1.
-	mvm3CyclesMemoryAccess              = 50. + mvm3CyclesL1Access
+	mvm3CyclesMemoryAccess      float32 = 50. + 1. // +1 cycle to get from l1
 	mvm3L1ICacheLineSizeInBytes int32   = 64
 )
-
-type fetchUnit struct {
-	pc              int32
-	l1i             comp.L1i
-	remainingCycles float32
-	complete        bool
-	processing      bool
-}
-
-func newFetchUnit() *fetchUnit {
-	return &fetchUnit{
-		l1i: comp.NewL1I(mvm3L1ICacheLineSizeInBytes),
-	}
-}
-
-func (fu *fetchUnit) cycle(currentCycle float32, application risc.Application, outBus comp.Bus[int]) {
-	if fu.complete {
-		return
-	}
-
-	if !fu.processing {
-		fu.processing = true
-		if fu.l1i.Present(fu.pc) {
-			fu.remainingCycles = mvm3CyclesL1Access
-		} else {
-			fu.remainingCycles = mvm3CyclesMemoryAccess
-			// Should be done after the processing of the 50 cycles
-			fu.l1i.Fetch(fu.pc)
-		}
-	}
-
-	fu.remainingCycles -= 1.0
-	if fu.remainingCycles == 0.0 {
-		if outBus.IsBufferFull() {
-			fu.remainingCycles = 1.0
-			return
-		}
-
-		fu.processing = false
-		currentPC := fu.pc
-		fu.pc += 4
-		if fu.pc/4 >= int32(len(application.Instructions)) {
-			fu.complete = true
-		}
-		outBus.Add(int(currentPC/4), currentCycle)
-	}
-}
-
-func (fu *fetchUnit) flush(pc int32) {
-	fu.processing = false
-	fu.complete = false
-	fu.pc = pc
-}
-
-func (fu *fetchUnit) isEmpty() bool {
-	return fu.complete
-}
 
 type decodeUnit struct{}
 
@@ -208,7 +150,7 @@ func (bu *branchUnit) pipelineToBeFlushed(ctx *risc.Context, writeBus comp.Bus[e
 
 type mvm3 struct {
 	ctx         *risc.Context
-	fetchUnit   *fetchUnit
+	fetchUnit   *comp.FetchUnit
 	decodeBus   comp.Bus[int]
 	decodeUnit  *decodeUnit
 	executeBus  comp.Bus[risc.InstructionRunner]
@@ -221,7 +163,7 @@ type mvm3 struct {
 func newMvm3(memoryBytes int) *mvm3 {
 	return &mvm3{
 		ctx:         risc.NewContext(memoryBytes),
-		fetchUnit:   newFetchUnit(),
+		fetchUnit:   comp.NewFetchUnit(mvm3L1ICacheLineSizeInBytes, mvm3CyclesMemoryAccess),
 		decodeBus:   comp.NewBufferedBus[int](1, 1),
 		decodeUnit:  &decodeUnit{},
 		executeBus:  comp.NewBufferedBus[risc.InstructionRunner](1, 1),
@@ -242,7 +184,7 @@ func (m *mvm3) run(app risc.Application) (float32, error) {
 		cycles += 1
 
 		// Fetch
-		m.fetchUnit.cycle(cycles, app, m.decodeBus)
+		m.fetchUnit.Cycle(cycles, app, m.decodeBus)
 
 		// Decode
 		m.decodeBus.Connect(cycles)
@@ -287,7 +229,7 @@ func (m *mvm3) run(app risc.Application) (float32, error) {
 }
 
 func (m *mvm3) flush(pc int32) {
-	m.fetchUnit.flush(pc)
+	m.fetchUnit.Flush(pc)
 	m.decodeUnit.flush()
 	m.decodeBus.Flush()
 	m.executeBus.Flush()
@@ -295,7 +237,7 @@ func (m *mvm3) flush(pc int32) {
 }
 
 func (m *mvm3) isComplete() bool {
-	return m.fetchUnit.isEmpty() &&
+	return m.fetchUnit.IsEmpty() &&
 		m.decodeUnit.isEmpty() &&
 		m.executeUnit.isEmpty() &&
 		m.writeUnit.isEmpty() &&
