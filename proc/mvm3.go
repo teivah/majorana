@@ -25,7 +25,7 @@ func newFetchUnit() *fetchUnit {
 	}
 }
 
-func (fu *fetchUnit) cycle(currentCycle float32, application risc.Application, outBus *comp.Bus[int]) {
+func (fu *fetchUnit) cycle(currentCycle float32, application risc.Application, outBus comp.Bus[int]) {
 	if fu.complete {
 		return
 	}
@@ -70,8 +70,8 @@ func (fu *fetchUnit) isEmpty() bool {
 
 type decodeUnit struct{}
 
-func (du *decodeUnit) Cycle(currentCycle float32, app risc.Application, inBus *comp.Bus[int], outBus *comp.Bus[risc.InstructionRunner]) {
-	if !inBus.ContainsElementInQueue() || outBus.IsBufferFull() {
+func (du *decodeUnit) Cycle(currentCycle float32, app risc.Application, inBus comp.Bus[int], outBus comp.Bus[risc.InstructionRunner]) {
+	if !inBus.IsElementInQueue() || outBus.IsBufferFull() {
 		return
 	}
 	idx := inBus.Get()
@@ -98,9 +98,9 @@ type executeUnit struct {
 	Runner          risc.InstructionRunner
 }
 
-func (eu *executeUnit) cycle(currentCycle float32, ctx *risc.Context, application risc.Application, inBus *comp.Bus[risc.InstructionRunner], outBus *comp.Bus[executionContext]) error {
+func (eu *executeUnit) cycle(currentCycle float32, ctx *risc.Context, application risc.Application, inBus comp.Bus[risc.InstructionRunner], outBus comp.Bus[executionContext]) error {
 	if !eu.Processing {
-		if !inBus.ContainsElementInQueue() {
+		if !inBus.IsElementInQueue() {
 			return nil
 		}
 		runner := inBus.Get()
@@ -150,8 +150,8 @@ func (eu *executeUnit) isEmpty() bool {
 
 type writeUnit struct{}
 
-func (wu *writeUnit) cycle(ctx *risc.Context, writeBus *comp.Bus[executionContext]) {
-	if !writeBus.ContainsElementInQueue() {
+func (wu *writeUnit) cycle(ctx *risc.Context, writeBus comp.Bus[executionContext]) {
+	if !writeBus.IsElementInQueue() {
 		return
 	}
 
@@ -171,8 +171,8 @@ type branchUnit struct {
 	jumpCondition              bool
 }
 
-func (bu *branchUnit) assert(ctx *risc.Context, executeBus *comp.Bus[risc.InstructionRunner]) {
-	if executeBus.ContainsElementInQueue() {
+func (bu *branchUnit) assert(ctx *risc.Context, executeBus comp.Bus[risc.InstructionRunner]) {
+	if executeBus.IsElementInQueue() {
 		runner := executeBus.Peek()
 		instructionType := runner.InstructionType()
 		if risc.Jump(instructionType) {
@@ -191,8 +191,8 @@ func (bu *branchUnit) ConditionalBranching(expected int32) {
 	bu.conditionBranchingExpected = &expected
 }
 
-func (bu *branchUnit) pipelineToBeFlushed(ctx *risc.Context, writeBus *comp.Bus[executionContext]) bool {
-	if !writeBus.ContainsElementInBuffer() {
+func (bu *branchUnit) pipelineToBeFlushed(ctx *risc.Context, writeBus comp.Bus[executionContext]) bool {
+	if !writeBus.IsElementInBuffer() {
 		return false
 	}
 
@@ -209,11 +209,11 @@ func (bu *branchUnit) pipelineToBeFlushed(ctx *risc.Context, writeBus *comp.Bus[
 type mvm3 struct {
 	ctx         *risc.Context
 	fetchUnit   *fetchUnit
-	decodeBus   *comp.Bus[int]
+	decodeBus   comp.Bus[int]
 	decodeUnit  *decodeUnit
-	executeBus  *comp.Bus[risc.InstructionRunner]
+	executeBus  comp.Bus[risc.InstructionRunner]
 	executeUnit *executeUnit
-	writeBus    *comp.Bus[executionContext]
+	writeBus    comp.Bus[executionContext]
 	writeUnit   *writeUnit
 	branchUnit  *branchUnit
 }
@@ -222,11 +222,11 @@ func newMvm3(memoryBytes int) *mvm3 {
 	return &mvm3{
 		ctx:         risc.NewContext(memoryBytes),
 		fetchUnit:   newFetchUnit(),
-		decodeBus:   comp.NewBus[int](1, 1),
+		decodeBus:   comp.NewBufferedBus[int](1, 1),
 		decodeUnit:  &decodeUnit{},
-		executeBus:  comp.NewBus[risc.InstructionRunner](1, 1),
+		executeBus:  comp.NewBufferedBus[risc.InstructionRunner](1, 1),
 		executeUnit: &executeUnit{},
-		writeBus:    comp.NewBus[executionContext](1, 1),
+		writeBus:    comp.NewBufferedBus[executionContext](1, 1),
 		writeUnit:   &writeUnit{},
 		branchUnit:  &branchUnit{},
 	}
@@ -271,7 +271,7 @@ func (m *mvm3) run(app risc.Application) (float32, error) {
 		m.writeUnit.cycle(m.ctx, m.writeBus)
 
 		if flush {
-			if m.writeBus.ContainsElementInBuffer() {
+			if m.writeBus.IsElementInBuffer() {
 				// We need to waste a cycle to write the element in the queue buffer
 				cycles++
 				m.writeBus.Connect(cycles)
