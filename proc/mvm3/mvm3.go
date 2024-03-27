@@ -1,4 +1,4 @@
-package proc
+package mvm3
 
 import (
 	"github.com/teivah/ettore/proc/comp"
@@ -6,11 +6,11 @@ import (
 )
 
 const (
-	mvm3CyclesMemoryAccess      float32 = 50. + 1. // +1 cycle to get from l1
-	mvm3L1ICacheLineSizeInBytes int32   = 64
+	cyclesMemoryAccess      float32 = 50. + 1. // +1 cycle to get from l1
+	l1ICacheLineSizeInBytes int32   = 64
 )
 
-type mvm3 struct {
+type CPU struct {
 	ctx         *risc.Context
 	fetchUnit   *comp.FetchUnit
 	decodeBus   comp.Bus[int]
@@ -22,10 +22,10 @@ type mvm3 struct {
 	branchUnit  *comp.BranchUnit
 }
 
-func newMvm3(memoryBytes int) *mvm3 {
-	return &mvm3{
+func NewCPU(memoryBytes int) *CPU {
+	return &CPU{
 		ctx:         risc.NewContext(memoryBytes),
-		fetchUnit:   comp.NewFetchUnit(mvm3L1ICacheLineSizeInBytes, mvm3CyclesMemoryAccess),
+		fetchUnit:   comp.NewFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess),
 		decodeBus:   comp.NewBufferedBus[int](1, 1),
 		decodeUnit:  &comp.DecodeUnit{},
 		executeBus:  comp.NewBufferedBus[risc.InstructionRunner](1, 1),
@@ -36,11 +36,11 @@ func newMvm3(memoryBytes int) *mvm3 {
 	}
 }
 
-func (m *mvm3) context() *risc.Context {
+func (m *CPU) Context() *risc.Context {
 	return m.ctx
 }
 
-func (m *mvm3) run(app risc.Application) (float32, error) {
+func (m *CPU) Run(app risc.Application) (float32, error) {
 	var cycles float32 = 0
 	for {
 		cycles += 1
@@ -90,7 +90,7 @@ func (m *mvm3) run(app risc.Application) (float32, error) {
 	return cycles, nil
 }
 
-func (m *mvm3) flush(pc int32) {
+func (m *CPU) flush(pc int32) {
 	m.fetchUnit.Flush(pc)
 	m.decodeUnit.Flush()
 	m.decodeBus.Flush()
@@ -98,7 +98,7 @@ func (m *mvm3) flush(pc int32) {
 	m.writeBus.Flush()
 }
 
-func (m *mvm3) isComplete() bool {
+func (m *CPU) isComplete() bool {
 	return m.fetchUnit.IsEmpty() &&
 		m.decodeUnit.IsEmpty() &&
 		m.executeUnit.IsEmpty() &&

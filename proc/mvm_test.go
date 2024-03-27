@@ -4,6 +4,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"github.com/teivah/ettore/proc/mvm1"
+	"github.com/teivah/ettore/proc/mvm2"
+	"github.com/teivah/ettore/proc/mvm3"
 	"github.com/teivah/ettore/risc"
 	"github.com/teivah/ettore/test"
 )
@@ -11,9 +14,9 @@ import (
 func execute(t *testing.T, vm virtualMachine, instructions string) (float32, error) {
 	app, err := risc.Parse(instructions)
 	require.NoError(t, err)
-	cycles, err := vm.run(app)
+	cycles, err := vm.Run(app)
 	require.NoError(t, err)
-	require.Equal(t, int8(1), vm.context().Memory[4])
+	require.Equal(t, int8(1), vm.Context().Memory[4])
 	return cycles, nil
 }
 
@@ -27,7 +30,7 @@ func TestPrimeNumber(t *testing.T) {
 }
 
 func TestMvm1(t *testing.T) {
-	vm := newMvm1(5)
+	vm := mvm1.NewCPU(5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
 	require.Equal(t, float32(147432), cycles)
@@ -35,7 +38,7 @@ func TestMvm1(t *testing.T) {
 }
 
 func TestMvm2(t *testing.T) {
-	vm := newMvm2(5)
+	vm := mvm2.NewCPU(5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
 	require.Equal(t, float32(11361), cycles)
@@ -43,7 +46,7 @@ func TestMvm2(t *testing.T) {
 }
 
 func TestMvm3(t *testing.T) {
-	vm := newMvm3(5)
+	vm := mvm3.NewCPU(5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
 	require.Equal(t, float32(6918), cycles)

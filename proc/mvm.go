@@ -3,6 +3,6 @@ package proc
 import "github.com/teivah/ettore/risc"
 
 type virtualMachine interface {
-	run(application risc.Application) (float32, error)
-	context() *risc.Context
+	Run(application risc.Application) (float32, error)
+	Context() *risc.Context
 }

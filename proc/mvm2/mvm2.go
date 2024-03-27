@@ -1,35 +1,35 @@
-package proc
+package mvm2
 
 import "github.com/teivah/ettore/risc"
 
 const (
-	mvm2CyclesL1Access       float32 = 1.
-	mvm2CyclesMemoryAccess   float32 = 50. + mvm2CyclesL1Access
-	mvm2CyclesRegisterAccess float32 = 1.
-	mvm2CyclesDecode         float32 = 1.
-	mvm2L1iSize              int32   = 64
+	cyclesL1Access       float32 = 1.
+	cyclesMemoryAccess   float32 = 50. + cyclesL1Access
+	cyclesRegisterAccess float32 = 1.
+	cyclesDecode         float32 = 1.
+	l1iSize              int32   = 64
 )
 
-type mvm2 struct {
+type CPU struct {
 	ctx     *risc.Context
 	cycles  float32
 	li1From int32
 	li1To   int32
 }
 
-func newMvm2(memoryBytes int) *mvm2 {
-	return &mvm2{
+func NewCPU(memoryBytes int) *CPU {
+	return &CPU{
 		ctx:     risc.NewContext(memoryBytes),
 		li1From: -1,
 		li1To:   -1,
 	}
 }
 
-func (m *mvm2) context() *risc.Context {
+func (m *CPU) Context() *risc.Context {
 	return m.ctx
 }
 
-func (m *mvm2) run(app risc.Application) (float32, error) {
+func (m *CPU) Run(app risc.Application) (float32, error) {
 	for m.ctx.Pc/4 < int32(len(app.Instructions)) {
 		idx := m.fetchInstruction()
 		r := m.decode(app, idx)
@@ -40,15 +40,15 @@ func (m *mvm2) run(app risc.Application) (float32, error) {
 		m.ctx.Pc = exe.Pc
 		if risc.WriteBack(ins) {
 			m.ctx.Write(exe)
-			m.cycles += mvm2CyclesRegisterAccess
+			m.cycles += cyclesRegisterAccess
 		}
 	}
 	return m.cycles, nil
 }
 
-func (m *mvm2) fetchInstruction() int {
+func (m *CPU) fetchInstruction() int {
 	if m.isPresentInL1i() {
-		m.cycles += mvm2CyclesL1Access
+		m.cycles += cyclesL1Access
 	} else {
 		m.fetchL1i()
 	}
@@ -56,23 +56,23 @@ func (m *mvm2) fetchInstruction() int {
 	return int(m.ctx.Pc / 4)
 }
 
-func (m *mvm2) isPresentInL1i() bool {
+func (m *CPU) isPresentInL1i() bool {
 	return m.ctx.Pc >= m.li1From && m.ctx.Pc <= m.li1To
 }
 
-func (m *mvm2) fetchL1i() {
-	m.cycles += mvm2CyclesMemoryAccess
+func (m *CPU) fetchL1i() {
+	m.cycles += cyclesMemoryAccess
 	m.li1From = m.ctx.Pc
-	m.li1To = m.ctx.Pc + mvm2L1iSize
+	m.li1To = m.ctx.Pc + l1iSize
 }
 
-func (m *mvm2) decode(app risc.Application, i int) risc.InstructionRunner {
+func (m *CPU) decode(app risc.Application, i int) risc.InstructionRunner {
 	r := app.Instructions[i]
-	m.cycles += mvm2CyclesDecode
+	m.cycles += cyclesDecode
 	return r
 }
 
-func (m *mvm2) execute(app risc.Application, r risc.InstructionRunner) (risc.Execution, risc.InstructionType, error) {
+func (m *CPU) execute(app risc.Application, r risc.InstructionRunner) (risc.Execution, risc.InstructionType, error) {
 	exe, err := r.Run(m.ctx, app.Labels)
 	if err != nil {
 		return risc.Execution{}, 0, err
