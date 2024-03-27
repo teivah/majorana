@@ -126,9 +126,9 @@ Meanwhile, we have executed a benchmark on an Intel i5-7360U (same CPU clock fre
 
 RISC source: [prime-number.asm](res/risc/prime-number.asm)
 
-|Machine|n=1109|
-|:--------:|:-------------:|
-|i5-7360U|253 ns|
-|MVM-1|64100 ns, ~253 times slower|
-|MVM-2|4939 ns, ~19 times slower|
-|MVM-3|2260 ns, ~9 times slower|
+|Machine|            n=1109             |
+|:--------:|:-----------------------------:|
+|i5-7360U|            253 ns             |
+|MVM-1| 64100 ns, ~253.4 times slower |
+|MVM-2|  4939 ns, ~19.5 times slower  |
+|MVM-3|  2260 ns, ~11.8 times slower  |

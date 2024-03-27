@@ -31,7 +31,7 @@ func TestMvm1(t *testing.T) {
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
 	require.Equal(t, float32(147432), cycles)
-	stats("mvm1 - prime number", cycles)
+	stats(cycles)
 }
 
 func TestMvm2(t *testing.T) {
@@ -39,13 +39,13 @@ func TestMvm2(t *testing.T) {
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
 	require.Equal(t, float32(11361), cycles)
-	stats("mvm1 - prime number", cycles)
+	stats(cycles)
 }
 
 func TestMvm3(t *testing.T) {
 	vm := newMvm3(5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
-	require.Equal(t, float32(5200), cycles)
-	stats("mvm1 - prime number", cycles)
+	require.Equal(t, float32(6868), cycles)
+	stats(cycles)
 }

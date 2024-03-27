@@ -10,31 +10,37 @@ const (
 	mvm3L1ICacheLine       int32   = 64 * 8
 )
 
-type bus[T any] struct {
-	// Before buffer
-	entry  []T
-	buffer []T
-	queue  []T
-	length int
+type bufferEntry[T any] struct {
+	fromCycle float32
+	data      T
 }
 
-func newBus[T any](length int) *bus[T] {
+type bus[T any] struct {
+	buffer       []bufferEntry[T]
+	queue        []T
+	queueLength  int
+	bufferLength int
+}
+
+func newBus[T any](queueLength, bufferLength int) *bus[T] {
 	return &bus[T]{
-		entry:  make([]T, 0),
-		buffer: make([]T, 0),
-		queue:  make([]T, 0),
-		length: length,
+		buffer:       make([]bufferEntry[T], 0),
+		queue:        make([]T, 0),
+		queueLength:  queueLength,
+		bufferLength: bufferLength,
 	}
 }
 
 func (bus *bus[T]) flush() {
-	bus.entry = make([]T, 0)
-	bus.buffer = make([]T, 0)
+	bus.buffer = make([]bufferEntry[T], 0)
 	bus.queue = make([]T, 0)
 }
 
-func (bus *bus[T]) add(t T) {
-	bus.entry = append(bus.entry, t)
+func (bus *bus[T]) add(t T, currentCycle float32) {
+	bus.buffer = append(bus.buffer, bufferEntry[T]{
+		fromCycle: currentCycle + 1,
+		data:      t,
+	})
 }
 
 func (bus *bus[T]) get() T {
@@ -47,12 +53,12 @@ func (bus *bus[T]) peek() T {
 	return bus.queue[0]
 }
 
-func (bus *bus[T]) isFull() bool {
-	return len(bus.queue) == bus.length || len(bus.entry) == bus.length
+func (bus *bus[T]) isBufferFull() bool {
+	return len(bus.buffer) == bus.bufferLength
 }
 
 func (bus *bus[T]) isEmpty() bool {
-	return len(bus.queue) == 0 && len(bus.buffer) == 0 && len(bus.entry) == 0
+	return len(bus.queue) == 0 && len(bus.buffer) == 0
 }
 
 func (bus *bus[T]) containsElementInBuffer() bool {
@@ -63,24 +69,23 @@ func (bus *bus[T]) containsElementInQueue() bool {
 	return len(bus.queue) != 0
 }
 
-func (bus *bus[T]) containsElementInEntry() bool {
-	return len(bus.entry) != 0
-}
-
-func (bus *bus[T]) connect() {
-	if len(bus.queue) == bus.length {
+func (bus *bus[T]) connect(currentCycle float32) {
+	if len(bus.queue) == bus.queueLength {
 		return
 	}
 
-	for _, list := range bus.buffer {
-		bus.queue = append(bus.queue, list)
+	i := 0
+	for ; i < len(bus.buffer); i++ {
+		if len(bus.queue) == bus.queueLength {
+			break
+		}
+		entry := bus.buffer[i]
+		if entry.fromCycle > currentCycle {
+			break
+		}
+		bus.queue = append(bus.queue, entry.data)
 	}
-	bus.buffer = make([]T, 0)
-
-	for _, list := range bus.entry {
-		bus.buffer = append(bus.buffer, list)
-	}
-	bus.entry = make([]T, 0)
+	bus.buffer = bus.buffer[i:]
 }
 
 type l1i struct {
@@ -109,7 +114,7 @@ func newFetchUnit() *fetchUnit {
 	}
 }
 
-func (fu *fetchUnit) cycle(application risc.Application, outBus *bus[int]) {
+func (fu *fetchUnit) cycle(currentCycle float32, application risc.Application, outBus *bus[int]) {
 	if fu.complete {
 		return
 	}
@@ -127,7 +132,7 @@ func (fu *fetchUnit) cycle(application risc.Application, outBus *bus[int]) {
 
 	fu.remainingCycles -= 1.0
 	if fu.remainingCycles == 0.0 {
-		if outBus.isFull() {
+		if outBus.isBufferFull() {
 			fu.remainingCycles = 1.0
 			return
 		}
@@ -138,7 +143,7 @@ func (fu *fetchUnit) cycle(application risc.Application, outBus *bus[int]) {
 		if fu.pc/4 >= int32(len(application.Instructions)) {
 			fu.complete = true
 		}
-		outBus.add(int(currentPC / 4))
+		outBus.add(int(currentPC/4), currentCycle)
 	}
 }
 
@@ -154,13 +159,13 @@ func (fu *fetchUnit) isEmpty() bool {
 
 type decodeUnit struct{}
 
-func (du *decodeUnit) Cycle(app risc.Application, inBus *bus[int], outBus *bus[risc.InstructionRunner]) {
-	if !inBus.containsElementInQueue() || outBus.isFull() {
+func (du *decodeUnit) Cycle(currentCycle float32, app risc.Application, inBus *bus[int], outBus *bus[risc.InstructionRunner]) {
+	if !inBus.containsElementInQueue() || outBus.isBufferFull() {
 		return
 	}
 	idx := inBus.get()
 	runner := app.Instructions[idx]
-	outBus.add(runner)
+	outBus.add(runner, currentCycle)
 }
 
 func (du *decodeUnit) flush() {}
@@ -182,7 +187,7 @@ type executeUnit struct {
 	Runner          risc.InstructionRunner
 }
 
-func (eu *executeUnit) cycle(ctx *risc.Context, application risc.Application, inBus *bus[risc.InstructionRunner], outBus *bus[executionContext]) error {
+func (eu *executeUnit) cycle(currentCycle float32, ctx *risc.Context, application risc.Application, inBus *bus[risc.InstructionRunner], outBus *bus[executionContext]) error {
 	if !eu.Processing {
 		if !inBus.containsElementInQueue() {
 			return nil
@@ -198,7 +203,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, application risc.Application, in
 		return nil
 	}
 
-	if outBus.isFull() {
+	if outBus.isBufferFull() {
 		eu.RemainingCycles = 1
 		return nil
 	}
@@ -221,7 +226,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, application risc.Application, in
 		execution:       execution,
 		instructionType: runner.InstructionType(),
 		writeRegisters:  runner.WriteRegisters(),
-	})
+	}, currentCycle)
 	ctx.AddWriteRegisters(runner.WriteRegisters())
 	eu.Runner = nil
 	eu.Processing = false
@@ -276,7 +281,7 @@ func (bu *branchUnit) ConditionalBranching(expected int32) {
 }
 
 func (bu *branchUnit) pipelineToBeFlushed(ctx *risc.Context, writeBus *bus[executionContext]) bool {
-	if !writeBus.containsElementInEntry() {
+	if !writeBus.containsElementInBuffer() {
 		return false
 	}
 
@@ -306,11 +311,11 @@ func newMvm3(memoryBytes int) *mvm3 {
 	return &mvm3{
 		ctx:         risc.NewContext(memoryBytes),
 		fetchUnit:   newFetchUnit(),
-		decodeBus:   newBus[int](1),
+		decodeBus:   newBus[int](1, 1),
 		decodeUnit:  &decodeUnit{},
-		executeBus:  newBus[risc.InstructionRunner](1),
+		executeBus:  newBus[risc.InstructionRunner](1, 1),
 		executeUnit: &executeUnit{},
-		writeBus:    newBus[executionContext](1),
+		writeBus:    newBus[executionContext](1, 1),
 		writeUnit:   &writeUnit{},
 		branchUnit:  &branchUnit{},
 	}
@@ -326,20 +331,20 @@ func (m *mvm3) run(app risc.Application) (float32, error) {
 		cycles += 1
 
 		// Fetch
-		m.fetchUnit.cycle(app, m.decodeBus)
+		m.fetchUnit.cycle(cycles, app, m.decodeBus)
 
 		// Decode
-		m.decodeBus.connect()
-		m.decodeUnit.Cycle(app, m.decodeBus, m.executeBus)
+		m.decodeBus.connect(cycles)
+		m.decodeUnit.Cycle(cycles, app, m.decodeBus, m.executeBus)
 
 		// Execute
-		m.executeBus.connect()
+		m.executeBus.connect(cycles)
 
 		// Create branch unit assertions
 		m.branchUnit.assert(m.ctx, m.executeBus)
 
 		// Execute
-		err := m.executeUnit.cycle(m.ctx, app, m.executeBus, m.writeBus)
+		err := m.executeUnit.cycle(cycles, m.ctx, app, m.executeBus, m.writeBus)
 		if err != nil {
 			return 0, err
 		}
@@ -351,14 +356,14 @@ func (m *mvm3) run(app risc.Application) (float32, error) {
 		}
 
 		// Write back
-		m.writeBus.connect()
+		m.writeBus.connect(cycles)
 		m.writeUnit.cycle(m.ctx, m.writeBus)
 
 		if flush {
 			if m.writeBus.containsElementInBuffer() {
 				// We need to waste a cycle to write the element in the queue buffer
 				cycles++
-				m.writeBus.connect()
+				m.writeBus.connect(cycles)
 				m.writeUnit.cycle(m.ctx, m.writeBus)
 			}
 			m.flush(m.ctx.Pc)
