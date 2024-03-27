@@ -3,9 +3,9 @@ package proc
 import "github.com/teivah/ettore/risc"
 
 const (
-	cyclesMemoryAccess   float32 = 50.
-	cyclesRegisterAccess float32 = 1.
-	cyclesDecode         float32 = 1.
+	mvm1CyclesMemoryAccess   float32 = 50.
+	mvm1CyclesRegisterAccess float32 = 1.
+	mvm1CyclesDecode         float32 = 1.
 )
 
 type mvm1 struct {
@@ -30,20 +30,20 @@ func (m *mvm1) run(app risc.Application) (float32, error) {
 		m.ctx.Pc = exe.Pc
 		if risc.WriteBack(ins) {
 			m.ctx.Write(exe)
-			m.cycles += cyclesRegisterAccess
+			m.cycles += mvm1CyclesRegisterAccess
 		}
 	}
 	return m.cycles, nil
 }
 
 func (m *mvm1) fetchInstruction() int {
-	m.cycles += cyclesMemoryAccess
+	m.cycles += mvm1CyclesMemoryAccess
 	return int(m.ctx.Pc / 4)
 }
 
 func (m *mvm1) decode(app risc.Application, i int) risc.InstructionRunner {
 	r := app.Instructions[i]
-	m.cycles += cyclesDecode
+	m.cycles += mvm1CyclesDecode
 	return r
 }
 

@@ -10,5 +10,5 @@ const secondToNanosecond = 1_000_000_000
 func stats(test string, cycles float32) {
 	s := cycles / i57360u
 	ns := s * secondToNanosecond
-	fmt.Printf("%s: %f, %.2f nanoseconds\n", test, cycles, ns)
+	fmt.Printf("%s: %.2f cycles, %.2f nanoseconds\n", test, cycles, ns)
 }
