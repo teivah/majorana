@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	mvm3CyclesL1Access     float32 = 1.
-	mvm3CyclesMemoryAccess         = 50. + mvm3CyclesL1Access
-	mvm3L1ICacheLine       int32   = 64 * 8
+	mvm3CyclesL1Access          float32 = 1.
+	mvm3CyclesMemoryAccess              = 50. + mvm3CyclesL1Access
+	mvm3L1ICacheLineSizeInBytes int32   = 64
 )
 
 type bufferEntry[T any] struct {
@@ -97,7 +97,7 @@ func (l1i *l1i) present(pc int32) bool {
 }
 
 func (l1i *l1i) fetch(pc int32) {
-	l1i.boundary = [2]int32{pc, pc + mvm3L1ICacheLine}
+	l1i.boundary = [2]int32{pc, pc + mvm3L1ICacheLineSizeInBytes}
 }
 
 type fetchUnit struct {

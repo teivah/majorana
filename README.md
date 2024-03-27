@@ -131,4 +131,4 @@ RISC source: [prime-number.asm](res/risc/prime-number.asm)
 |i5-7360U|            253 ns             |
 |MVM-1| 64100 ns, ~253.4 times slower |
 |MVM-2|  4939 ns, ~19.5 times slower  |
-|MVM-3|  2260 ns, ~11.8 times slower  |
+|MVM-3|  3007 ns, ~11.9 times slower  |

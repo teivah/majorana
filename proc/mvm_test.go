@@ -46,6 +46,6 @@ func TestMvm3(t *testing.T) {
 	vm := newMvm3(5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
-	require.Equal(t, float32(6868), cycles)
+	require.Equal(t, float32(6918), cycles)
 	stats(cycles)
 }
