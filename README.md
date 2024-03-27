@@ -80,7 +80,7 @@ One of the complexity with pipelining is to handle conditional branches. What if
 
 The Branch Unit takes the hypothesis that a condition branch will **not** be taken. Hence, after having fetched an instruction, regardless if it's a conditional branch, we will fetch the next instruction after it. If the prediction was wrong, we need to flush the pipeline, revert the program counter to the destination marked by the conditional branch instruction, and continue the execution.
 
-Of course, pipeline flushing has an immediate performance impact. Modern CPUs have a branch prediction mechanism that is move evolved than MVM-3.
+Of course, pipeline flushing has an immediate performance impact. Modern CPUs have a branch prediction mechanism that is more evolved than MVM-3.
 
 There is another problem with pipelining. We might face what we call a data hazard. For example:
 ```
