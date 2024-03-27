@@ -11,28 +11,29 @@ const (
 )
 
 type bus[T any] struct {
-	entry  [][]T
-	buffer [][]T
+	// Before buffer
+	entry  []T
+	buffer []T
 	queue  []T
-	max    int
+	length int
 }
 
-func newBus[T any](max int) *bus[T] {
+func newBus[T any](length int) *bus[T] {
 	return &bus[T]{
-		entry:  make([][]T, 0),
-		buffer: make([][]T, 0),
+		entry:  make([]T, 0),
+		buffer: make([]T, 0),
 		queue:  make([]T, 0),
-		max:    max,
+		length: length,
 	}
 }
 
 func (bus *bus[T]) flush() {
-	bus.entry = make([][]T, 0)
-	bus.buffer = make([][]T, 0)
+	bus.entry = make([]T, 0)
+	bus.buffer = make([]T, 0)
 	bus.queue = make([]T, 0)
 }
 
-func (bus *bus[T]) add(t []T) {
+func (bus *bus[T]) add(t T) {
 	bus.entry = append(bus.entry, t)
 }
 
@@ -47,7 +48,7 @@ func (bus *bus[T]) peek() T {
 }
 
 func (bus *bus[T]) isFull() bool {
-	return len(bus.queue) == bus.max || len(bus.entry) == bus.max
+	return len(bus.queue) == bus.length || len(bus.entry) == bus.length
 }
 
 func (bus *bus[T]) isEmpty() bool {
@@ -67,19 +68,19 @@ func (bus *bus[T]) containsElementInEntry() bool {
 }
 
 func (bus *bus[T]) connect() {
-	if len(bus.queue) == bus.max {
+	if len(bus.queue) == bus.length {
 		return
 	}
 
 	for _, list := range bus.buffer {
-		bus.queue = append(bus.queue, list...)
+		bus.queue = append(bus.queue, list)
 	}
-	bus.buffer = make([][]T, 0)
+	bus.buffer = make([]T, 0)
 
 	for _, list := range bus.entry {
 		bus.buffer = append(bus.buffer, list)
 	}
-	bus.entry = make([][]T, 0)
+	bus.entry = make([]T, 0)
 }
 
 type l1i struct {
@@ -137,7 +138,7 @@ func (fu *fetchUnit) cycle(application risc.Application, outBus *bus[int]) {
 		if fu.pc/4 >= int32(len(application.Instructions)) {
 			fu.complete = true
 		}
-		outBus.add([]int{int(currentPC / 4)})
+		outBus.add(int(currentPC / 4))
 	}
 }
 
@@ -159,7 +160,7 @@ func (du *decodeUnit) Cycle(app risc.Application, inBus *bus[int], outBus *bus[r
 	}
 	idx := inBus.get()
 	runner := app.Instructions[idx]
-	outBus.add([]risc.InstructionRunner{runner})
+	outBus.add(runner)
 }
 
 func (du *decodeUnit) flush() {}
@@ -216,12 +217,10 @@ func (eu *executeUnit) cycle(ctx *risc.Context, application risc.Application, in
 	}
 
 	ctx.Pc = execution.Pc
-	outBus.add([]executionContext{
-		{
-			execution:       execution,
-			instructionType: runner.InstructionType(),
-			writeRegisters:  runner.WriteRegisters(),
-		},
+	outBus.add(executionContext{
+		execution:       execution,
+		instructionType: runner.InstructionType(),
+		writeRegisters:  runner.WriteRegisters(),
 	})
 	ctx.AddWriteRegisters(runner.WriteRegisters())
 	eu.Runner = nil
