@@ -6,6 +6,7 @@ import (
 
 type BranchUnit interface {
 	Assert(ctx *risc.Context, executeBus Bus[risc.InstructionRunner])
+	ShouldFlushPipeline(ctx *risc.Context, writeBus Bus[ExecutionContext]) bool
 }
 
 type SimpleBranchUnit struct {
@@ -31,7 +32,7 @@ func (bu *SimpleBranchUnit) conditionalBranching(expected int32) {
 	bu.conditionBranchingExpected = &expected
 }
 
-func (bu *SimpleBranchUnit) PipelineToBeFlushed(ctx *risc.Context, writeBus Bus[ExecutionContext]) bool {
+func (bu *SimpleBranchUnit) ShouldFlushPipeline(ctx *risc.Context, writeBus Bus[ExecutionContext]) bool {
 	if !writeBus.IsElementInBuffer() {
 		return false
 	}

@@ -19,7 +19,7 @@ type CPU struct {
 	executeUnit *comp.ExecuteUnit
 	writeBus    comp.Bus[comp.ExecutionContext]
 	writeUnit   *comp.WriteUnit
-	branchUnit  *comp.SimpleBranchUnit
+	branchUnit  comp.BranchUnit
 }
 
 func NewCPU(memoryBytes int) *CPU {
@@ -66,7 +66,7 @@ func (m *CPU) Run(app risc.Application) (float32, error) {
 
 		// Branch unit assertions check
 		flush := false
-		if m.branchUnit.PipelineToBeFlushed(m.ctx, m.writeBus) {
+		if m.branchUnit.ShouldFlushPipeline(m.ctx, m.writeBus) {
 			flush = true
 		}
 
