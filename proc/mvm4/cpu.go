@@ -1,4 +1,4 @@
-package mvm3
+package mvm4
 
 import (
 	"github.com/teivah/ettore/proc/comp"
@@ -12,27 +12,28 @@ const (
 
 type CPU struct {
 	ctx         *risc.Context
-	fetchUnit   *comp.FetchUnit
+	fetchUnit   *comp.FetchUnitWithBranchPredictor
 	decodeBus   comp.Bus[int]
 	decodeUnit  *comp.DecodeUnit
 	executeBus  comp.Bus[risc.InstructionRunner]
 	executeUnit *comp.ExecuteUnit
 	writeBus    comp.Bus[comp.ExecutionContext]
 	writeUnit   *comp.WriteUnit
-	branchUnit  comp.BranchUnit
+	branchUnit  *comp.BTBBranchUnit
 }
 
 func NewCPU(memoryBytes int) *CPU {
+	bu := comp.NewBTBBranchUnit(4)
 	return &CPU{
 		ctx:         risc.NewContext(memoryBytes),
-		fetchUnit:   comp.NewFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess),
+		fetchUnit:   comp.NewFetchUnitWithBranchPredictor(l1ICacheLineSizeInBytes, cyclesMemoryAccess, bu),
 		decodeBus:   comp.NewBufferedBus[int](1, 1),
 		decodeUnit:  &comp.DecodeUnit{},
 		executeBus:  comp.NewBufferedBus[risc.InstructionRunner](1, 1),
 		executeUnit: &comp.ExecuteUnit{},
 		writeBus:    comp.NewBufferedBus[comp.ExecutionContext](1, 1),
 		writeUnit:   &comp.WriteUnit{},
-		branchUnit:  &comp.SimpleBranchUnit{},
+		branchUnit:  bu,
 	}
 }
 

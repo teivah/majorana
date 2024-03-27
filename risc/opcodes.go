@@ -333,6 +333,7 @@ func (j jal) Run(ctx *Context, labels map[string]int32) (Execution, error) {
 	if !ok {
 		return Execution{}, fmt.Errorf("label %s does not exist", j.label)
 	}
+	ctx.Registers[Ra] = ctx.Pc + 4
 	register, value := IsRegisterChange(j.rd, ctx.Pc+4)
 	return newExecution(register, value, addr), nil
 }

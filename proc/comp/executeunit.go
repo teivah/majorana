@@ -3,37 +3,38 @@ package comp
 import "github.com/teivah/ettore/risc"
 
 type ExecuteUnit struct {
-	Processing      bool
-	RemainingCycles float32
-	Runner          risc.InstructionRunner
+	processing      bool
+	remainingCycles float32
+	runner          risc.InstructionRunner
+	bu              *BTBBranchUnit
 }
 
 func (eu *ExecuteUnit) Cycle(currentCycle float32, ctx *risc.Context, application risc.Application, inBus Bus[risc.InstructionRunner], outBus Bus[ExecutionContext]) error {
-	if !eu.Processing {
+	if !eu.processing {
 		if !inBus.IsElementInQueue() {
 			return nil
 		}
 		runner := inBus.Get()
-		eu.Runner = runner
-		eu.RemainingCycles = risc.CyclesPerInstruction[runner.InstructionType()]
-		eu.Processing = true
+		eu.runner = runner
+		eu.remainingCycles = risc.CyclesPerInstruction[runner.InstructionType()]
+		eu.processing = true
 	}
 
-	eu.RemainingCycles--
-	if eu.RemainingCycles != 0 {
+	eu.remainingCycles--
+	if eu.remainingCycles != 0 {
 		return nil
 	}
 
 	if outBus.IsBufferFull() {
-		eu.RemainingCycles = 1
+		eu.remainingCycles = 1
 		return nil
 	}
 
-	runner := eu.Runner
+	runner := eu.runner
 
 	// To avoid writeback hazard, if the pipeline contains read registers not written yet, we wait for it.
 	if ctx.ContainWrittenRegisters(runner.ReadRegisters()) {
-		eu.RemainingCycles = 1
+		eu.remainingCycles = 1
 		return nil
 	}
 
@@ -42,6 +43,7 @@ func (eu *ExecuteUnit) Cycle(currentCycle float32, ctx *risc.Context, applicatio
 		return err
 	}
 
+	pc := ctx.Pc
 	ctx.Pc = execution.Pc
 	outBus.Add(ExecutionContext{
 		Execution:       execution,
@@ -49,11 +51,18 @@ func (eu *ExecuteUnit) Cycle(currentCycle float32, ctx *risc.Context, applicatio
 		WriteRegisters:  runner.WriteRegisters(),
 	}, currentCycle)
 	ctx.AddWriteRegisters(runner.WriteRegisters())
-	eu.Runner = nil
-	eu.Processing = false
+	eu.runner = nil
+	eu.processing = false
+
+	if eu.bu != nil {
+		if risc.IsJump(runner.InstructionType()) {
+			eu.bu.BranchNotify(pc, execution.Pc)
+		}
+	}
+
 	return nil
 }
 
 func (eu *ExecuteUnit) IsEmpty() bool {
-	return !eu.Processing
+	return !eu.processing
 }

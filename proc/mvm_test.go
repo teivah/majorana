@@ -77,12 +77,17 @@ func TestMvms(t *testing.T) {
 				return mvm3.NewCPU(5)
 			},
 		},
+		//{
+		//	name: "mvm4",
+		//	factory: func() virtualMachine {
+		//		return mvm4.NewCPU(5)
+		//	},
+		//},
 	}
 
 	for _, tc := range cases {
 		for i := 2; i < 4096; i++ {
 			t.Run(fmt.Sprintf("%s - %d", tc.name, i), func(t *testing.T) {
-				t.Parallel()
 				vm := tc.factory()
 				instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-fix.asm"), i)
 				app, err := risc.Parse(instructions)
@@ -123,4 +128,15 @@ func TestMvm3(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, float32(6918), cycles)
 	stats(cycles)
+}
+
+func TestMvmr(t *testing.T) {
+	vm := mvm3.NewCPU(5)
+	_, err := execute(t, vm, `start:
+  jal zero, func
+  addi t1, t0, 3
+func:
+  addi t0, zero, 2`)
+	require.NoError(t, err)
+	assert.Equal(t, int32(5), vm.Context().Registers[risc.T1])
 }
