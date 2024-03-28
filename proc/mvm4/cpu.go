@@ -1,6 +1,8 @@
 package mvm4
 
 import (
+	"fmt"
+
 	"github.com/teivah/ettore/proc/comp"
 	"github.com/teivah/ettore/risc"
 )
@@ -12,9 +14,9 @@ const (
 
 type CPU struct {
 	ctx         *risc.Context
-	fetchUnit   *comp.FetchUnitWithBranchPredictor
+	fetchUnit   *comp.FetchUnit
 	decodeBus   comp.Bus[int]
-	decodeUnit  *comp.DecodeUnit
+	decodeUnit  *comp.DecodeUnitWithBranchPredictor
 	executeBus  comp.Bus[risc.InstructionRunner]
 	executeUnit *comp.ExecuteUnit
 	writeBus    comp.Bus[comp.ExecutionContext]
@@ -23,14 +25,15 @@ type CPU struct {
 }
 
 func NewCPU(memoryBytes int) *CPU {
-	bu := comp.NewBTBBranchUnit(4)
+	fu := comp.NewFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess)
+	bu := comp.NewBTBBranchUnit(4, fu)
 	return &CPU{
 		ctx:         risc.NewContext(memoryBytes),
-		fetchUnit:   comp.NewFetchUnitWithBranchPredictor(l1ICacheLineSizeInBytes, cyclesMemoryAccess, bu),
+		fetchUnit:   fu,
 		decodeBus:   comp.NewBufferedBus[int](1, 1),
-		decodeUnit:  &comp.DecodeUnit{},
+		decodeUnit:  comp.NewDecodeUnitWithBranchPredictor(bu),
 		executeBus:  comp.NewBufferedBus[risc.InstructionRunner](1, 1),
-		executeUnit: &comp.ExecuteUnit{},
+		executeUnit: comp.NewExecuteUnitWithBu(bu),
 		writeBus:    comp.NewBufferedBus[comp.ExecutionContext](1, 1),
 		writeUnit:   &comp.WriteUnit{},
 		branchUnit:  bu,
@@ -45,12 +48,14 @@ func (m *CPU) Run(app risc.Application) (float32, error) {
 	var cycles float32 = 0
 	for {
 		cycles += 1
+		if app.Debug {
+			fmt.Printf("Cycle %d\n", int32(cycles))
+		}
 
 		// Fetch
 		m.fetchUnit.Cycle(cycles, app, m.decodeBus)
 
 		// Decode
-		m.decodeBus.Connect(cycles)
 		m.decodeUnit.Cycle(cycles, app, m.decodeBus, m.executeBus)
 
 		// Execute
@@ -68,6 +73,9 @@ func (m *CPU) Run(app risc.Application) (float32, error) {
 		// Branch unit assertions check
 		flush := false
 		if m.branchUnit.ShouldFlushPipeline(m.ctx, m.writeBus) {
+			if app.Debug {
+				fmt.Println("\tFlush")
+			}
 			flush = true
 		}
 
@@ -85,6 +93,12 @@ func (m *CPU) Run(app risc.Application) (float32, error) {
 			m.flush(m.ctx.Pc)
 		}
 		if m.isComplete() {
+			//if m.ctx.Registers[risc.Ra] != 0 {
+			//	m.ctx.Pc = m.ctx.Registers[risc.Ra]
+			//	m.ctx.Registers[risc.Ra] = 0
+			//	m.fetchUnit.Reset(m.ctx.Pc)
+			//	continue
+			//}
 			break
 		}
 	}

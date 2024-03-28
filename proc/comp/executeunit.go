@@ -1,6 +1,10 @@
 package comp
 
-import "github.com/teivah/ettore/risc"
+import (
+	"fmt"
+
+	"github.com/teivah/ettore/risc"
+)
 
 type ExecuteUnit struct {
 	processing      bool
@@ -9,7 +13,13 @@ type ExecuteUnit struct {
 	bu              *BTBBranchUnit
 }
 
-func (eu *ExecuteUnit) Cycle(currentCycle float32, ctx *risc.Context, application risc.Application, inBus Bus[risc.InstructionRunner], outBus Bus[ExecutionContext]) error {
+func NewExecuteUnitWithBu(bu *BTBBranchUnit) *ExecuteUnit {
+	return &ExecuteUnit{
+		bu: bu,
+	}
+}
+
+func (eu *ExecuteUnit) Cycle(currentCycle float32, ctx *risc.Context, app risc.Application, inBus Bus[risc.InstructionRunner], outBus Bus[ExecutionContext]) error {
 	if !eu.processing {
 		if !inBus.IsElementInQueue() {
 			return nil
@@ -38,7 +48,7 @@ func (eu *ExecuteUnit) Cycle(currentCycle float32, ctx *risc.Context, applicatio
 		return nil
 	}
 
-	execution, err := runner.Run(ctx, application.Labels)
+	execution, err := runner.Run(ctx, app.Labels)
 	if err != nil {
 		return err
 	}
@@ -56,6 +66,9 @@ func (eu *ExecuteUnit) Cycle(currentCycle float32, ctx *risc.Context, applicatio
 
 	if eu.bu != nil {
 		if risc.IsJump(runner.InstructionType()) {
+			if app.Debug {
+				fmt.Printf("\tEU: Branch notify, from %d to %d\n", pc/4, execution.Pc/4)
+			}
 			eu.bu.BranchNotify(pc, execution.Pc)
 		}
 	}

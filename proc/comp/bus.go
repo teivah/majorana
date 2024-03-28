@@ -3,6 +3,7 @@ package comp
 type Bus[T any] interface {
 	Flush()
 	Add(t T, currentCycle float32)
+	DeleteLast()
 	Get() T
 	Peek() T
 	IsBufferFull() bool
@@ -43,6 +44,13 @@ func (bus *BufferedBus[T]) Add(t T, currentCycle float32) {
 		availableFromCycle: currentCycle + 1,
 		t:                  t,
 	})
+}
+
+func (bus *BufferedBus[T]) DeleteLast() {
+	if len(bus.buffer) == 0 {
+		return
+	}
+	bus.buffer = bus.buffer[:len(bus.buffer)-1]
 }
 
 func (bus *BufferedBus[T]) Get() T {

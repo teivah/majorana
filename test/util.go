@@ -10,7 +10,7 @@ import (
 )
 
 func RunAssert(t *testing.T, initRegisters map[risc.RegisterType]int32, memoryBytes int, initMemory map[int]int8, instructions string, assertionsRegisters map[risc.RegisterType]int32, assertionsMemory map[int]int8) {
-	app, err := risc.Parse(instructions)
+	app, err := risc.Parse(instructions, false)
 	require.NoError(t, err)
 	r := risc.NewRunner(app, memoryBytes)
 	for k, v := range initRegisters {

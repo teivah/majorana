@@ -48,14 +48,32 @@ func (bu *SimpleBranchUnit) ShouldFlushPipeline(ctx *risc.Context, writeBus Bus[
 type BTBBranchUnit struct {
 	SimpleBranchUnit
 	btb *BranchTargetBuffer
+	fu  *FetchUnit
 }
 
-func NewBTBBranchUnit(btbSize int) *BTBBranchUnit {
+func NewBTBBranchUnit(btbSize int, fu *FetchUnit) *BTBBranchUnit {
 	return &BTBBranchUnit{
 		btb: NewBranchTargetBuffer(btbSize),
+		fu:  fu,
 	}
 }
 
 func (bu *BTBBranchUnit) BranchNotify(pc, pcTo int32) {
 	bu.btb.Add(pc, pcTo)
+	bu.fu.Reset(pcTo)
+}
+
+func (bu *BTBBranchUnit) ShouldFlushPipeline(ctx *risc.Context, writeBus Bus[ExecutionContext]) bool {
+	if !writeBus.IsElementInBuffer() {
+		return false
+	}
+
+	defer func() {
+		bu.conditionBranchingExpected = nil
+	}()
+
+	if bu.conditionBranchingExpected != nil {
+		return *bu.conditionBranchingExpected != ctx.Pc
+	}
+	return false
 }

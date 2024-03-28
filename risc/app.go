@@ -3,6 +3,7 @@ package risc
 type Application struct {
 	Instructions []InstructionRunner
 	Labels       map[string]int32
+	Debug        bool
 }
 
 type Context struct {
