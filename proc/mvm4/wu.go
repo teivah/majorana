@@ -13,6 +13,7 @@ func (wu *writeUnit) cycle(ctx *risc.Context, writeBus comp.Bus[comp.ExecutionCo
 	}
 
 	execution := writeBus.Get()
+	// TODO If write to memory +50
 	if risc.IsWriteBack(execution.InstructionType) {
 		ctx.Write(execution.Execution)
 		ctx.DeleteWriteRegisters(execution.WriteRegisters)
