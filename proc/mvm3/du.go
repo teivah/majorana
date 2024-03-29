@@ -1,8 +1,8 @@
 package mvm3
 
 import (
-	"github.com/teivah/ettore/proc/comp"
-	"github.com/teivah/ettore/risc"
+	"github.com/teivah/majorana/proc/comp"
+	"github.com/teivah/majorana/risc"
 )
 
 type decodeUnit struct{}

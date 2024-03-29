@@ -3,8 +3,8 @@ package mvm4
 import (
 	"fmt"
 
-	"github.com/teivah/ettore/proc/comp"
-	"github.com/teivah/ettore/risc"
+	"github.com/teivah/majorana/proc/comp"
+	"github.com/teivah/majorana/risc"
 )
 
 type fetchUnit struct {

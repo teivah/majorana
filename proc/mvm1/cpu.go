@@ -1,6 +1,6 @@
 package mvm1
 
-import "github.com/teivah/ettore/risc"
+import "github.com/teivah/majorana/risc"
 
 const (
 	cyclesMemoryAccess   float32 = 50.

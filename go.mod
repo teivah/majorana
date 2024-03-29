@@ -1,4 +1,4 @@
-module github.com/teivah/ettore
+module github.com/teivah/majorana
 
 go 1.22.1
 

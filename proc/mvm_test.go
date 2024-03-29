@@ -6,12 +6,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/teivah/ettore/proc/mvm1"
-	"github.com/teivah/ettore/proc/mvm2"
-	"github.com/teivah/ettore/proc/mvm3"
-	"github.com/teivah/ettore/proc/mvm4"
-	"github.com/teivah/ettore/risc"
-	"github.com/teivah/ettore/test"
+	"github.com/teivah/majorana/proc/mvm1"
+	"github.com/teivah/majorana/proc/mvm2"
+	"github.com/teivah/majorana/proc/mvm3"
+	"github.com/teivah/majorana/proc/mvm4"
+	"github.com/teivah/majorana/risc"
+	"github.com/teivah/majorana/test"
 )
 
 func execute(t *testing.T, vm virtualMachine, instructions string, debug bool) (float32, error) {

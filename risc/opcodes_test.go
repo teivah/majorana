@@ -3,7 +3,7 @@ package risc
 import (
 	"testing"
 
-	"github.com/teivah/ettore/test"
+	"github.com/teivah/majorana/test"
 )
 
 func TestPrimeNumber(t *testing.T) {

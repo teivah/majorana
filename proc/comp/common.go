@@ -1,6 +1,6 @@
 package comp
 
-import "github.com/teivah/ettore/risc"
+import "github.com/teivah/majorana/risc"
 
 type ExecutionContext struct {
 	Execution       risc.Execution

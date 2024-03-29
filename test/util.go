@@ -6,7 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/teivah/ettore/risc"
+	"github.com/teivah/majorana/risc"
 )
 
 func RunAssert(t *testing.T, initRegisters map[risc.RegisterType]int32, memoryBytes int, initMemory map[int]int8, instructions string, assertionsRegisters map[risc.RegisterType]int32, assertionsMemory map[int]int8) {
