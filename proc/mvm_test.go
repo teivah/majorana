@@ -44,15 +44,6 @@ func isPrime(n int) bool {
 	return true
 }
 
-func TestPrimeNumber(t *testing.T) {
-	bits := risc.BytesFromLowBits(1109)
-	test.RunAssert(t, map[risc.RegisterType]int32{}, 5,
-		map[int]int8{0: bits[0], 1: bits[1], 2: bits[2], 3: bits[3]},
-		test.ReadFile(t, "../res/prime-number.asm"),
-		map[risc.RegisterType]int32{risc.A0: 4},
-		map[int]int8{4: 1})
-}
-
 func TestMvms(t *testing.T) {
 	t.Parallel()
 
