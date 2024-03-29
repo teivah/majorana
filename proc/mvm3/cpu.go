@@ -11,28 +11,28 @@ const (
 )
 
 type CPU struct {
-	ctx         *risc.Context
-	fetchUnit   *comp.FetchUnit
-	decodeBus   comp.Bus[int]
-	decodeUnit  *comp.DecodeUnit
-	executeBus  comp.Bus[risc.InstructionRunner]
-	executeUnit *comp.ExecuteUnit
-	writeBus    comp.Bus[comp.ExecutionContext]
-	writeUnit   *comp.WriteUnit
-	branchUnit  *comp.SimpleBranchUnit
+	ctx        *risc.Context
+	fetchUnit  *fetchUnit
+	decodeBus  comp.Bus[int]
+	decodeUnit *decodeUnit
+	executeBus comp.Bus[risc.InstructionRunner]
+	alu        *alu
+	writeBus   comp.Bus[comp.ExecutionContext]
+	writeUnit  *writeUnit
+	branchUnit *simpleBranchUnit
 }
 
 func NewCPU(memoryBytes int) *CPU {
 	return &CPU{
-		ctx:         risc.NewContext(memoryBytes),
-		fetchUnit:   comp.NewFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess),
-		decodeBus:   comp.NewBufferedBus[int](1, 1),
-		decodeUnit:  &comp.DecodeUnit{},
-		executeBus:  comp.NewBufferedBus[risc.InstructionRunner](1, 1),
-		executeUnit: &comp.ExecuteUnit{},
-		writeBus:    comp.NewBufferedBus[comp.ExecutionContext](1, 1),
-		writeUnit:   &comp.WriteUnit{},
-		branchUnit:  &comp.SimpleBranchUnit{},
+		ctx:        risc.NewContext(memoryBytes),
+		fetchUnit:  newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess),
+		decodeBus:  comp.NewBufferedBus[int](1, 1),
+		decodeUnit: &decodeUnit{},
+		executeBus: comp.NewBufferedBus[risc.InstructionRunner](1, 1),
+		alu:        &alu{},
+		writeBus:   comp.NewBufferedBus[comp.ExecutionContext](1, 1),
+		writeUnit:  &writeUnit{},
+		branchUnit: &simpleBranchUnit{},
 	}
 }
 
@@ -46,40 +46,40 @@ func (m *CPU) Run(app risc.Application) (float32, error) {
 		cycles += 1
 
 		// Fetch
-		m.fetchUnit.Cycle(cycles, app, m.decodeBus)
+		m.fetchUnit.cycle(cycles, app, m.decodeBus)
 
 		// Decode
 		m.decodeBus.Connect(cycles)
-		m.decodeUnit.Cycle(cycles, app, m.decodeBus, m.executeBus)
+		m.decodeUnit.cycle(cycles, app, m.decodeBus, m.executeBus)
 
 		// Execute
 		m.executeBus.Connect(cycles)
 
 		// Create branch unit assertions
-		m.branchUnit.Assert(m.ctx, m.executeBus)
+		m.branchUnit.assert(m.ctx, m.executeBus)
 
 		// Execute
-		err := m.executeUnit.Cycle(cycles, m.ctx, app, m.executeBus, m.writeBus)
+		err := m.alu.cycle(cycles, m.ctx, app, m.executeBus, m.writeBus)
 		if err != nil {
 			return 0, err
 		}
 
 		// Branch unit assertions check
 		flush := false
-		if m.branchUnit.ShouldFlushPipeline(m.ctx, m.writeBus) {
+		if m.branchUnit.shouldFlushPipeline(m.ctx, m.writeBus) {
 			flush = true
 		}
 
 		// Write back
 		m.writeBus.Connect(cycles)
-		m.writeUnit.Cycle(m.ctx, m.writeBus)
+		m.writeUnit.cycle(m.ctx, m.writeBus)
 
 		if flush {
 			if m.writeBus.IsElementInBuffer() {
 				// We need to waste a cycle to write the element in the queue buffer
 				cycles++
 				m.writeBus.Connect(cycles)
-				m.writeUnit.Cycle(m.ctx, m.writeBus)
+				m.writeUnit.cycle(m.ctx, m.writeBus)
 			}
 			m.flush(m.ctx.Pc)
 		}
@@ -98,7 +98,7 @@ func (m *CPU) Run(app risc.Application) (float32, error) {
 
 func (m *CPU) flush(pc int32) {
 	m.fetchUnit.Flush(pc)
-	m.decodeUnit.Flush()
+	m.decodeUnit.flush()
 	m.decodeBus.Flush()
 	m.executeBus.Flush()
 	m.writeBus.Flush()
@@ -106,9 +106,9 @@ func (m *CPU) flush(pc int32) {
 
 func (m *CPU) isComplete() bool {
 	return m.fetchUnit.IsEmpty() &&
-		m.decodeUnit.IsEmpty() &&
-		m.executeUnit.IsEmpty() &&
-		m.writeUnit.IsEmpty() &&
+		m.decodeUnit.isEmpty() &&
+		m.alu.isEmpty() &&
+		m.writeUnit.isEmpty() &&
 		m.decodeBus.IsEmpty() &&
 		m.executeBus.IsEmpty() &&
 		m.writeBus.IsEmpty()

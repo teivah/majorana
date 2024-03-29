@@ -1,15 +1,16 @@
-package comp
+package mvm4
 
 import (
+	"github.com/teivah/ettore/proc/comp"
 	"github.com/teivah/ettore/risc"
 )
 
-type SimpleBranchUnit struct {
+type simpleBranchUnit struct {
 	conditionBranchingExpected *int32
 	isJump                     bool
 }
 
-func (bu *SimpleBranchUnit) Assert(ctx *risc.Context, executeBus Bus[risc.InstructionRunner]) {
+func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus comp.Bus[risc.InstructionRunner]) {
 	if !executeBus.IsElementInQueue() {
 		return
 	}
@@ -23,11 +24,11 @@ func (bu *SimpleBranchUnit) Assert(ctx *risc.Context, executeBus Bus[risc.Instru
 	}
 }
 
-func (bu *SimpleBranchUnit) conditionalBranching(expected int32) {
+func (bu *simpleBranchUnit) conditionalBranching(expected int32) {
 	bu.conditionBranchingExpected = &expected
 }
 
-func (bu *SimpleBranchUnit) ShouldFlushPipeline(ctx *risc.Context, writeBus Bus[ExecutionContext]) bool {
+func (bu *simpleBranchUnit) shouldFlushPipeline(ctx *risc.Context, writeBus comp.Bus[comp.ExecutionContext]) bool {
 	if !writeBus.IsElementInBuffer() {
 		return false
 	}
@@ -45,25 +46,25 @@ func (bu *SimpleBranchUnit) ShouldFlushPipeline(ctx *risc.Context, writeBus Bus[
 	return bu.isJump
 }
 
-type BTBBranchUnit struct {
-	SimpleBranchUnit
-	btb *BranchTargetBuffer
-	fu  *FetchUnit
+type btbBranchUnit struct {
+	simpleBranchUnit
+	btb *branchTargetBuffer
+	fu  *fetchUnit
 }
 
-func NewBTBBranchUnit(btbSize int, fu *FetchUnit) *BTBBranchUnit {
-	return &BTBBranchUnit{
-		btb: NewBranchTargetBuffer(btbSize),
+func newBTBBranchUnit(btbSize int, fu *fetchUnit) *btbBranchUnit {
+	return &btbBranchUnit{
+		btb: newBranchTargetBuffer(btbSize),
 		fu:  fu,
 	}
 }
 
-func (bu *BTBBranchUnit) BranchNotify(pc, pcTo int32) {
-	bu.btb.Add(pc, pcTo)
-	bu.fu.Reset(pcTo)
+func (bu *btbBranchUnit) branchNotify(pc, pcTo int32) {
+	bu.btb.add(pc, pcTo)
+	bu.fu.reset(pcTo)
 }
 
-func (bu *BTBBranchUnit) ShouldFlushPipeline(ctx *risc.Context, writeBus Bus[ExecutionContext]) bool {
+func (bu *btbBranchUnit) shouldFlushPipeline(ctx *risc.Context, writeBus comp.Bus[comp.ExecutionContext]) bool {
 	if !writeBus.IsElementInBuffer() {
 		return false
 	}

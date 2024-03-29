@@ -1,25 +1,17 @@
-package comp
+package mvm3
 
 import (
-	"fmt"
-
+	"github.com/teivah/ettore/proc/comp"
 	"github.com/teivah/ettore/risc"
 )
 
-type ExecuteUnit struct {
+type alu struct {
 	processing      bool
 	remainingCycles float32
 	runner          risc.InstructionRunner
-	bu              *BTBBranchUnit
 }
 
-func NewExecuteUnitWithBu(bu *BTBBranchUnit) *ExecuteUnit {
-	return &ExecuteUnit{
-		bu: bu,
-	}
-}
-
-func (eu *ExecuteUnit) Cycle(currentCycle float32, ctx *risc.Context, app risc.Application, inBus Bus[risc.InstructionRunner], outBus Bus[ExecutionContext]) error {
+func (eu *alu) cycle(currentCycle float32, ctx *risc.Context, app risc.Application, inBus comp.Bus[risc.InstructionRunner], outBus comp.Bus[comp.ExecutionContext]) error {
 	if !eu.processing {
 		if !inBus.IsElementInQueue() {
 			return nil
@@ -53,9 +45,8 @@ func (eu *ExecuteUnit) Cycle(currentCycle float32, ctx *risc.Context, app risc.A
 		return err
 	}
 
-	pc := ctx.Pc
 	ctx.Pc = execution.Pc
-	outBus.Add(ExecutionContext{
+	outBus.Add(comp.ExecutionContext{
 		Execution:       execution,
 		InstructionType: runner.InstructionType(),
 		WriteRegisters:  runner.WriteRegisters(),
@@ -64,18 +55,9 @@ func (eu *ExecuteUnit) Cycle(currentCycle float32, ctx *risc.Context, app risc.A
 	eu.runner = nil
 	eu.processing = false
 
-	if eu.bu != nil {
-		if risc.IsJump(runner.InstructionType()) {
-			if app.Debug {
-				fmt.Printf("\tEU: Branch notify, from %d to %d\n", pc/4, execution.Pc/4)
-			}
-			eu.bu.BranchNotify(pc, execution.Pc)
-		}
-	}
-
 	return nil
 }
 
-func (eu *ExecuteUnit) IsEmpty() bool {
+func (eu *alu) isEmpty() bool {
 	return !eu.processing
 }

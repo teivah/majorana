@@ -1,12 +1,12 @@
-package comp
+package mvm4
 
-type BranchTargetBuffer struct {
+type branchTargetBuffer struct {
 	buffer []entry
 	length int
 }
 
-func NewBranchTargetBuffer(length int) *BranchTargetBuffer {
-	return &BranchTargetBuffer{length: length}
+func newBranchTargetBuffer(length int) *branchTargetBuffer {
+	return &branchTargetBuffer{length: length}
 }
 
 type entry struct {
@@ -14,7 +14,7 @@ type entry struct {
 	pcDest int32
 }
 
-func (b *BranchTargetBuffer) Add(pc, pcDest int32) {
+func (b *branchTargetBuffer) add(pc, pcDest int32) {
 	for i := 0; i < len(b.buffer); i++ {
 		e := b.buffer[i]
 		if e.pc == pc {
@@ -35,7 +35,7 @@ func (b *BranchTargetBuffer) Add(pc, pcDest int32) {
 	}
 }
 
-func (b *BranchTargetBuffer) Get(pc int32) *int32 {
+func (b *branchTargetBuffer) get(pc int32) *int32 {
 	for _, e := range b.buffer {
 		if e.pc == pc {
 			return &e.pcDest

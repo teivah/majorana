@@ -1,6 +1,6 @@
-# Ettore
+# Majorana
 
-[Ettore](https://en.wikipedia.org/wiki/Ettore_Majorana) is a RISC-V virtual machine, written in Go, ported from [teivah/majorana](https://github.com/teivah/majorana) (Rust).
+[Majorana](https://en.wikipedia.org/wiki/Ettore_Majorana) is a RISC-V virtual machine, written in Go.
 
 ## Majorana Virtual Machine (MVM)
 
@@ -164,7 +164,9 @@ One the Fetch Unit fetches a branch, it doesn't know whether it's a branch; it's
 The workflow is now the following:
 - The fetch unit fetches an instruction
 - The decode unit decodes it. If it's a branch, it waits until the target program counter has been solved by the Execute Unit.
-- When 
+- When
+
+TODO
 
 ## Benchmarks
 
