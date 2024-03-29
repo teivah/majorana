@@ -91,6 +91,7 @@ div t1, t0, t1
 The processor must wait for `ADDI` to be executed and to get its result written in T1 before to execute `DIV` (as div depends on T1).
 In this case, we implement what we call pipeline interclock by delaying the execution of `DIV`.
 
+TODO: No BU to DU link
 ```
 +-----+     +-------+
 | L1I <-----+ Fetch +------------+
@@ -116,6 +117,55 @@ In this case, we implement what we call pipeline interclock by delaying the exec
             +-------+
 ```
 
+## MVM-4
+
+One issue I realized with MVM-3 is when it met a nonconditional branches. For example:
+
+```asm
+main:
+  jal zero, foo # Branch to foo
+  addi t1, t0, 3 # Set $t1 to $t0 + 3
+foo:
+  addi t0, zero, 2 # Set $t0 to 2
+  ...
+```
+
+In this case, the fetch unit after fetching the first line (`jal`) was fetching the second line (first `addi`) which ends up being a problem because the execution is branching to line 3 (second `addi`). I resolved that by flushing the whole pipeline which is very costly.
+
+The architecture of MVM-4 is very similar to MVM-3 except that the Branch Unit is now coupled with a Branch Target Buffer (BTB):
+
+```
++-----+     +-------+
+| L1I <-----+ Fetch +<--------------+
++-----+     +---+---+         +-----------+
+                |             |Branch Unit|
+                |             |   -----   |
+                |             |    BTB    |
+            +---v----+        +-----------+
+            | Decode +--------------^
+            +---+----+
+                |
+                |
+         +------v--------+
+         |     ALU       |
+         |  +---------+  |
+         |  | Execute |  |
+         |  +---------+  |
+         +---------------+
+                |
+                |
+            +---v---+
+            | Write |
+            +-------+
+```
+
+One the Fetch Unit fetches a branch, it doesn't know whether it's a branch; it's the job of the Decode Unit. Therefore, the Fetch Unit can't simply say: "_I fetched a branch, I'm going to wait for the Execute Unit to tell me the next instruction to fetch_".
+
+The workflow is now the following:
+- The fetch unit fetches an instruction
+- The decode unit decodes it. If it's a branch, it waits until the target program counter has been solved by the Execute Unit.
+- When 
+
 ## Benchmarks
 
 All the benchmarks are executed at a fixed CPU clock frequency: 2.3 GHz.
@@ -132,3 +182,4 @@ RISC source: [prime-number.asm](res/risc/prime-number.asm)
 |MVM-1| 64100 ns, ~253.4 times slower |
 |MVM-2|  4939 ns, ~19.5 times slower  |
 |MVM-3|  3007 ns, ~11.9 times slower  |
+|MVM-4|  2766 ns, ~10.9 times slower  |
