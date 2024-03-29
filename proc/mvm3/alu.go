@@ -7,11 +7,11 @@ import (
 
 type alu struct {
 	processing      bool
-	remainingCycles float32
+	remainingCycles int
 	runner          risc.InstructionRunner
 }
 
-func (eu *alu) cycle(currentCycle float32, ctx *risc.Context, app risc.Application, inBus comp.Bus[risc.InstructionRunner], outBus comp.Bus[comp.ExecutionContext]) error {
+func (eu *alu) cycle(currentCycle int, ctx *risc.Context, app risc.Application, inBus comp.Bus[risc.InstructionRunner], outBus comp.Bus[comp.ExecutionContext]) error {
 	if !eu.processing {
 		if !inBus.IsElementInQueue() {
 			return nil

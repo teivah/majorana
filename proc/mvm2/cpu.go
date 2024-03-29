@@ -3,16 +3,16 @@ package mvm2
 import "github.com/teivah/majorana/risc"
 
 const (
-	cyclesL1Access       float32 = 1.
-	cyclesMemoryAccess   float32 = 50. + cyclesL1Access
-	cyclesRegisterAccess float32 = 1.
-	cyclesDecode         float32 = 1.
-	l1iSize              int32   = 64
+	cyclesL1Access             = 1
+	cyclesMemoryAccess         = 50 + cyclesL1Access
+	cyclesRegisterAccess       = 1
+	cyclesDecode               = 1
+	l1iSize              int32 = 64
 )
 
 type CPU struct {
 	ctx     *risc.Context
-	cycles  float32
+	cycles  int
 	li1From int32
 	li1To   int32
 }
@@ -29,7 +29,7 @@ func (m *CPU) Context() *risc.Context {
 	return m.ctx
 }
 
-func (m *CPU) Run(app risc.Application) (float32, error) {
+func (m *CPU) Run(app risc.Application) (int, error) {
 	for m.ctx.Pc/4 < int32(len(app.Instructions)) {
 		idx := m.fetchInstruction()
 		r := m.decode(app, idx)

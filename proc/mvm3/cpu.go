@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	cyclesMemoryAccess      float32 = 50. + 1. // +1 cycle to get from l1
-	l1ICacheLineSizeInBytes int32   = 64
+	cyclesMemoryAccess            = 50 + 1 // +1 cycle to get from l1
+	l1ICacheLineSizeInBytes int32 = 64
 )
 
 type CPU struct {
@@ -40,8 +40,8 @@ func (m *CPU) Context() *risc.Context {
 	return m.ctx
 }
 
-func (m *CPU) Run(app risc.Application) (float32, error) {
-	var cycles float32 = 0
+func (m *CPU) Run(app risc.Application) (int, error) {
+	cycles := 0
 	for {
 		cycles += 1
 

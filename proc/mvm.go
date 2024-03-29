@@ -3,6 +3,6 @@ package proc
 import "github.com/teivah/majorana/risc"
 
 type virtualMachine interface {
-	Run(application risc.Application) (float32, error)
+	Run(application risc.Application) (int, error)
 	Context() *risc.Context
 }

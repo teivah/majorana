@@ -2,7 +2,7 @@ package comp
 
 type Bus[T any] interface {
 	Flush()
-	Add(t T, currentCycle float32)
+	Add(t T, currentCycle int)
 	DeleteLast()
 	Get() T
 	Peek() T
@@ -10,11 +10,11 @@ type Bus[T any] interface {
 	IsEmpty() bool
 	IsElementInBuffer() bool
 	IsElementInQueue() bool
-	Connect(currentCycle float32)
+	Connect(currentCycle int)
 }
 
 type BufferEntry[T any] struct {
-	availableFromCycle float32
+	availableFromCycle int
 	t                  T
 }
 
@@ -39,7 +39,7 @@ func (bus *BufferedBus[T]) Flush() {
 	bus.queue = make([]T, 0)
 }
 
-func (bus *BufferedBus[T]) Add(t T, currentCycle float32) {
+func (bus *BufferedBus[T]) Add(t T, currentCycle int) {
 	bus.buffer = append(bus.buffer, BufferEntry[T]{
 		availableFromCycle: currentCycle + 1,
 		t:                  t,
@@ -79,7 +79,7 @@ func (bus *BufferedBus[T]) IsElementInQueue() bool {
 	return len(bus.queue) != 0
 }
 
-func (bus *BufferedBus[T]) Connect(currentCycle float32) {
+func (bus *BufferedBus[T]) Connect(currentCycle int) {
 	if len(bus.queue) == bus.queueLength {
 		return
 	}

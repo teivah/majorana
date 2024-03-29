@@ -10,21 +10,21 @@ import (
 type fetchUnit struct {
 	pc                 int32
 	l1i                l1i
-	remainingCycles    float32
+	remainingCycles    int
 	complete           bool
 	processing         bool
-	cyclesMemoryAccess float32
+	cyclesMemoryAccess int
 	reset              bool
 }
 
-func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess float32) *fetchUnit {
+func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int) *fetchUnit {
 	return &fetchUnit{
 		l1i:                newL1I(l1iCacheLineSizeInBytes),
 		cyclesMemoryAccess: cyclesMemoryAccess,
 	}
 }
 
-func (fu *fetchUnit) cycle(currentCycle float32, app risc.Application, ctx *risc.Context, outBus comp.Bus[int]) {
+func (fu *fetchUnit) cycle(currentCycle int, app risc.Application, ctx *risc.Context, outBus comp.Bus[int]) {
 	if fu.complete {
 		return
 	}

@@ -7,7 +7,7 @@ import (
 
 type decodeUnit struct{}
 
-func (du *decodeUnit) cycle(currentCycle float32, app risc.Application, inBus comp.Bus[int], outBus comp.Bus[risc.InstructionRunner]) {
+func (du *decodeUnit) cycle(currentCycle int, app risc.Application, inBus comp.Bus[int], outBus comp.Bus[risc.InstructionRunner]) {
 	if !inBus.IsElementInQueue() || outBus.IsBufferFull() {
 		return
 	}

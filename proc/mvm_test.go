@@ -14,7 +14,7 @@ import (
 	"github.com/teivah/majorana/test"
 )
 
-func execute(t *testing.T, vm virtualMachine, instructions string) (float32, error) {
+func execute(t *testing.T, vm virtualMachine, instructions string) (int, error) {
 	app, err := risc.Parse(instructions)
 	require.NoError(t, err)
 	cycles, err := vm.Run(app)
@@ -111,7 +111,7 @@ func TestMvm1Execution(t *testing.T) {
 	vm := mvm1.NewCPU(false, 5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
-	require.Equal(t, float32(147432), cycles)
+	require.Equal(t, int(147432), cycles)
 	stats(cycles)
 }
 
@@ -119,7 +119,7 @@ func TestMvm2(t *testing.T) {
 	vm := mvm2.NewCPU(false, 5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
-	require.Equal(t, float32(11361), cycles)
+	require.Equal(t, int(11361), cycles)
 	stats(cycles)
 }
 
@@ -127,7 +127,7 @@ func TestMvm3(t *testing.T) {
 	vm := mvm3.NewCPU(false, 5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
-	require.Equal(t, float32(6918), cycles)
+	require.Equal(t, int(6918), cycles)
 	stats(cycles)
 }
 
@@ -135,7 +135,7 @@ func TestMvm4(t *testing.T) {
 	vm := mvm4.NewCPU(false, 5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
-	require.Equal(t, float32(6364), cycles)
+	require.Equal(t, int(6364), cycles)
 	stats(cycles)
 }
 
