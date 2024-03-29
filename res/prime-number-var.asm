@@ -31,3 +31,4 @@ end:
     addi t1, zero, 4
     sb t0, 0, t1 # Store to address 4
     addi a0, t1, 0
+    addi ra, zero, 0

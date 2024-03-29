@@ -24,7 +24,6 @@ func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int) *fetchU
 	}
 }
 
-// TODO Ugly
 func (fu *fetchUnit) reset(pc int32) {
 	fu.complete = false
 	fu.pc = pc

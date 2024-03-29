@@ -85,7 +85,7 @@ func TestMvms(t *testing.T) {
 			cache[i] = isPrime(i)
 		}
 		for i := from; i < to; i++ {
-			t.Run(fmt.Sprintf("%s - %d", tc.name, i), func(t *testing.T) {
+			t.Run(fmt.Sprintf("Prime: %s - %d", tc.name, i), func(t *testing.T) {
 				vm := tc.factory()
 				instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), i)
 				app, err := risc.Parse(instructions)
@@ -101,14 +101,24 @@ func TestMvms(t *testing.T) {
 				}
 			})
 		}
+		t.Run(fmt.Sprintf("Jal: %s", tc.name), func(t *testing.T) {
+			vm := tc.factory()
+			_, err := execute(t, vm, `start:
+ jal zero, func
+ addi t1, t0, 3
+func:
+ addi t0, zero, 2`)
+			require.NoError(t, err)
+			assert.Equal(t, int32(5), vm.Context().Registers[risc.T1])
+		})
 	}
 }
 
-func TestMvm1Execution(t *testing.T) {
+func TestMvm1(t *testing.T) {
 	vm := mvm1.NewCPU(false, 5)
 	cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), 1109))
 	require.NoError(t, err)
-	require.Equal(t, 147432, cycles)
+	require.Equal(t, 147485, cycles)
 	stats(cycles)
 }
 
@@ -116,7 +126,7 @@ func TestMvm2(t *testing.T) {
 	vm := mvm2.NewCPU(false, 5)
 	cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), 1109))
 	require.NoError(t, err)
-	require.Equal(t, 11361, cycles)
+	require.Equal(t, 11365, cycles)
 	stats(cycles)
 }
 
@@ -124,7 +134,7 @@ func TestMvm3(t *testing.T) {
 	vm := mvm3.NewCPU(false, 5)
 	cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), 1109))
 	require.NoError(t, err)
-	require.Equal(t, 6918, cycles)
+	require.Equal(t, 6920, cycles)
 	stats(cycles)
 }
 
@@ -132,19 +142,6 @@ func TestMvm4(t *testing.T) {
 	vm := mvm4.NewCPU(false, 5)
 	cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), 1109))
 	require.NoError(t, err)
-	require.Equal(t, 6364, cycles)
+	require.Equal(t, 6366, cycles)
 	stats(cycles)
 }
-
-// FIXME
-//func TestMvmr(t *testing.T) {
-//	vm := mvm4.NewCPU(5)
-//	c, err := execute(t, vm, `start:
-//  jal zero, func
-//  addi t1, t0, 3
-//func:
-//  addi t0, zero, 2`, false)
-//	fmt.Println(c)
-//	require.NoError(t, err)
-//	assert.Equal(t, int32(5), vm.Context().Registers[risc.T1])
-//}

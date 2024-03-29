@@ -84,12 +84,12 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			m.flush(m.ctx.Pc)
 		}
 		if m.isComplete() {
-			//if m.ctx.Registers[risc.Ra] != 0 {
-			//	m.ctx.Pc = m.ctx.Registers[risc.Ra]
-			//	m.ctx.Registers[risc.Ra] = 0
-			//	m.fetchUnit.Reset(m.ctx.Pc)
-			//	continue
-			//}
+			if m.ctx.Registers[risc.Ra] != 0 {
+				m.ctx.Pc = m.ctx.Registers[risc.Ra]
+				m.ctx.Registers[risc.Ra] = 0
+				m.fetchUnit.reset(m.ctx.Pc)
+				continue
+			}
 			break
 		}
 	}

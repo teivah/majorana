@@ -30,6 +30,7 @@ func (m *CPU) Context() *risc.Context {
 }
 
 func (m *CPU) Run(app risc.Application) (int, error) {
+loop:
 	for m.ctx.Pc/4 < int32(len(app.Instructions)) {
 		idx := m.fetchInstruction()
 		r := m.decode(app, idx)
@@ -43,6 +44,12 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			m.cycles += cyclesRegisterAccess
 		}
 	}
+	if m.ctx.Registers[risc.Ra] != 0 {
+		m.ctx.Pc = m.ctx.Registers[risc.Ra]
+		m.ctx.Registers[risc.Ra] = 0
+		goto loop
+	}
+
 	return m.cycles, nil
 }
 
