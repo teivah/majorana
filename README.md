@@ -15,58 +15,13 @@ Here is the architecture, divided into 4 classic stages:
 * Execute: execute the RISC-V instruction
 * Write: write-back the result to a register or the main memory
 
-```
-   +-------+
-   | Fetch |
-   +---+---+
-       |
-       |
-   +---v----+
-   | Decode |
-   +---+----+
-       |
-       |
-+------v--------+
-|     ALU       |
-|  +---------+  |
-|  | Execute |  |
-|  +---------+  |
-+------+--------+
-       |
-       |
-   +---v---+
-   | Write |
-   +-------+
-```
+![](res/mvm-1.png)
 
 ## MVM-2
 
 Compared to MVM-1, we add a cache for instructions called L1I (Level 1 Instructions) with a size of 64 KB. The caching policy is straightforward: as soon as we meet an instruction that is not present in L1I, we fetch a cache line of 64 KB instructions from the main memory, and we cache it into LI1.
 
-```
-+-----+     +-------+
-| L1I <-----+ Fetch |
-+-----+     +---+---+
-                |
-                |
-            +---v----+
-            | Decode |
-            +---+----+
-                |
-                |
-         +------v--------+
-         |     ALU       |
-         |  +---------+  |
-         |  | Execute |  |
-         |  +---------+  |
-         +---------------+
-                |
-                |
-            +---v---+
-            | Write |
-            +-------+
-
-```
+![](res/mvm-2.png)
 
 ## MVM-3
 
@@ -91,31 +46,7 @@ div t1, t0, t1
 The processor must wait for `ADDI` to be executed and to get its result written in T1 before to execute `DIV` (as div depends on T1).
 In this case, we implement what we call pipeline interclock by delaying the execution of `DIV`.
 
-TODO: No BU to DU link
-```
-+-----+     +-------+
-| L1I <-----+ Fetch +------------+
-+-----+     +---+---+            |
-                |         +------v------+
-                |         | Branch Unit |
-                |         +-------------+
-            +---v----+           |
-            | Decode <-----------+
-            +---+----+
-                |
-                |
-         +------v--------+
-         |     ALU       |
-         |  +---------+  |
-         |  | Execute |  |
-         |  +---------+  |
-         +---------------+
-                |
-                |
-            +---v---+
-            | Write |
-            +-------+
-```
+![](res/mvm-3.png)
 
 ## MVM-4
 
@@ -134,39 +65,15 @@ In this case, the fetch unit after fetching the first line (`jal`) was fetching 
 
 The architecture of MVM-4 is very similar to MVM-3 except that the Branch Unit is now coupled with a Branch Target Buffer (BTB):
 
-```
-+-----+     +-------+
-| L1I <-----+ Fetch +<--------------+
-+-----+     +---+---+         +-----------+
-                |             |Branch Unit|
-                |             |   -----   |
-                |             |    BTB    |
-            +---v----+        +-----------+
-            | Decode +--------------^
-            +---+----+
-                |
-                |
-         +------v--------+
-         |     ALU       |
-         |  +---------+  |
-         |  | Execute |  |
-         |  +---------+  |
-         +---------------+
-                |
-                |
-            +---v---+
-            | Write |
-            +-------+
-```
+![](res/mvm-4.png)
 
-One the Fetch Unit fetches a branch, it doesn't know whether it's a branch; it's the job of the Decode Unit. Therefore, the Fetch Unit can't simply say: "_I fetched a branch, I'm going to wait for the Execute Unit to tell me the next instruction to fetch_".
+One the fetch unit fetches a branch, it doesn't know whether it's a branch; it's the job of the decode unit. Therefore, the fetch unit can't simply say: "_I fetched a branch, I'm going to wait for the Execute Unit to tell me the next instruction to fetch_".
 
 The workflow is now the following:
-- The fetch unit fetches an instruction
-- The decode unit decodes it. If it's a branch, it waits until the target program counter has been solved by the Execute Unit.
-- When
-
-TODO
+- The fetch unit fetches an instruction.
+- The decode unit decodes it. If it's a branch, it waits until the target program counter has been resolved by the execute unit.
+- When the execute unit resolves the target address of the branch, it notifies the branch unit with the target address.
+- Then, the branch unit notifies the fetch unit which invalidates the latest instruction fetched. The reason why the fetch unit fetched a wrong address is that the fetch unit by itself doesn't know whether it fetched a branch, therefore after having fetched a branch, it will fetch the next instruction during the next cycle. This instruction isn't sent to the decode unit as after havind decoded it was a branch, it puts itself in stall mode for a few cycles, waiting for the branch address to be resolved..
 
 ## Benchmarks
 

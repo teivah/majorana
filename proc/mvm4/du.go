@@ -6,12 +6,7 @@ import (
 )
 
 type decodeUnit struct {
-	bu                      *btbBranchUnit
 	pendingBranchResolution int
-}
-
-func newDecodeUnitWithBranchPredictor(bu *btbBranchUnit) *decodeUnit {
-	return &decodeUnit{bu: bu}
 }
 
 func (du *decodeUnit) cycle(currentCycle int, app risc.Application, inBus comp.Bus[int], outBus comp.Bus[risc.InstructionRunner]) {

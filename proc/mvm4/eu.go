@@ -7,20 +7,20 @@ import (
 	"github.com/teivah/majorana/risc"
 )
 
-type alu struct {
+type executeUnit struct {
 	processing      bool
 	remainingCycles int
 	runner          risc.InstructionRunner
 	bu              *btbBranchUnit
 }
 
-func NewALU(bu *btbBranchUnit) *alu {
-	return &alu{
+func newExecuteUnit(bu *btbBranchUnit) *executeUnit {
+	return &executeUnit{
 		bu: bu,
 	}
 }
 
-func (eu *alu) cycle(currentCycle int, ctx *risc.Context, app risc.Application, inBus comp.Bus[risc.InstructionRunner], outBus comp.Bus[comp.ExecutionContext]) error {
+func (eu *executeUnit) cycle(currentCycle int, ctx *risc.Context, app risc.Application, inBus comp.Bus[risc.InstructionRunner], outBus comp.Bus[comp.ExecutionContext]) error {
 	if !eu.processing {
 		if !inBus.IsElementInQueue() {
 			return nil
@@ -77,6 +77,6 @@ func (eu *alu) cycle(currentCycle int, ctx *risc.Context, app risc.Application, 
 	return nil
 }
 
-func (eu *alu) isEmpty() bool {
+func (eu *executeUnit) isEmpty() bool {
 	return !eu.processing
 }
