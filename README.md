@@ -38,7 +38,8 @@ The Branch Unit takes the hypothesis that a condition branch will **not** be tak
 Of course, pipeline flushing has an immediate performance impact. Modern CPUs have a branch prediction mechanism that is more evolved than MVM-3.
 
 There is another problem with pipelining. We might face what we call a data hazard. For example:
-```
+
+```asm
 addi t1, zero, 2
 div t1, t0, t1
 ``` 
@@ -50,7 +51,7 @@ In this case, we implement what we call pipeline interclock by delaying the exec
 
 ## MVM-4
 
-One issue I realized with MVM-3 is when it met a nonconditional branches. For example:
+One issue I realized with MVM-3 is when it met a unconditional branches. For example:
 
 ```asm
 main:
@@ -73,7 +74,9 @@ The workflow is now the following:
 - The fetch unit fetches an instruction.
 - The decode unit decodes it. If it's a branch, it waits until the target program counter has been resolved by the execute unit.
 - When the execute unit resolves the target address of the branch, it notifies the branch unit with the target address.
-- Then, the branch unit notifies the fetch unit which invalidates the latest instruction fetched. The reason why the fetch unit fetched a wrong address is that the fetch unit by itself doesn't know whether it fetched a branch, therefore after having fetched a branch, it will fetch the next instruction during the next cycle. This instruction isn't sent to the decode unit as after havind decoded it was a branch, it puts itself in stall mode for a few cycles, waiting for the branch address to be resolved..
+- Then, the branch unit notifies the fetch unit which invalidates the latest instruction fetched. The reason why the fetch unit fetched a wrong address is that the fetch unit by itself doesn't know whether it fetched a branch, therefore after having fetched a branch, it will fetch the next instruction during the next cycle. This instruction isn't sent to the decode unit as after havind decoded it was a branch, it puts itself in stall mode for a few cycles, waiting for the branch address to be resolved.
+
+This helps in preventing a full pipeline flush. Facing a unconditional branch now takes only a few cycles to be resolved.
 
 ## Benchmarks
 
