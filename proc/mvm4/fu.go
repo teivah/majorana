@@ -17,7 +17,7 @@ type fetchUnit struct {
 	toReset            bool
 }
 
-func NewFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int) *fetchUnit {
+func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int) *fetchUnit {
 	return &fetchUnit{
 		l1i:                newL1I(l1iCacheLineSizeInBytes),
 		cyclesMemoryAccess: cyclesMemoryAccess,

@@ -87,7 +87,13 @@ func TestMvms(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		for i := 2; i < 4096; i++ {
+		from := 2
+		to := 4096
+		cache := make(map[int]bool, to-from+1)
+		for i := from; i < to; i++ {
+			cache[i] = isPrime(i)
+		}
+		for i := from; i < to; i++ {
 			t.Run(fmt.Sprintf("%s - %d", tc.name, i), func(t *testing.T) {
 				vm := tc.factory()
 				instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-fix.asm"), i)
@@ -96,7 +102,7 @@ func TestMvms(t *testing.T) {
 				_, err = vm.Run(app)
 				require.NoError(t, err)
 
-				want := isPrime(i)
+				want := cache[i]
 				if want {
 					assert.Equal(t, int8(1), vm.Context().Memory[4])
 				} else {
@@ -111,7 +117,7 @@ func TestMvm1Execution(t *testing.T) {
 	vm := mvm1.NewCPU(false, 5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
-	require.Equal(t, int(147432), cycles)
+	require.Equal(t, 147432, cycles)
 	stats(cycles)
 }
 
@@ -119,7 +125,7 @@ func TestMvm2(t *testing.T) {
 	vm := mvm2.NewCPU(false, 5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
-	require.Equal(t, int(11361), cycles)
+	require.Equal(t, 11361, cycles)
 	stats(cycles)
 }
 
@@ -127,7 +133,7 @@ func TestMvm3(t *testing.T) {
 	vm := mvm3.NewCPU(false, 5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
-	require.Equal(t, int(6918), cycles)
+	require.Equal(t, 6918, cycles)
 	stats(cycles)
 }
 
@@ -135,7 +141,7 @@ func TestMvm4(t *testing.T) {
 	vm := mvm4.NewCPU(false, 5)
 	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
-	require.Equal(t, int(6364), cycles)
+	require.Equal(t, 6364, cycles)
 	stats(cycles)
 }
 

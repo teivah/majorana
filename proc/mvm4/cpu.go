@@ -25,7 +25,7 @@ type CPU struct {
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
-	fu := NewFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess)
+	fu := newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess)
 	bu := newBTBBranchUnit(4, fu)
 	return &CPU{
 		ctx:         risc.NewContext(debug, memoryBytes),
@@ -45,7 +45,7 @@ func (m *CPU) Context() *risc.Context {
 }
 
 func (m *CPU) Run(app risc.Application) (int, error) {
-	var cycles int = 0
+	cycles := 0
 	for {
 		cycles += 1
 		if m.ctx.Debug {
