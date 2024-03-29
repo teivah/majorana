@@ -67,7 +67,7 @@ func (eu *alu) cycle(currentCycle float32, ctx *risc.Context, app risc.Applicati
 
 	if eu.bu != nil {
 		if risc.IsJump(runner.InstructionType()) {
-			if app.Debug {
+			if ctx.Debug {
 				fmt.Printf("\tEU: Branch notify, from %d to %d\n", pc/4, execution.Pc/4)
 			}
 			eu.bu.branchNotify(pc, execution.Pc)

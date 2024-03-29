@@ -17,9 +17,9 @@ type CPU struct {
 	li1To   int32
 }
 
-func NewCPU(memoryBytes int) *CPU {
+func NewCPU(debug bool, memoryBytes int) *CPU {
 	return &CPU{
-		ctx:     risc.NewContext(memoryBytes),
+		ctx:     risc.NewContext(debug, memoryBytes),
 		li1From: -1,
 		li1To:   -1,
 	}

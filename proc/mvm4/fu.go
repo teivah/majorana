@@ -31,11 +31,11 @@ func (fu *fetchUnit) reset(pc int32) {
 	fu.toReset = true
 }
 
-func (fu *fetchUnit) cycle(currentCycle float32, app risc.Application, outBus comp.Bus[int]) {
+func (fu *fetchUnit) cycle(currentCycle float32, app risc.Application, ctx *risc.Context, outBus comp.Bus[int]) {
 	// TODO Explain better why
 	// In case of a reset, we need to delete the last element in the comp.Bus
 	if fu.toReset {
-		if app.Debug {
+		if ctx.Debug {
 			fmt.Printf("\tFU: Delete latest element from the queue\n")
 		}
 		outBus.DeleteLast()
@@ -69,7 +69,7 @@ func (fu *fetchUnit) cycle(currentCycle float32, app risc.Application, outBus co
 		if fu.pc/4 >= int32(len(app.Instructions)) {
 			fu.complete = true
 		}
-		if app.Debug {
+		if ctx.Debug {
 			fmt.Printf("\tFU: Pushing new element from pc %d\n", currentPC/4)
 		}
 		outBus.Add(int(currentPC/4), currentCycle)

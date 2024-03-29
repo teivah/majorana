@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func Parse(s string, debug bool) (Application, error) {
+func Parse(s string) (Application, error) {
 	var instructions []InstructionRunner
 	labels := make(map[string]int32)
 	var pc int32
@@ -808,7 +808,6 @@ func Parse(s string, debug bool) (Application, error) {
 	return Application{
 		Instructions: instructions,
 		Labels:       labels,
-		Debug:        debug,
 	}, nil
 }
 

@@ -14,8 +14,8 @@ import (
 	"github.com/teivah/majorana/test"
 )
 
-func execute(t *testing.T, vm virtualMachine, instructions string, debug bool) (float32, error) {
-	app, err := risc.Parse(instructions, debug)
+func execute(t *testing.T, vm virtualMachine, instructions string) (float32, error) {
+	app, err := risc.Parse(instructions)
 	require.NoError(t, err)
 	cycles, err := vm.Run(app)
 	require.NoError(t, err)
@@ -63,25 +63,25 @@ func TestMvms(t *testing.T) {
 		{
 			name: "mvm1",
 			factory: func() virtualMachine {
-				return mvm1.NewCPU(5)
+				return mvm1.NewCPU(false, 5)
 			},
 		},
 		{
 			name: "mvm2",
 			factory: func() virtualMachine {
-				return mvm2.NewCPU(5)
+				return mvm2.NewCPU(false, 5)
 			},
 		},
 		{
 			name: "mvm3",
 			factory: func() virtualMachine {
-				return mvm3.NewCPU(5)
+				return mvm3.NewCPU(false, 5)
 			},
 		},
 		{
 			name: "mvm4",
 			factory: func() virtualMachine {
-				return mvm4.NewCPU(5)
+				return mvm4.NewCPU(false, 5)
 			},
 		},
 	}
@@ -91,7 +91,7 @@ func TestMvms(t *testing.T) {
 			t.Run(fmt.Sprintf("%s - %d", tc.name, i), func(t *testing.T) {
 				vm := tc.factory()
 				instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-fix.asm"), i)
-				app, err := risc.Parse(instructions, false)
+				app, err := risc.Parse(instructions)
 				require.NoError(t, err)
 				_, err = vm.Run(app)
 				require.NoError(t, err)
@@ -108,32 +108,32 @@ func TestMvms(t *testing.T) {
 }
 
 func TestMvm1Execution(t *testing.T) {
-	vm := mvm1.NewCPU(5)
-	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"), false)
+	vm := mvm1.NewCPU(false, 5)
+	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
 	require.Equal(t, float32(147432), cycles)
 	stats(cycles)
 }
 
 func TestMvm2(t *testing.T) {
-	vm := mvm2.NewCPU(5)
-	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"), false)
+	vm := mvm2.NewCPU(false, 5)
+	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
 	require.Equal(t, float32(11361), cycles)
 	stats(cycles)
 }
 
 func TestMvm3(t *testing.T) {
-	vm := mvm3.NewCPU(5)
-	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"), false)
+	vm := mvm3.NewCPU(false, 5)
+	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
 	require.Equal(t, float32(6918), cycles)
 	stats(cycles)
 }
 
 func TestMvm4(t *testing.T) {
-	vm := mvm4.NewCPU(5)
-	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"), false)
+	vm := mvm4.NewCPU(false, 5)
+	cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-1109.asm"))
 	require.NoError(t, err)
 	require.Equal(t, float32(6364), cycles)
 	stats(cycles)

@@ -24,11 +24,11 @@ type CPU struct {
 	branchUnit  *btbBranchUnit
 }
 
-func NewCPU(memoryBytes int) *CPU {
+func NewCPU(debug bool, memoryBytes int) *CPU {
 	fu := NewFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess)
 	bu := newBTBBranchUnit(4, fu)
 	return &CPU{
-		ctx:         risc.NewContext(memoryBytes),
+		ctx:         risc.NewContext(debug, memoryBytes),
 		fetchUnit:   fu,
 		decodeBus:   comp.NewBufferedBus[int](1, 1),
 		decodeUnit:  newDecodeUnitWithBranchPredictor(bu),
@@ -48,12 +48,12 @@ func (m *CPU) Run(app risc.Application) (float32, error) {
 	var cycles float32 = 0
 	for {
 		cycles += 1
-		if app.Debug {
+		if m.ctx.Debug {
 			fmt.Printf("%d\n", int32(cycles))
 		}
 
 		// Fetch
-		m.fetchUnit.cycle(cycles, app, m.decodeBus)
+		m.fetchUnit.cycle(cycles, app, m.ctx, m.decodeBus)
 
 		// Decode
 		m.decodeUnit.cycle(cycles, app, m.decodeBus, m.executeBus)
@@ -73,7 +73,7 @@ func (m *CPU) Run(app risc.Application) (float32, error) {
 		// Branch unit assertions check
 		flush := false
 		if m.branchUnit.shouldFlushPipeline(m.ctx, m.writeBus) {
-			if app.Debug {
+			if m.ctx.Debug {
 				fmt.Println("\tFlush")
 			}
 			flush = true

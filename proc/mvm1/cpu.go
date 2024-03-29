@@ -13,9 +13,9 @@ type CPU struct {
 	cycles float32
 }
 
-func NewCPU(memoryBytes int) *CPU {
+func NewCPU(debug bool, memoryBytes int) *CPU {
 	return &CPU{
-		ctx: risc.NewContext(memoryBytes),
+		ctx: risc.NewContext(debug, memoryBytes),
 	}
 }
 

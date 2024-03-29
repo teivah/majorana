@@ -22,9 +22,9 @@ type CPU struct {
 	branchUnit *simpleBranchUnit
 }
 
-func NewCPU(memoryBytes int) *CPU {
+func NewCPU(debug bool, memoryBytes int) *CPU {
 	return &CPU{
-		ctx:        risc.NewContext(memoryBytes),
+		ctx:        risc.NewContext(debug, memoryBytes),
 		fetchUnit:  newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess),
 		decodeBus:  comp.NewBufferedBus[int](1, 1),
 		decodeUnit: &decodeUnit{},
@@ -46,7 +46,7 @@ func (m *CPU) Run(app risc.Application) (float32, error) {
 		cycles += 1
 
 		// Fetch
-		m.fetchUnit.cycle(cycles, app, m.decodeBus)
+		m.fetchUnit.cycle(cycles, app, m.ctx, m.decodeBus)
 
 		// Decode
 		m.decodeBus.Connect(cycles)

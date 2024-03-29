@@ -24,7 +24,7 @@ func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess float32) *fe
 	}
 }
 
-func (fu *fetchUnit) cycle(currentCycle float32, app risc.Application, outBus comp.Bus[int]) {
+func (fu *fetchUnit) cycle(currentCycle float32, app risc.Application, ctx *risc.Context, outBus comp.Bus[int]) {
 	if fu.complete {
 		return
 	}
@@ -53,7 +53,7 @@ func (fu *fetchUnit) cycle(currentCycle float32, app risc.Application, outBus co
 		if fu.pc/4 >= int32(len(app.Instructions)) {
 			fu.complete = true
 		}
-		if app.Debug {
+		if ctx.Debug {
 			fmt.Printf("\tFU: Pushing new element from pc %d\n", currentPC/4)
 		}
 		outBus.Add(int(currentPC/4), currentCycle)

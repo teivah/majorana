@@ -7,7 +7,7 @@ type Runner struct {
 
 func NewRunner(app Application, memoryBytes int) *Runner {
 	return &Runner{
-		Ctx: NewContext(memoryBytes),
+		Ctx: NewContext(false, memoryBytes),
 		App: app,
 	}
 }

@@ -3,7 +3,6 @@ package risc
 type Application struct {
 	Instructions []InstructionRunner
 	Labels       map[string]int32
-	Debug        bool
 }
 
 type Context struct {
@@ -11,13 +10,15 @@ type Context struct {
 	ReadRegisters map[RegisterType]struct{}
 	Memory        []int8
 	Pc            int32
+	Debug         bool
 }
 
-func NewContext(memoryBytes int) *Context {
+func NewContext(debug bool, memoryBytes int) *Context {
 	return &Context{
 		Registers:     make(map[RegisterType]int32),
 		ReadRegisters: make(map[RegisterType]struct{}),
 		Memory:        make([]int8, memoryBytes),
+		Debug:         debug,
 	}
 }
 
