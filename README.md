@@ -9,7 +9,7 @@
 MVM-1 is the first version of the RISC-V virtual machine.
 It does not implement any of the known CPU optimizations such as pipelining, out-of-order execution, multiple execution units, etc.
 
-Here is the architecture, divided into 4 classic stages:
+Here is the microarchitecture, divided into 4 classic stages:
 * Fetch: fetch an instruction from the main memory
 * Decode: decode the instruction
 * Execute: execute the RISC-V instruction
@@ -25,7 +25,7 @@ Compared to MVM-1, we add a cache for instructions called L1I (Level 1 Instructi
 
 ## MVM-3
 
-MVM-3 keeps the same architecture than MVM-2 with 4 stages and L1I. Yet, this version implements [pipelining](https://en.wikipedia.org/wiki/Instruction_pipelining).
+MVM-3 keeps the same microarchitecture than MVM-2 with 4 stages and L1I. Yet, this version implements [pipelining](https://en.wikipedia.org/wiki/Instruction_pipelining).
 
 In a nutshell, pipelining allows keeping every stage as busy as possible. For example, as soon as the fetch unit has fetched an instruction, it will not wait for the instruction to be decoded, executed and written. It will fetch another instruction straight away during the next cycle(s).
 
@@ -51,7 +51,7 @@ In this case, we implement what we call pipeline interclock by delaying the exec
 
 ## MVM-4
 
-One issue I realized with MVM-3 is when it met a unconditional branches. For example:
+One issue with MVM-3 is when it met a unconditional branches. For example:
 
 ```asm
 main:
@@ -62,9 +62,9 @@ foo:
   ...
 ```
 
-In this case, the fetch unit after fetching the first line (`jal`) was fetching the second line (first `addi`) which ends up being a problem because the execution is branching to line 3 (second `addi`). I resolved that by flushing the whole pipeline which is very costly.
+In this case, the fetch unit after fetching the first line (`jal`) was fetching the second line (first `addi`) which ends up being a problem because the execution is branching to line 3 (second `addi`). It was resolved by flushing the whole pipeline, which is very costly.
 
-The architecture of MVM-4 is very similar to MVM-3 except that the Branch Unit is now coupled with a Branch Target Buffer (BTB):
+The microarchitecture of MVM-4 is very similar to MVM-3 except that the Branch Unit is now coupled with a Branch Target Buffer (BTB):
 
 ![](res/mvm-4.png)
 
@@ -74,15 +74,15 @@ The workflow is now the following:
 - The fetch unit fetches an instruction.
 - The decode unit decodes it. If it's a branch, it waits until the target program counter has been resolved by the execute unit.
 - When the execute unit resolves the target address of the branch, it notifies the branch unit with the target address.
-- Then, the branch unit notifies the fetch unit which invalidates the latest instruction fetched. The reason why the fetch unit fetched a wrong address is that the fetch unit by itself doesn't know whether it fetched a branch, therefore after having fetched a branch, it will fetch the next instruction during the next cycle. This instruction isn't sent to the decode unit as after havind decoded it was a branch, it puts itself in stall mode for a few cycles, waiting for the branch address to be resolved.
+- Then, the branch unit notifies the fetch unit which invalidates the latest instruction fetched.
 
-This helps in preventing a full pipeline flush. Facing a unconditional branch now takes only a few cycles to be resolved.
+This helps in preventing a full pipeline flush. Facing an unconditional branch now takes only a few cycles to be resolved.
 
 ## Benchmarks
 
 All the benchmarks are executed at a fixed CPU clock frequency: 2.3 GHz.
 
-Meanwhile, we have executed a benchmark on an Intel i5-7360U (same CPU clock frequency). This benchmark was on a different architecture, different ISA, etc. is hardly comparable with the MVM benchmarks. Yet, it gives us a vague reference to show how good (or bad :) the MVM implementations are.
+Meanwhile, we have executed a benchmark on an Intel i5-7360U (same CPU clock frequency). This benchmark was on a different microarchitecture, different ISA, etc. is hardly comparable with the MVM benchmarks. Yet, it gives us a vague reference to show how good (or bad :) the MVM implementations are.
 
 ### Is Prime Number
 
