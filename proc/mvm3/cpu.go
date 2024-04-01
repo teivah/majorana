@@ -66,7 +66,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 		// Branch unit assertions check
 		flush := false
-		if m.branchUnit.shouldFlushPipeline(m.ctx, m.writeBus) {
+		if m.branchUnit.shouldFlushPipeline(m.ctx) {
 			flush = true
 		}
 

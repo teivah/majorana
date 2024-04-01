@@ -6,8 +6,8 @@ import (
 )
 
 type simpleBranchUnit struct {
-	conditionBranchingExpected *int32
-	isJump                     bool
+	toCheck     bool
+	expectation int32
 }
 
 func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus comp.Bus[risc.InstructionRunner]) {
@@ -17,31 +17,26 @@ func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus comp.Bus[risc.I
 	runner := executeBus.Peek()
 	instructionType := runner.InstructionType()
 	if risc.IsJump(instructionType) {
-		bu.isJump = true
+		bu.toCheck = true
+		// Not implemented
+		bu.expectation = -1
 	} else if risc.IsConditionalBranching(instructionType) {
-		// Move to the next instruction
-		bu.conditionalBranching(ctx.Pc + 4)
+		bu.toCheck = true
+		bu.expectation = ctx.Pc + 4 // Next instruction
 	}
 }
 
-func (bu *simpleBranchUnit) conditionalBranching(expected int32) {
-	bu.conditionBranchingExpected = &expected
-}
-
-func (bu *simpleBranchUnit) shouldFlushPipeline(ctx *risc.Context, writeBus comp.Bus[comp.ExecutionContext]) bool {
-	if !writeBus.IsElementInBuffer() {
+func (bu *simpleBranchUnit) shouldFlushPipeline(ctx *risc.Context) bool {
+	if !bu.toCheck {
 		return false
 	}
 
 	defer func() {
-		bu.conditionBranchingExpected = nil
-		bu.isJump = false
+		bu.toCheck = false
+		bu.expectation = 0
 	}()
 
-	if bu.conditionBranchingExpected != nil {
-		return *bu.conditionBranchingExpected != ctx.Pc
-	}
-	// In case of a non-conditional jump, we need to flush the pipeline as the CPU
-	// already fetches the next instructions, assuming sequential execution
-	return bu.isJump
+	// If the expectation doesn't correspond to the current pc, we made a wrong
+	// assumption; therefore, we should flush
+	return bu.expectation != ctx.Pc
 }
