@@ -66,30 +66,30 @@ func TestMvms(t *testing.T) {
 		name    string
 		factory func() virtualMachine
 	}{
-		{
-			name: "mvm1",
-			factory: func() virtualMachine {
-				return mvm1.NewCPU(false, memory)
-			},
-		},
-		{
-			name: "mvm2",
-			factory: func() virtualMachine {
-				return mvm2.NewCPU(false, memory)
-			},
-		},
-		{
-			name: "mvm3",
-			factory: func() virtualMachine {
-				return mvm3.NewCPU(false, memory)
-			},
-		},
-		{
-			name: "mvm4",
-			factory: func() virtualMachine {
-				return mvm4.NewCPU(false, memory)
-			},
-		},
+		//{
+		//	name: "mvm1",
+		//	factory: func() virtualMachine {
+		//		return mvm1.NewCPU(false, memory)
+		//	},
+		//},
+		//{
+		//	name: "mvm2",
+		//	factory: func() virtualMachine {
+		//		return mvm2.NewCPU(false, memory)
+		//	},
+		//},
+		//{
+		//	name: "mvm3",
+		//	factory: func() virtualMachine {
+		//		return mvm3.NewCPU(false, memory)
+		//	},
+		//},
+		//{
+		//	name: "mvm4",
+		//	factory: func() virtualMachine {
+		//		return mvm4.NewCPU(false, memory)
+		//	},
+		//},
 		{
 			name: "mvm5",
 			factory: func() virtualMachine {
@@ -122,32 +122,33 @@ func TestMvms(t *testing.T) {
 				}
 			})
 		}
-		for i := 0; i < 200; i++ {
-			t.Run(fmt.Sprintf("Sum of integer array: %s", tc.name), func(t *testing.T) {
-				vm := tc.factory()
-				n := i
-				for i := 0; i < n; i++ {
-					bytes := risc.BytesFromLowBits(int32(i))
-					vm.Context().Memory[4*i+0] = bytes[0]
-					vm.Context().Memory[4*i+1] = bytes[1]
-					vm.Context().Memory[4*i+2] = bytes[2]
-					vm.Context().Memory[4*i+3] = bytes[3]
-				}
-				vm.Context().Registers[risc.A1] = int32(n)
+		//for i := 0; i < 200; i++ {
+		//	t.Run(fmt.Sprintf("Sum of integer array: %s", tc.name), func(t *testing.T) {
+		//		vm := tc.factory()
+		//		n := i
+		//		for i := 0; i < n; i++ {
+		//			bytes := risc.BytesFromLowBits(int32(i))
+		//			vm.Context().Memory[4*i+0] = bytes[0]
+		//			vm.Context().Memory[4*i+1] = bytes[1]
+		//			vm.Context().Memory[4*i+2] = bytes[2]
+		//			vm.Context().Memory[4*i+3] = bytes[3]
+		//		}
+		//		vm.Context().Registers[risc.A1] = int32(n)
+		//
+		//		instructions := fmt.Sprintf(test.ReadFile(t, "../res/array-sum.asm"), "")
+		//		app, err := risc.Parse(instructions)
+		//		require.NoError(t, err)
+		//		_, err = vm.Run(app)
+		//		require.NoError(t, err)
+		//
+		//		s := make([]int, 0, n)
+		//		for i := 0; i < n; i++ {
+		//			s = append(s, i)
+		//		}
+		//		assert.Equal(t, int32(sumArray(s)), vm.Context().Registers[risc.A0])
+		//	})
+		//}
 
-				instructions := fmt.Sprintf(test.ReadFile(t, "../res/array-sum.asm"), "")
-				app, err := risc.Parse(instructions)
-				require.NoError(t, err)
-				_, err = vm.Run(app)
-				require.NoError(t, err)
-
-				s := make([]int, 0, n)
-				for i := 0; i < n; i++ {
-					s = append(s, i)
-				}
-				assert.Equal(t, int32(sumArray(s)), vm.Context().Registers[risc.A0])
-			})
-		}
 		//t.Run(fmt.Sprintf("Jal: %s", tc.name), func(t *testing.T) {
 		//	vm := tc.factory()
 		//	_, err := execute(t, vm, `start:

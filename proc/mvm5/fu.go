@@ -14,16 +14,14 @@ type fetchUnit struct {
 	complete           bool
 	processing         bool
 	pendingMemoryFetch bool
-	cyclesMemoryAccess int
 	toCleanPending     bool
 	outBus             *comp.BufferedBus[int32]
 }
 
-func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int, outBus *comp.BufferedBus[int32]) *fetchUnit {
+func newFetchUnit(l1iCacheLineSizeInBytes int32, outBus *comp.BufferedBus[int32]) *fetchUnit {
 	return &fetchUnit{
-		l1i:                newL1I(l1iCacheLineSizeInBytes),
-		cyclesMemoryAccess: cyclesMemoryAccess,
-		outBus:             outBus,
+		l1i:    newL1I(l1iCacheLineSizeInBytes),
+		outBus: outBus,
 	}
 }
 
@@ -60,7 +58,7 @@ func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		u.remainingCycles = 1
 	} else {
 		u.pendingMemoryFetch = true
-		u.remainingCycles = u.cyclesMemoryAccess
+		u.remainingCycles = cyclesMemoryAccess
 		// Should be done after the processing of the 50 cycles
 		u.l1i.fetch(u.pc)
 		return

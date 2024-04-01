@@ -18,6 +18,8 @@ type CPU struct {
 	fetchUnit   *fetchUnit
 	decodeBus   *comp.BufferedBus[int32]
 	decodeUnit  *decodeUnit
+	controlBus  *comp.BufferedBus[risc.InstructionRunnerPc]
+	controlUnit *controlUnit
 	executeBus  *comp.BufferedBus[risc.InstructionRunnerPc]
 	executeUnit *executeUnit
 	writeBus    *comp.BufferedBus[comp.ExecutionContext]
@@ -27,17 +29,20 @@ type CPU struct {
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
 	decodeBus := comp.NewBufferedBus[int32](2, 2)
+	controlBus := comp.NewBufferedBus[risc.InstructionRunnerPc](2, 2)
 	executeBus := comp.NewBufferedBus[risc.InstructionRunnerPc](2, 2)
 	writeBus := comp.NewBufferedBus[comp.ExecutionContext](2, 2)
 
-	fu := newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess, decodeBus)
-	du := newDecodeUnit(decodeBus, executeBus)
+	fu := newFetchUnit(l1ICacheLineSizeInBytes, decodeBus)
+	du := newDecodeUnit(decodeBus, controlBus)
 	bu := newBTBBranchUnit(4, fu, du)
 	return &CPU{
 		ctx:         risc.NewContext(debug, memoryBytes),
 		fetchUnit:   fu,
 		decodeBus:   decodeBus,
 		decodeUnit:  du,
+		controlBus:  controlBus,
+		controlUnit: newControlUnit(controlBus, executeBus),
 		executeBus:  executeBus,
 		executeUnit: newExecuteUnit(bu, executeBus, writeBus),
 		writeBus:    writeBus,
@@ -58,6 +63,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			fmt.Printf("%d\n", int32(cycle))
 		}
 		m.decodeBus.Connect(cycle)
+		m.controlBus.Connect(cycle)
 		m.executeBus.Connect(cycle)
 		m.writeBus.Connect(cycle)
 
@@ -66,6 +72,9 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 		// Decode
 		m.decodeUnit.cycle(cycle, app, m.ctx)
+
+		// Control
+		m.controlUnit.cycle(cycle, m.ctx)
 
 		// Execute
 		flush, pc, ret, err := m.executeUnit.cycle(cycle, m.ctx, app)
@@ -103,8 +112,10 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 func (m *CPU) flush(pc int32) {
 	m.fetchUnit.flush(pc)
 	m.decodeUnit.flush()
+	m.controlUnit.flush()
 	m.executeUnit.flush()
 	m.decodeBus.Clean()
+	m.controlBus.Clean()
 	m.executeBus.Clean()
 	m.writeBus.Clean()
 }
@@ -112,9 +123,11 @@ func (m *CPU) flush(pc int32) {
 func (m *CPU) isComplete() bool {
 	return m.fetchUnit.isEmpty() &&
 		m.decodeUnit.isEmpty() &&
+		m.controlUnit.isEmpty() &&
 		m.executeUnit.isEmpty() &&
 		m.writeUnit.isEmpty() &&
 		m.decodeBus.IsEmpty() &&
+		m.controlBus.IsEmpty() &&
 		m.executeBus.IsEmpty() &&
 		m.writeBus.IsEmpty()
 }

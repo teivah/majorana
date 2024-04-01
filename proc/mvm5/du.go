@@ -22,10 +22,7 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		return
 	}
 
-	for i := 0; i < u.outBus.InLength(); i++ {
-		if !u.outBus.CanAdd() {
-			return
-		}
+	for u.outBus.CanAdd() {
 		pc, exists := u.inBus.Get()
 		if !exists {
 			return
@@ -34,13 +31,18 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 			fmt.Printf("\tDU: Decoding instruction %d\n", pc/4)
 		}
 		runner := app.Instructions[pc/4]
+		jump := false
 		if risc.IsJump(runner.InstructionType()) {
 			u.pendingBranchResolution = true
+			jump = true
 		}
 		u.outBus.Add(risc.InstructionRunnerPc{
 			Runner: runner,
 			Pc:     pc,
 		}, cycle)
+		if jump {
+			return
+		}
 	}
 }
 
