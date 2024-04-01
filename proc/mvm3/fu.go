@@ -14,7 +14,6 @@ type fetchUnit struct {
 	complete           bool
 	processing         bool
 	cyclesMemoryAccess int
-	toReset            bool
 }
 
 func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int) *fetchUnit {
@@ -27,7 +26,6 @@ func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int) *fetchU
 func (fu *fetchUnit) reset(pc int32) {
 	fu.complete = false
 	fu.pc = pc
-	fu.toReset = true
 }
 
 func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp.SimpleBus[int]) {
