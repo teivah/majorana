@@ -94,29 +94,27 @@ func TestMvms(t *testing.T) {
 	for _, tc := range cases {
 		from := 5
 		to := 4096
-		//from := 6
-		//to := 7
 		cache := make(map[int]bool, to-from+1)
 		for i := from; i < to; i++ {
 			cache[i] = isPrime(i)
 		}
-		//for i := from; i < to; i++ {
-		//	t.Run(fmt.Sprintf("Prime: %s - %d", tc.name, i), func(t *testing.T) {
-		//		vm := tc.factory()
-		//		instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), i)
-		//		app, err := risc.Parse(instructions)
-		//		require.NoError(t, err)
-		//		_, err = vm.Run(app)
-		//		require.NoError(t, err)
-		//
-		//		want := cache[i]
-		//		if want {
-		//			assert.Equal(t, int8(1), vm.Context().Memory[4])
-		//		} else {
-		//			assert.Equal(t, int8(0), vm.Context().Memory[4])
-		//		}
-		//	})
-		//}
+		for i := from; i < to; i++ {
+			t.Run(fmt.Sprintf("Prime: %s - %d", tc.name, i), func(t *testing.T) {
+				vm := tc.factory()
+				instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), i)
+				app, err := risc.Parse(instructions)
+				require.NoError(t, err)
+				_, err = vm.Run(app)
+				require.NoError(t, err)
+
+				want := cache[i]
+				if want {
+					assert.Equal(t, int8(1), vm.Context().Memory[4])
+				} else {
+					assert.Equal(t, int8(0), vm.Context().Memory[4])
+				}
+			})
+		}
 		t.Run(fmt.Sprintf("Sum of integer array: %s", tc.name), func(t *testing.T) {
 			vm := tc.factory()
 			n := benchSums
