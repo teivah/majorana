@@ -7,8 +7,8 @@ import (
 
 type writeUnit struct{}
 
-func (wu *writeUnit) cycle(ctx *risc.Context, writeBus *comp.SimpleBus[comp.ExecutionContext]) {
-	execution, exists := writeBus.Get()
+func (wu *writeUnit) cycle(ctx *risc.Context, inBus *comp.SimpleBus[comp.ExecutionContext]) {
+	execution, exists := inBus.Get()
 	if !exists {
 		return
 	}

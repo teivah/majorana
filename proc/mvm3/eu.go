@@ -34,7 +34,8 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 
 	runner := eu.runner
 
-	// To avoid writeback hazard, if the pipeline contains read registers not written yet, we wait for it.
+	// To avoid writeback hazard, if the pipeline contains read registers not
+	// written yet, we wait for it
 	if ctx.ContainWrittenRegisters(runner.ReadRegisters()) {
 		eu.remainingCycles = 1
 		return nil

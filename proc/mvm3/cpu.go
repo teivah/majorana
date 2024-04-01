@@ -16,7 +16,7 @@ type CPU struct {
 	decodeBus  *comp.SimpleBus[int]
 	decodeUnit *decodeUnit
 	executeBus *comp.SimpleBus[risc.InstructionRunner]
-	alu        *executeUnit
+	eu         *executeUnit
 	writeBus   *comp.SimpleBus[comp.ExecutionContext]
 	writeUnit  *writeUnit
 	branchUnit *simpleBranchUnit
@@ -29,7 +29,7 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 		decodeBus:  &comp.SimpleBus[int]{},
 		decodeUnit: &decodeUnit{},
 		executeBus: &comp.SimpleBus[risc.InstructionRunner]{},
-		alu:        &executeUnit{},
+		eu:         &executeUnit{},
 		writeBus:   &comp.SimpleBus[comp.ExecutionContext]{},
 		writeUnit:  &writeUnit{},
 		branchUnit: &simpleBranchUnit{},
@@ -49,17 +49,13 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.fetchUnit.cycle(app, m.ctx, m.decodeBus)
 
 		// Decode
-		m.decodeBus.Connect()
 		m.decodeUnit.cycle(app, m.decodeBus, m.executeBus)
-
-		// Execute
-		m.executeBus.Connect()
 
 		// Create branch unit assertions
 		m.branchUnit.assert(m.ctx, m.executeBus)
 
 		// Execute
-		err := m.alu.cycle(m.ctx, app, m.executeBus, m.writeBus)
+		err := m.eu.cycle(m.ctx, app, m.executeBus, m.writeBus)
 		if err != nil {
 			return 0, err
 		}
@@ -102,10 +98,10 @@ func (m *CPU) flush(pc int32) {
 
 func (m *CPU) isComplete() bool {
 	return m.fetchUnit.IsEmpty() &&
-			m.decodeUnit.isEmpty() &&
-			m.alu.isEmpty() &&
-			m.writeUnit.isEmpty() &&
-			m.decodeBus.IsEmpty() &&
-			m.executeBus.IsEmpty() &&
-			m.writeBus.IsEmpty()
+		m.decodeUnit.isEmpty() &&
+		m.eu.isEmpty() &&
+		m.writeUnit.isEmpty() &&
+		m.decodeBus.IsEmpty() &&
+		m.executeBus.IsEmpty() &&
+		m.writeBus.IsEmpty()
 }
