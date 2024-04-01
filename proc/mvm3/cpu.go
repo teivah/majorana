@@ -8,33 +8,33 @@ import (
 )
 
 const (
-	cyclesMemoryAccess            = 50 + 1 // +1 cycle to get from l1
+	cyclesMemoryAccess            = 50
 	l1ICacheLineSizeInBytes int32 = 64
 )
 
 type CPU struct {
-	ctx        *risc.Context
-	fetchUnit  *fetchUnit
-	decodeBus  *comp.SimpleBus[int]
-	decodeUnit *decodeUnit
-	executeBus *comp.SimpleBus[risc.InstructionRunner]
-	eu         *executeUnit
-	writeBus   *comp.SimpleBus[comp.ExecutionContext]
-	writeUnit  *writeUnit
-	branchUnit *simpleBranchUnit
+	ctx         *risc.Context
+	fetchUnit   *fetchUnit
+	decodeBus   *comp.SimpleBus[int]
+	decodeUnit  *decodeUnit
+	executeBus  *comp.SimpleBus[risc.InstructionRunner]
+	executeUnit *executeUnit
+	writeBus    *comp.SimpleBus[comp.ExecutionContext]
+	writeUnit   *writeUnit
+	branchUnit  *simpleBranchUnit
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
 	return &CPU{
-		ctx:        risc.NewContext(debug, memoryBytes),
-		fetchUnit:  newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess),
-		decodeBus:  &comp.SimpleBus[int]{},
-		decodeUnit: &decodeUnit{},
-		executeBus: &comp.SimpleBus[risc.InstructionRunner]{},
-		eu:         &executeUnit{},
-		writeBus:   &comp.SimpleBus[comp.ExecutionContext]{},
-		writeUnit:  &writeUnit{},
-		branchUnit: &simpleBranchUnit{},
+		ctx:         risc.NewContext(debug, memoryBytes),
+		fetchUnit:   newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess),
+		decodeBus:   &comp.SimpleBus[int]{},
+		decodeUnit:  &decodeUnit{},
+		executeBus:  &comp.SimpleBus[risc.InstructionRunner]{},
+		executeUnit: &executeUnit{},
+		writeBus:    &comp.SimpleBus[comp.ExecutionContext]{},
+		writeUnit:   &writeUnit{},
+		branchUnit:  &simpleBranchUnit{},
 	}
 }
 
@@ -60,7 +60,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.branchUnit.assert(m.ctx, m.executeBus)
 
 		// Execute
-		err := m.eu.cycle(m.ctx, app, m.executeBus, m.writeBus)
+		err := m.executeUnit.cycle(m.ctx, app, m.executeBus, m.writeBus)
 		if err != nil {
 			return 0, err
 		}
@@ -103,7 +103,7 @@ func (m *CPU) flush(pc int32) {
 func (m *CPU) isComplete() bool {
 	return m.fetchUnit.IsEmpty() &&
 		m.decodeUnit.isEmpty() &&
-		m.eu.isEmpty() &&
+		m.executeUnit.isEmpty() &&
 		m.writeUnit.isEmpty() &&
 		m.decodeBus.IsEmpty() &&
 		m.executeBus.IsEmpty() &&

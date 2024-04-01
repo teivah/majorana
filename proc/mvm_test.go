@@ -134,7 +134,7 @@ func TestMvm3(t *testing.T) {
 	vm := mvm3.NewCPU(false, 5)
 	cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), 1109))
 	require.NoError(t, err)
-	require.Equal(t, 6920, cycles)
+	require.Equal(t, 5853, cycles)
 	stats(cycles)
 }
 
@@ -142,6 +142,6 @@ func TestMvm4(t *testing.T) {
 	vm := mvm4.NewCPU(false, 5)
 	cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), 1109))
 	require.NoError(t, err)
-	require.Equal(t, 6366, cycles)
+	require.Equal(t, 6406, cycles)
 	stats(cycles)
 }

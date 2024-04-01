@@ -5,17 +5,30 @@ import (
 	"github.com/teivah/majorana/risc"
 )
 
-type writeUnit struct{}
+type writeUnit struct {
+	pendingMemoryWrite bool
+	cycles             int
+}
 
-func (wu *writeUnit) cycle(ctx *risc.Context, writeBus *comp.SimpleBus[comp.ExecutionContext]) {
-	execution, exists := writeBus.Get()
+func (wu *writeUnit) cycle(ctx *risc.Context, inBus *comp.SimpleBus[comp.ExecutionContext]) {
+	if wu.pendingMemoryWrite {
+		wu.cycles--
+		if wu.cycles == 0 {
+			wu.pendingMemoryWrite = false
+		}
+		return
+	}
+
+	execution, exists := inBus.Get()
 	if !exists {
 		return
 	}
-	// TODO If write to memory +50
 	if risc.IsWriteBack(execution.InstructionType) {
 		ctx.Write(execution.Execution)
 		ctx.DeleteWriteRegisters(execution.WriteRegisters)
+	} else {
+		wu.pendingMemoryWrite = true
+		wu.cycles = cyclesMemoryAccess
 	}
 }
 

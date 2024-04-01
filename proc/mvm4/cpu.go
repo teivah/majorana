@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	cyclesMemoryAccess            = 50 + 1 // +1 cycle to get from l1
+	cyclesMemoryAccess            = 50
 	l1ICacheLineSizeInBytes int32 = 64
 )
 
