@@ -6,44 +6,25 @@ import (
 )
 
 type simpleBranchUnit struct {
-	conditionBranchingExpected *int32
-	isJump                     bool
+	toCheck     bool
+	expectation int32
 }
 
-func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus comp.Bus[risc.InstructionRunner]) {
-	if !executeBus.IsElementInQueue() {
+func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus[risc.InstructionRunner]) {
+	runner, exists := executeBus.Peek()
+	if !exists {
 		return
 	}
-	runner := executeBus.Peek()
 	instructionType := runner.InstructionType()
 	if risc.IsJump(instructionType) {
-		bu.isJump = true
+		bu.toCheck = true
+		// Not implemented
+		bu.expectation = -1
 	} else if risc.IsConditionalBranching(instructionType) {
-		// Move to the next instruction
-		bu.conditionalBranching(ctx.Pc + 4)
+		bu.toCheck = true
+		// Next instruction
+		bu.expectation = ctx.Pc + 4
 	}
-}
-
-func (bu *simpleBranchUnit) conditionalBranching(expected int32) {
-	bu.conditionBranchingExpected = &expected
-}
-
-func (bu *simpleBranchUnit) shouldFlushPipeline(ctx *risc.Context, writeBus comp.Bus[comp.ExecutionContext]) bool {
-	if !writeBus.IsElementInBuffer() {
-		return false
-	}
-
-	defer func() {
-		bu.conditionBranchingExpected = nil
-		bu.isJump = false
-	}()
-
-	if bu.conditionBranchingExpected != nil {
-		return *bu.conditionBranchingExpected != ctx.Pc
-	}
-	// In case of a non-conditional jump, we need to flush the pipeline as the CPU
-	// already fetches the next instructions, assuming sequential execution
-	return bu.isJump
 }
 
 type btbBranchUnit struct {
@@ -64,17 +45,13 @@ func (bu *btbBranchUnit) branchNotify(pc, pcTo int32) {
 	bu.fu.reset(pcTo)
 }
 
-func (bu *btbBranchUnit) shouldFlushPipeline(ctx *risc.Context, writeBus comp.Bus[comp.ExecutionContext]) bool {
-	if !writeBus.IsElementInBuffer() {
+func (bu *btbBranchUnit) shouldFlushPipeline(ctx *risc.Context, writeBus *comp.SimpleBus[comp.ExecutionContext]) bool {
+	if !bu.toCheck {
 		return false
 	}
+	bu.toCheck = false
 
-	defer func() {
-		bu.conditionBranchingExpected = nil
-	}()
-
-	if bu.conditionBranchingExpected != nil {
-		return *bu.conditionBranchingExpected != ctx.Pc
-	}
-	return false
+	// If the expectation doesn't correspond to the current pc, we made a wrong
+	// assumption; therefore, we should flush
+	return bu.expectation != ctx.Pc
 }

@@ -9,22 +9,24 @@ type decodeUnit struct {
 	pendingBranchResolution int
 }
 
-func (du *decodeUnit) cycle(currentCycle int, app risc.Application, inBus comp.Bus[int], outBus comp.Bus[risc.InstructionRunner]) {
+func (du *decodeUnit) cycle(currentCycle int, app risc.Application, inBus *comp.SimpleBus[int], outBus *comp.SimpleBus[risc.InstructionRunner]) {
 	if du.pendingBranchResolution > 0 {
 		du.pendingBranchResolution--
 		return
 	}
-	inBus.Connect(currentCycle)
-	if !inBus.IsElementInQueue() || outBus.IsBufferFull() {
+	if !outBus.CanAdd() {
 		return
 	}
 
-	idx := inBus.Get()
+	idx, exists := inBus.Get()
+	if !exists {
+		return
+	}
 	runner := app.Instructions[idx]
 	if risc.IsJump(runner.InstructionType()) {
 		du.pendingBranchResolution = 2
 	}
-	outBus.Add(runner, currentCycle)
+	outBus.Add(runner)
 }
 
 func (du *decodeUnit) flush() {}

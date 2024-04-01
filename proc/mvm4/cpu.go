@@ -15,11 +15,11 @@ const (
 type CPU struct {
 	ctx         *risc.Context
 	fetchUnit   *fetchUnit
-	decodeBus   comp.Bus[int]
+	decodeBus   *comp.SimpleBus[int]
 	decodeUnit  *decodeUnit
-	executeBus  comp.Bus[risc.InstructionRunner]
+	executeBus  *comp.SimpleBus[risc.InstructionRunner]
 	executeUnit *executeUnit
-	writeBus    comp.Bus[comp.ExecutionContext]
+	writeBus    *comp.SimpleBus[comp.ExecutionContext]
 	writeUnit   *writeUnit
 	branchUnit  *btbBranchUnit
 }
@@ -30,11 +30,11 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 	return &CPU{
 		ctx:         risc.NewContext(debug, memoryBytes),
 		fetchUnit:   fu,
-		decodeBus:   comp.NewBufferedBus[int](1, 1),
+		decodeBus:   &comp.SimpleBus[int]{},
 		decodeUnit:  &decodeUnit{},
-		executeBus:  comp.NewBufferedBus[risc.InstructionRunner](1, 1),
+		executeBus:  &comp.SimpleBus[risc.InstructionRunner]{},
 		executeUnit: newExecuteUnit(bu),
-		writeBus:    comp.NewBufferedBus[comp.ExecutionContext](1, 1),
+		writeBus:    &comp.SimpleBus[comp.ExecutionContext]{},
 		writeUnit:   &writeUnit{},
 		branchUnit:  bu,
 	}
@@ -58,9 +58,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		// Decode
 		m.decodeUnit.cycle(cycles, app, m.decodeBus, m.executeBus)
 
-		// Execute
-		m.executeBus.Connect(cycles)
-
 		// Create branch unit assertions
 		m.branchUnit.assert(m.ctx, m.executeBus)
 
@@ -80,16 +77,9 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 
 		// Write back
-		m.writeBus.Connect(cycles)
 		m.writeUnit.cycle(m.ctx, m.writeBus)
 
 		if flush {
-			if m.writeBus.IsElementInBuffer() {
-				// We need to waste a cycle to write the element in the queue buffer
-				cycles++
-				m.writeBus.Connect(cycles)
-				m.writeUnit.cycle(m.ctx, m.writeBus)
-			}
 			m.flush(m.ctx.Pc)
 		}
 		if m.isComplete() {
