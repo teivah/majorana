@@ -24,7 +24,7 @@ func (du *decodeUnit) cycle(app risc.Application, inBus *comp.SimpleBus[int], ou
 	}
 	runner := app.Instructions[idx]
 	if risc.IsJump(runner.InstructionType()) {
-		du.pendingBranchResolution = 2
+		du.pendingBranchResolution = 1
 	}
 	outBus.Add(runner)
 }

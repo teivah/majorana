@@ -9,8 +9,8 @@ const (
 )
 
 type CPU struct {
-	ctx    *risc.Context
-	cycles int
+	ctx   *risc.Context
+	cycle int
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
@@ -35,7 +35,7 @@ loop:
 		m.ctx.Pc = exe.Pc
 		if risc.IsWriteBack(ins) {
 			m.ctx.Write(exe)
-			m.cycles += cyclesRegisterAccess
+			m.cycle += cyclesRegisterAccess
 		}
 	}
 	if m.ctx.Registers[risc.Ra] != 0 {
@@ -43,17 +43,17 @@ loop:
 		m.ctx.Registers[risc.Ra] = 0
 		goto loop
 	}
-	return m.cycles, nil
+	return m.cycle, nil
 }
 
 func (m *CPU) fetchInstruction() int {
-	m.cycles += cyclesMemoryAccess
+	m.cycle += cyclesMemoryAccess
 	return int(m.ctx.Pc / 4)
 }
 
 func (m *CPU) decode(app risc.Application, i int) risc.InstructionRunner {
 	r := app.Instructions[i]
-	m.cycles += cyclesDecode
+	m.cycle += cyclesDecode
 	return r
 }
 
@@ -62,6 +62,6 @@ func (m *CPU) execute(app risc.Application, r risc.InstructionRunner) (risc.Exec
 	if err != nil {
 		return risc.Execution{}, 0, err
 	}
-	m.cycles += risc.CyclesPerInstruction[r.InstructionType()]
+	m.cycle += risc.CyclesPerInstruction[r.InstructionType()]
 	return exe, r.InstructionType(), nil
 }

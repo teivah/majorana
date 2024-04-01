@@ -45,11 +45,11 @@ func (m *CPU) Context() *risc.Context {
 }
 
 func (m *CPU) Run(app risc.Application) (int, error) {
-	cycles := 0
+	cycle := 0
 	for {
-		cycles += 1
+		cycle += 1
 		if m.ctx.Debug {
-			fmt.Printf("%d\n", int32(cycles))
+			fmt.Printf("%d\n", int32(cycle))
 		}
 
 		// Fetch
@@ -94,7 +94,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			break
 		}
 	}
-	return cycles, nil
+	return cycle, nil
 }
 
 func (m *CPU) flush(pc int32) {

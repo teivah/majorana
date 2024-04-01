@@ -12,7 +12,7 @@ const (
 
 type CPU struct {
 	ctx     *risc.Context
-	cycles  int
+	cycle   int
 	li1From int32
 	li1To   int32
 }
@@ -41,7 +41,7 @@ loop:
 		m.ctx.Pc = exe.Pc
 		if risc.IsWriteBack(ins) {
 			m.ctx.Write(exe)
-			m.cycles += cyclesRegisterAccess
+			m.cycle += cyclesRegisterAccess
 		}
 	}
 	if m.ctx.Registers[risc.Ra] != 0 {
@@ -50,12 +50,12 @@ loop:
 		goto loop
 	}
 
-	return m.cycles, nil
+	return m.cycle, nil
 }
 
 func (m *CPU) fetchInstruction() int {
 	if m.isPresentInL1i() {
-		m.cycles += cyclesL1Access
+		m.cycle += cyclesL1Access
 	} else {
 		m.fetchL1i()
 	}
@@ -68,14 +68,14 @@ func (m *CPU) isPresentInL1i() bool {
 }
 
 func (m *CPU) fetchL1i() {
-	m.cycles += cyclesMemoryAccess
+	m.cycle += cyclesMemoryAccess
 	m.li1From = m.ctx.Pc
 	m.li1To = m.ctx.Pc + l1iSize
 }
 
 func (m *CPU) decode(app risc.Application, i int) risc.InstructionRunner {
 	r := app.Instructions[i]
-	m.cycles += cyclesDecode
+	m.cycle += cyclesDecode
 	return r
 }
 
@@ -84,6 +84,6 @@ func (m *CPU) execute(app risc.Application, r risc.InstructionRunner) (risc.Exec
 	if err != nil {
 		return risc.Execution{}, 0, err
 	}
-	m.cycles += risc.CyclesPerInstruction[r.InstructionType()]
+	m.cycle += risc.CyclesPerInstruction[r.InstructionType()]
 	return exe, r.InstructionType(), nil
 }

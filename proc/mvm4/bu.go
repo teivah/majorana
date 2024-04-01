@@ -26,9 +26,15 @@ func (bu *btbBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus[ri
 	}
 	instructionType := runner.InstructionType()
 	if risc.IsJump(instructionType) {
-		bu.toCheck = true
-		// Not implemented
-		bu.expectation = -1
+		nextPc, exists := bu.btb.get(ctx.Pc)
+		if !exists {
+			// Unknown branch, it will lead to a pipeline flush
+			bu.toCheck = true
+			bu.expectation = -1
+		} else {
+			//Known branch, no need to check
+			bu.fu.reset(nextPc, true)
+		}
 	} else if risc.IsConditionalBranching(instructionType) {
 		bu.toCheck = true
 		// Next instruction

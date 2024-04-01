@@ -35,11 +35,11 @@ func (b *branchTargetBuffer) add(pc, pcDest int32) {
 	}
 }
 
-func (b *branchTargetBuffer) get(pc int32) *int32 {
+func (b *branchTargetBuffer) get(pc int32) (int32, bool) {
 	for _, e := range b.buffer {
 		if e.pc == pc {
-			return &e.pcDest
+			return e.pcDest, true
 		}
 	}
-	return nil
+	return 0, false
 }
