@@ -11,6 +11,7 @@ func (du *decodeUnit) cycle(app risc.Application, inBus *comp.SimpleBus[int], ou
 	if !outBus.CanAdd() {
 		return
 	}
+
 	idx, exists := inBus.Get()
 	if !exists {
 		return

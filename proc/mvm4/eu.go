@@ -55,7 +55,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 		return err
 	}
 
-	pc := ctx.Pc
+	previousPc := ctx.Pc
 	ctx.Pc = execution.Pc
 	outBus.Add(comp.ExecutionContext{
 		Execution:       execution,
@@ -69,9 +69,9 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 	if eu.bu != nil {
 		if risc.IsJump(runner.InstructionType()) {
 			if ctx.Debug {
-				fmt.Printf("\tEU: Branch notify, from %d to %d\n", pc/4, execution.Pc/4)
+				fmt.Printf("\tEU: Branch notify, from %d to %d\n", previousPc/4, execution.Pc/4)
 			}
-			eu.bu.branchNotify(pc, execution.Pc)
+			eu.bu.branchNotify(previousPc, execution.Pc)
 		}
 	}
 

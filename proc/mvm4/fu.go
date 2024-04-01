@@ -31,8 +31,8 @@ func (fu *fetchUnit) reset(pc int32, cleanPending bool) {
 }
 
 func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp.SimpleBus[int]) {
-	// In case of a reset, the pending element in the bus is the wrong one
 	if fu.toCleanPending {
+		// In this case, the BU has notified that the pending element in the bus is the wrong one
 		if ctx.Debug {
 			fmt.Printf("\tFU: Delete latest element from the queue\n")
 		}
