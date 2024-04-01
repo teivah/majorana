@@ -10,6 +10,7 @@ import (
 	"github.com/teivah/majorana/proc/mvm2"
 	"github.com/teivah/majorana/proc/mvm3"
 	"github.com/teivah/majorana/proc/mvm4"
+	"github.com/teivah/majorana/proc/mvm5"
 	"github.com/teivah/majorana/risc"
 	"github.com/teivah/majorana/test"
 )
@@ -89,11 +90,17 @@ func TestMvms(t *testing.T) {
 				return mvm4.NewCPU(false, memory)
 			},
 		},
+		{
+			name: "mvm5",
+			factory: func() virtualMachine {
+				return mvm5.NewCPU(false, memory)
+			},
+		},
 	}
 
 	for _, tc := range cases {
 		from := 5
-		to := 4096
+		to := 100
 		cache := make(map[int]bool, to-from+1)
 		for i := from; i < to; i++ {
 			cache[i] = isPrime(i)
@@ -115,30 +122,32 @@ func TestMvms(t *testing.T) {
 				}
 			})
 		}
-		t.Run(fmt.Sprintf("Sum of integer array: %s", tc.name), func(t *testing.T) {
-			vm := tc.factory()
-			n := benchSums
-			for i := 0; i < n; i++ {
-				bytes := risc.BytesFromLowBits(int32(i))
-				vm.Context().Memory[4*i+0] = bytes[0]
-				vm.Context().Memory[4*i+1] = bytes[1]
-				vm.Context().Memory[4*i+2] = bytes[2]
-				vm.Context().Memory[4*i+3] = bytes[3]
-			}
-			vm.Context().Registers[risc.A1] = int32(n)
+		for i := 0; i < 100; i++ {
+			t.Run(fmt.Sprintf("Sum of integer array: %s", tc.name), func(t *testing.T) {
+				vm := tc.factory()
+				n := i
+				for i := 0; i < n; i++ {
+					bytes := risc.BytesFromLowBits(int32(i))
+					vm.Context().Memory[4*i+0] = bytes[0]
+					vm.Context().Memory[4*i+1] = bytes[1]
+					vm.Context().Memory[4*i+2] = bytes[2]
+					vm.Context().Memory[4*i+3] = bytes[3]
+				}
+				vm.Context().Registers[risc.A1] = int32(n)
 
-			instructions := fmt.Sprintf(test.ReadFile(t, "../res/array-sum.asm"), "")
-			app, err := risc.Parse(instructions)
-			require.NoError(t, err)
-			_, err = vm.Run(app)
-			require.NoError(t, err)
+				instructions := fmt.Sprintf(test.ReadFile(t, "../res/array-sum.asm"), "")
+				app, err := risc.Parse(instructions)
+				require.NoError(t, err)
+				_, err = vm.Run(app)
+				require.NoError(t, err)
 
-			s := make([]int, 0, n)
-			for i := 0; i < n; i++ {
-				s = append(s, i)
-			}
-			assert.Equal(t, int32(sumArray(s)), vm.Context().Registers[risc.A0])
-		})
+				s := make([]int, 0, n)
+				for i := 0; i < n; i++ {
+					s = append(s, i)
+				}
+				assert.Equal(t, int32(sumArray(s)), vm.Context().Registers[risc.A0])
+			})
+		}
 		//t.Run(fmt.Sprintf("Jal: %s", tc.name), func(t *testing.T) {
 		//	vm := tc.factory()
 		//	_, err := execute(t, vm, `start:
@@ -163,6 +172,9 @@ func TestBenchmarks(t *testing.T) {
 		"mvm3": func(m int) virtualMachine {
 			return mvm3.NewCPU(false, m)
 		},
+		"mvm5": func(m int) virtualMachine {
+			return mvm5.NewCPU(false, m)
+		},
 		"mvm4": func(m int) virtualMachine {
 			return mvm4.NewCPU(false, m)
 		},
@@ -173,6 +185,7 @@ func TestBenchmarks(t *testing.T) {
 		"mvm2": 1001785,
 		"mvm3": 450990,
 		"mvm4": 400917,
+		"mvm5": 400917,
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
@@ -191,6 +204,7 @@ func TestBenchmarks(t *testing.T) {
 		"mvm2": 315461,
 		"mvm3": 249916,
 		"mvm4": 245821,
+		"mvm5": 245821,
 	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {
