@@ -52,7 +52,7 @@ func (ctx *Context) ContainWrittenRegisters(registers []RegisterType) bool {
 type Execution struct {
 	Register RegisterType
 	Value    int32
-	Pc       int32
+	NextPc   int32
 	PcChange bool
 }
 
@@ -60,7 +60,7 @@ func newExecutionWithPcChange(register RegisterType, value, pc int32) Execution 
 	return Execution{
 		Register: register,
 		Value:    value,
-		Pc:       pc,
+		NextPc:   pc,
 		PcChange: true,
 	}
 }
@@ -74,7 +74,7 @@ func newExecutionWithoutPcChange(register RegisterType, value int32) Execution {
 
 func pcChange(pc int32) Execution {
 	return Execution{
-		Pc:       pc,
+		NextPc:   pc,
 		PcChange: true,
 	}
 }

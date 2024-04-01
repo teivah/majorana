@@ -23,7 +23,7 @@ func (r *Runner) Run() error {
 		r.Ctx.Write(exe)
 
 		if exe.PcChange {
-			pc = exe.Pc
+			pc = exe.NextPc
 		} else {
 			pc += 4
 		}

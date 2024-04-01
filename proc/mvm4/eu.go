@@ -59,6 +59,9 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 	if err != nil {
 		return false, 0, err
 	}
+	defer func() {
+		eu.runner = risc.InstructionRunnerPc{}
+	}()
 
 	outBus.Add(comp.ExecutionContext{
 		Execution:       execution,
@@ -66,15 +69,14 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 		WriteRegisters:  runner.Runner.WriteRegisters(),
 	})
 	ctx.AddWriteRegisters(runner.Runner.WriteRegisters())
-	eu.runner = risc.InstructionRunnerPc{}
 	eu.processing = false
 
 	if risc.IsJump(runner.Runner.InstructionType()) {
-		eu.bu.notifyJumpAddressResolved(eu.runner.Pc, execution.Pc)
+		eu.bu.notifyJumpAddressResolved(eu.runner.Pc, execution.NextPc)
 	}
 
-	if execution.PcChange && eu.bu.shouldFlushPipeline(execution.Pc) {
-		return true, execution.Pc, nil
+	if execution.PcChange && eu.bu.shouldFlushPipeline(execution.NextPc) {
+		return true, execution.NextPc, nil
 	}
 
 	return false, 0, nil

@@ -67,8 +67,8 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 	eu.runner = nil
 	eu.processing = false
 
-	if execution.PcChange && eu.branchUnit.shouldFlushPipeline(execution.Pc) {
-		return true, execution.Pc, nil
+	if execution.PcChange && eu.branchUnit.shouldFlushPipeline(execution.NextPc) {
+		return true, execution.NextPc, nil
 	}
 
 	return false, 0, nil

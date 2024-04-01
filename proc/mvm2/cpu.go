@@ -40,7 +40,7 @@ loop:
 			return 0, err
 		}
 		if exe.PcChange {
-			pc = exe.Pc
+			pc = exe.NextPc
 		} else {
 			pc += 4
 		}
