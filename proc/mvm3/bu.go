@@ -22,7 +22,8 @@ func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus
 		bu.expectation = -1
 	} else if risc.IsConditionalBranching(instructionType) {
 		bu.toCheck = true
-		bu.expectation = ctx.Pc + 4 // Next instruction
+		// Next instruction
+		bu.expectation = ctx.Pc + 4
 	}
 }
 
@@ -30,11 +31,7 @@ func (bu *simpleBranchUnit) shouldFlushPipeline(ctx *risc.Context) bool {
 	if !bu.toCheck {
 		return false
 	}
-
-	defer func() {
-		bu.toCheck = false
-		bu.expectation = 0
-	}()
+	bu.toCheck = false
 
 	// If the expectation doesn't correspond to the current pc, we made a wrong
 	// assumption; therefore, we should flush
