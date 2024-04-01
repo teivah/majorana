@@ -59,7 +59,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.decodeUnit.cycle(app, m.decodeBus, m.executeBus)
 
 		// Create branch unit assertions
-		m.branchUnit.assert(m.ctx, m.executeBus)
 
 		// Execute
 		flush, pc, ret, err := m.executeUnit.cycle(m.ctx, app, m.executeBus, m.writeBus)

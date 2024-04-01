@@ -11,8 +11,7 @@ type executeUnit struct {
 	branchUnit      *simpleBranchUnit
 	processing      bool
 	remainingCycles int
-	runner          risc.InstructionRunner
-	pc              int32
+	runner          risc.InstructionRunnerPc
 }
 
 func newExecuteUnit(branchUnit *simpleBranchUnit) *executeUnit {
@@ -25,8 +24,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 		if !exists {
 			return false, 0, false, nil
 		}
-		eu.runner = runner.Runner
-		eu.pc = runner.Pc
+		eu.runner = runner
 		eu.remainingCycles = risc.CyclesPerInstruction(runner.Runner.InstructionType())
 		eu.processing = true
 	}
@@ -42,32 +40,36 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 	}
 
 	runner := eu.runner
+	// Create the branch unit assertions
+	eu.branchUnit.assert(runner)
 
 	// To avoid writeback hazard, if the pipeline contains read registers not
 	// written yet, we wait for it
-	if ctx.ContainWrittenRegisters(runner.ReadRegisters()) {
+	if ctx.ContainWrittenRegisters(runner.Runner.ReadRegisters()) {
 		eu.remainingCycles = 1
 		return false, 0, false, nil
 	}
 
 	if ctx.Debug {
-		fmt.Printf("\tEU: Executing instruction %d\n", eu.pc/4)
+		fmt.Printf("\tEU: Executing instruction %d\n", eu.runner.Pc/4)
 	}
-	execution, err := runner.Run(ctx, app.Labels, eu.pc)
+	execution, err := runner.Runner.Run(ctx, app.Labels, eu.runner.Pc)
 	if err != nil {
 		return false, 0, false, err
 	}
 	if execution.Return {
 		return false, 0, true, err
 	}
+	defer func() {
+		eu.runner = risc.InstructionRunnerPc{}
+	}()
 
 	outBus.Add(comp.ExecutionContext{
 		Execution:       execution,
-		InstructionType: runner.InstructionType(),
-		WriteRegisters:  runner.WriteRegisters(),
+		InstructionType: runner.Runner.InstructionType(),
+		WriteRegisters:  runner.Runner.WriteRegisters(),
 	})
-	ctx.AddWriteRegisters(runner.WriteRegisters())
-	eu.runner = nil
+	ctx.AddWriteRegisters(runner.Runner.WriteRegisters())
 	eu.processing = false
 
 	if execution.PcChange && eu.branchUnit.shouldFlushPipeline(execution.NextPc) {

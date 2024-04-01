@@ -1,7 +1,6 @@
 package mvm3
 
 import (
-	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
 
@@ -10,11 +9,7 @@ type simpleBranchUnit struct {
 	expectation int32
 }
 
-func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus[risc.InstructionRunnerPc]) {
-	runner, exists := executeBus.Peek()
-	if !exists {
-		return
-	}
+func (bu *simpleBranchUnit) assert(runner risc.InstructionRunnerPc) {
 	instructionType := runner.Runner.InstructionType()
 	if risc.IsJump(instructionType) {
 		bu.toCheck = true

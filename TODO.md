@@ -2,3 +2,4 @@
 - Stats
 - Stack $ra to memory
 - j instruction
+- Superscalar
