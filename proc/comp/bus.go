@@ -56,6 +56,7 @@ func (b *SimpleBus[T]) IsEmpty() bool {
 	return !b.pending.exists && !b.current.exists
 }
 
-func (b *SimpleBus[T]) DeletePending() {
+func (b *SimpleBus[T]) Clean() {
 	b.pending = entry[T]{}
+	b.current = entry[T]{}
 }

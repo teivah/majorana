@@ -1,6 +1,8 @@
 package mvm3
 
 import (
+	"fmt"
+
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -48,6 +50,9 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 		return false, 0, nil
 	}
 
+	if ctx.Debug {
+		fmt.Printf("\tEU: Executing instruction %d\n", eu.pc/4)
+	}
 	execution, err := runner.Run(ctx, app.Labels, eu.pc)
 	if err != nil {
 		return false, 0, err

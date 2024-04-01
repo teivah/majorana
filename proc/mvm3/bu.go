@@ -21,8 +21,8 @@ func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus
 		// Not implemented
 		bu.expectation = -1
 	} else if risc.IsConditionalBranching(instructionType) {
+		// Assuming next instruction
 		bu.toCheck = true
-		// Next instruction
 		bu.expectation = runner.Pc + 4
 	}
 }

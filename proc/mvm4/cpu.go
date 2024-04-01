@@ -26,12 +26,13 @@ type CPU struct {
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
 	fu := newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess)
-	bu := newBTBBranchUnit(4, fu)
+	du := &decodeUnit{}
+	bu := newBTBBranchUnit(4, fu, du)
 	return &CPU{
 		ctx:         risc.NewContext(debug, memoryBytes),
 		fetchUnit:   fu,
 		decodeBus:   &comp.SimpleBus[int32]{},
-		decodeUnit:  &decodeUnit{},
+		decodeUnit:  du,
 		executeBus:  &comp.SimpleBus[risc.InstructionRunnerPc]{},
 		executeUnit: newExecuteUnit(bu),
 		writeBus:    &comp.SimpleBus[comp.ExecutionContext]{},
@@ -56,10 +57,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.fetchUnit.cycle(app, m.ctx, m.decodeBus)
 
 		// Decode
-		m.decodeUnit.cycle(app, m.decodeBus, m.executeBus)
-
-		// Create branch unit assertions
-		m.branchUnit.assert(m.ctx, m.executeBus)
+		m.decodeUnit.cycle(app, m.ctx, m.decodeBus, m.executeBus)
 
 		// Execute
 		flush, pc, err := m.executeUnit.cycle(m.ctx, app, m.executeBus, m.writeBus)
@@ -90,6 +88,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 func (m *CPU) flush(pc int32) {
 	m.fetchUnit.flush(pc)
 	m.decodeUnit.flush()
+	m.executeUnit.flush()
 	m.decodeBus.Flush()
 	m.executeBus.Flush()
 	m.writeBus.Flush()

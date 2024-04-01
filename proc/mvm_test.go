@@ -80,8 +80,8 @@ func TestMvms(t *testing.T) {
 	for _, tc := range cases {
 		from := 5
 		to := 4096
-		//from := 10
-		//to := 50
+		//from := 6
+		//to := 7
 		cache := make(map[int]bool, to-from+1)
 		for i := from; i < to; i++ {
 			cache[i] = isPrime(i)

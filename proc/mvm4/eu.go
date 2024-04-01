@@ -1,6 +1,8 @@
 package mvm4
 
 import (
+	"fmt"
+
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -8,8 +10,7 @@ import (
 type executeUnit struct {
 	processing      bool
 	remainingCycles int
-	runner          risc.InstructionRunner
-	pc              int32
+	runner          risc.InstructionRunnerPc
 	bu              *btbBranchUnit
 }
 
@@ -25,8 +26,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 		if !exists {
 			return false, 0, nil
 		}
-		eu.runner = runner.Runner
-		eu.pc = runner.Pc
+		eu.runner = runner
 		eu.remainingCycles = risc.CyclesPerInstruction[runner.Runner.InstructionType()]
 		eu.processing = true
 	}
@@ -42,32 +42,35 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 	}
 
 	runner := eu.runner
+	// Create the branch unit assertions
+	eu.bu.assert(runner)
 
 	// To avoid writeback hazard, if the pipeline contains read registers not
 	// written yet, we wait for it
-	if ctx.ContainWrittenRegisters(runner.ReadRegisters()) {
+	if ctx.ContainWrittenRegisters(runner.Runner.ReadRegisters()) {
 		eu.remainingCycles = 1
 		return false, 0, nil
 	}
 
-	execution, err := runner.Run(ctx, app.Labels, eu.pc)
+	if ctx.Debug {
+		fmt.Printf("\tEU: Executing instruction %d\n", eu.runner.Pc/4)
+	}
+	execution, err := runner.Runner.Run(ctx, app.Labels, eu.runner.Pc)
 	if err != nil {
 		return false, 0, err
 	}
 
 	outBus.Add(comp.ExecutionContext{
 		Execution:       execution,
-		InstructionType: runner.InstructionType(),
-		WriteRegisters:  runner.WriteRegisters(),
+		InstructionType: runner.Runner.InstructionType(),
+		WriteRegisters:  runner.Runner.WriteRegisters(),
 	})
-	ctx.AddWriteRegisters(runner.WriteRegisters())
-	eu.runner = nil
+	ctx.AddWriteRegisters(runner.Runner.WriteRegisters())
+	eu.runner = risc.InstructionRunnerPc{}
 	eu.processing = false
 
-	if eu.bu != nil {
-		if risc.IsJump(runner.InstructionType()) {
-			eu.bu.branchNotify(eu.pc, execution.Pc)
-		}
+	if risc.IsJump(runner.Runner.InstructionType()) {
+		eu.bu.notifyJumpAddressResolved(eu.runner.Pc, execution.Pc)
 	}
 
 	if execution.PcChange && eu.bu.shouldFlushPipeline(execution.Pc) {
@@ -75,6 +78,11 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 	}
 
 	return false, 0, nil
+}
+
+func (eu *executeUnit) flush() {
+	eu.processing = false
+	eu.remainingCycles = 0
 }
 
 func (eu *executeUnit) isEmpty() bool {
