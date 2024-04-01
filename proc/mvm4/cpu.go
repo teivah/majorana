@@ -9,6 +9,7 @@ import (
 
 const (
 	cyclesMemoryAccess            = 50
+	flushCycles                   = 1
 	l1ICacheLineSizeInBytes int32 = 64
 )
 
@@ -70,6 +71,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 		if flush {
 			m.flush(pc)
+			cycle += flushCycles
 			continue
 		}
 
