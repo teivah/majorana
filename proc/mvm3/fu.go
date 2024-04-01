@@ -66,12 +66,12 @@ func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp
 	}
 }
 
-func (fu *fetchUnit) Flush(pc int32) {
+func (fu *fetchUnit) flush(pc int32) {
 	fu.processing = false
 	fu.complete = false
 	fu.pc = pc
 }
 
-func (fu *fetchUnit) IsEmpty() bool {
+func (fu *fetchUnit) isEmpty() bool {
 	return fu.complete
 }

@@ -93,7 +93,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 }
 
 func (m *CPU) flush(pc int32) {
-	m.fetchUnit.Flush(pc)
+	m.fetchUnit.flush(pc)
 	m.decodeUnit.flush()
 	m.decodeBus.Flush()
 	m.executeBus.Flush()
@@ -101,7 +101,7 @@ func (m *CPU) flush(pc int32) {
 }
 
 func (m *CPU) isComplete() bool {
-	return m.fetchUnit.IsEmpty() &&
+	return m.fetchUnit.isEmpty() &&
 		m.decodeUnit.isEmpty() &&
 		m.executeUnit.isEmpty() &&
 		m.writeUnit.isEmpty() &&

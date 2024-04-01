@@ -5,12 +5,21 @@ import (
 	"github.com/teivah/majorana/risc"
 )
 
-type simpleBranchUnit struct {
+type btbBranchUnit struct {
+	btb         *branchTargetBuffer
+	fu          *fetchUnit
 	toCheck     bool
 	expectation int32
 }
 
-func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus[risc.InstructionRunner]) {
+func newBTBBranchUnit(btbSize int, fu *fetchUnit) *btbBranchUnit {
+	return &btbBranchUnit{
+		btb: newBranchTargetBuffer(btbSize),
+		fu:  fu,
+	}
+}
+
+func (bu *btbBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus[risc.InstructionRunner]) {
 	runner, exists := executeBus.Peek()
 	if !exists {
 		return
@@ -27,24 +36,6 @@ func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus
 	}
 }
 
-type btbBranchUnit struct {
-	simpleBranchUnit
-	btb *branchTargetBuffer
-	fu  *fetchUnit
-}
-
-func newBTBBranchUnit(btbSize int, fu *fetchUnit) *btbBranchUnit {
-	return &btbBranchUnit{
-		btb: newBranchTargetBuffer(btbSize),
-		fu:  fu,
-	}
-}
-
-func (bu *btbBranchUnit) branchNotify(pc, pcTo int32) {
-	bu.btb.add(pc, pcTo)
-	bu.fu.reset(pcTo)
-}
-
 func (bu *btbBranchUnit) shouldFlushPipeline(ctx *risc.Context) bool {
 	if !bu.toCheck {
 		return false
@@ -54,4 +45,9 @@ func (bu *btbBranchUnit) shouldFlushPipeline(ctx *risc.Context) bool {
 	// If the expectation doesn't correspond to the current pc, we made a wrong
 	// assumption; therefore, we should flush
 	return bu.expectation != ctx.Pc
+}
+
+func (bu *btbBranchUnit) branchNotify(pc, pcTo int32) {
+	bu.btb.add(pc, pcTo)
+	bu.fu.reset(pcTo)
 }

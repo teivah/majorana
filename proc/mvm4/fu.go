@@ -32,7 +32,7 @@ func (fu *fetchUnit) reset(pc int32) {
 
 func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp.SimpleBus[int]) {
 	// TODO Explain better why
-	// In case of a reset, we need to delete the last element in the *comp.SimpleBus
+	// In case of a reset, we need to delete the last element in the bus
 	if fu.toReset {
 		if ctx.Debug {
 			fmt.Printf("\tFU: Delete latest element from the queue\n")
@@ -46,7 +46,7 @@ func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp
 
 	if !fu.processing {
 		fu.processing = true
-		if fu.l1i.oresent(fu.pc) {
+		if fu.l1i.present(fu.pc) {
 			fu.remainingCycles = 1
 		} else {
 			fu.remainingCycles = fu.cyclesMemoryAccess

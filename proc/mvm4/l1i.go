@@ -12,7 +12,7 @@ func newL1I(size int32) l1i {
 	}
 }
 
-func (l *l1i) oresent(pc int32) bool {
+func (l *l1i) present(pc int32) bool {
 	return pc >= l.boundary[0] && pc <= l.boundary[1]
 }
 
