@@ -9,7 +9,7 @@ type decodeUnit struct {
 	pendingBranchResolution int
 }
 
-func (du *decodeUnit) cycle(app risc.Application, inBus *comp.SimpleBus[int], outBus *comp.SimpleBus[risc.InstructionRunner]) {
+func (du *decodeUnit) cycle(app risc.Application, inBus *comp.SimpleBus[int32], outBus *comp.SimpleBus[risc.InstructionRunnerPc]) {
 	if du.pendingBranchResolution > 0 {
 		du.pendingBranchResolution--
 		return
@@ -18,15 +18,18 @@ func (du *decodeUnit) cycle(app risc.Application, inBus *comp.SimpleBus[int], ou
 		return
 	}
 
-	idx, exists := inBus.Get()
+	pc, exists := inBus.Get()
 	if !exists {
 		return
 	}
-	runner := app.Instructions[idx]
+	runner := app.Instructions[pc/4]
 	if risc.IsJump(runner.InstructionType()) {
 		du.pendingBranchResolution = 1
 	}
-	outBus.Add(runner)
+	outBus.Add(risc.InstructionRunnerPc{
+		Runner: runner,
+		Pc:     pc,
+	})
 }
 
 func (du *decodeUnit) flush() {}

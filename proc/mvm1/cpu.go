@@ -1,6 +1,8 @@
 package mvm1
 
-import "github.com/teivah/majorana/risc"
+import (
+	"github.com/teivah/majorana/risc"
+)
 
 const (
 	cyclesMemoryAccess   = 50
@@ -25,40 +27,46 @@ func (m *CPU) Context() *risc.Context {
 
 func (m *CPU) Run(app risc.Application) (int, error) {
 loop:
-	for m.ctx.Pc/4 < int32(len(app.Instructions)) {
-		idx := m.fetchInstruction()
-		r := m.decode(app, idx)
-		exe, ins, err := m.execute(app, r)
+	var pc int32
+	for pc/4 < int32(len(app.Instructions)) {
+		nextPc := m.fetchInstruction(pc)
+		r := m.decode(app, nextPc)
+		exe, ins, err := m.execute(app, r, nextPc)
 		if err != nil {
 			return 0, err
 		}
-		m.ctx.Pc = exe.Pc
+		if exe.PcChange {
+			pc = exe.Pc
+		} else {
+			pc += 4
+		}
+
 		if risc.IsWriteBack(ins) {
 			m.ctx.Write(exe)
 			m.cycle += cyclesRegisterAccess
 		}
 	}
 	if m.ctx.Registers[risc.Ra] != 0 {
-		m.ctx.Pc = m.ctx.Registers[risc.Ra]
+		pc = m.ctx.Registers[risc.Ra]
 		m.ctx.Registers[risc.Ra] = 0
 		goto loop
 	}
 	return m.cycle, nil
 }
 
-func (m *CPU) fetchInstruction() int {
+func (m *CPU) fetchInstruction(pc int32) int32 {
 	m.cycle += cyclesMemoryAccess
-	return int(m.ctx.Pc / 4)
+	return pc
 }
 
-func (m *CPU) decode(app risc.Application, i int) risc.InstructionRunner {
-	r := app.Instructions[i]
+func (m *CPU) decode(app risc.Application, pc int32) risc.InstructionRunner {
+	r := app.Instructions[pc/4]
 	m.cycle += cyclesDecode
 	return r
 }
 
-func (m *CPU) execute(app risc.Application, r risc.InstructionRunner) (risc.Execution, risc.InstructionType, error) {
-	exe, err := r.Run(m.ctx, app.Labels)
+func (m *CPU) execute(app risc.Application, r risc.InstructionRunner, pc int32) (risc.Execution, risc.InstructionType, error) {
+	exe, err := r.Run(m.ctx, app.Labels, pc)
 	if err != nil {
 		return risc.Execution{}, 0, err
 	}

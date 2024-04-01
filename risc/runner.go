@@ -13,14 +13,20 @@ func NewRunner(app Application, memoryBytes int) *Runner {
 }
 
 func (r *Runner) Run() error {
-	for r.Ctx.Pc/4 < int32(len(r.App.Instructions)) {
-		runner := r.App.Instructions[r.Ctx.Pc/4]
-		exe, err := runner.Run(r.Ctx, r.App.Labels)
+	var pc int32
+	for pc/4 < int32(len(r.App.Instructions)) {
+		runner := r.App.Instructions[pc/4]
+		exe, err := runner.Run(r.Ctx, r.App.Labels, pc)
 		if err != nil {
 			return err
 		}
 		r.Ctx.Write(exe)
-		r.Ctx.Pc = exe.Pc
+
+		if exe.PcChange {
+			pc = exe.Pc
+		} else {
+			pc += 4
+		}
 	}
 	return nil
 }

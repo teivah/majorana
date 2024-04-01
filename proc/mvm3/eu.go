@@ -6,30 +6,37 @@ import (
 )
 
 type executeUnit struct {
+	branchUnit      *simpleBranchUnit
 	processing      bool
 	remainingCycles int
 	runner          risc.InstructionRunner
+	pc              int32
 }
 
-func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunner], outBus *comp.SimpleBus[comp.ExecutionContext]) error {
+func newExecuteUnit(branchUnit *simpleBranchUnit) *executeUnit {
+	return &executeUnit{branchUnit: branchUnit}
+}
+
+func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunnerPc], outBus *comp.SimpleBus[comp.ExecutionContext]) (bool, int32, error) {
 	if !eu.processing {
 		runner, exists := inBus.Get()
 		if !exists {
-			return nil
+			return false, 0, nil
 		}
-		eu.runner = runner
-		eu.remainingCycles = risc.CyclesPerInstruction[runner.InstructionType()]
+		eu.runner = runner.Runner
+		eu.pc = runner.Pc
+		eu.remainingCycles = risc.CyclesPerInstruction[runner.Runner.InstructionType()]
 		eu.processing = true
 	}
 
 	eu.remainingCycles--
 	if eu.remainingCycles != 0 {
-		return nil
+		return false, 0, nil
 	}
 
 	if !outBus.CanAdd() {
 		eu.remainingCycles = 1
-		return nil
+		return false, 0, nil
 	}
 
 	runner := eu.runner
@@ -38,15 +45,14 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 	// written yet, we wait for it
 	if ctx.ContainWrittenRegisters(runner.ReadRegisters()) {
 		eu.remainingCycles = 1
-		return nil
+		return false, 0, nil
 	}
 
-	execution, err := runner.Run(ctx, app.Labels)
+	execution, err := runner.Run(ctx, app.Labels, eu.pc)
 	if err != nil {
-		return err
+		return false, 0, err
 	}
 
-	ctx.Pc = execution.Pc
 	outBus.Add(comp.ExecutionContext{
 		Execution:       execution,
 		InstructionType: runner.InstructionType(),
@@ -56,7 +62,11 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 	eu.runner = nil
 	eu.processing = false
 
-	return nil
+	if execution.PcChange && eu.branchUnit.shouldFlushPipeline(execution.Pc) {
+		return true, execution.Pc, nil
+	}
+
+	return false, 0, nil
 }
 
 func (eu *executeUnit) isEmpty() bool {

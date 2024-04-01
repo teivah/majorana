@@ -15,9 +15,9 @@ const (
 type CPU struct {
 	ctx         *risc.Context
 	fetchUnit   *fetchUnit
-	decodeBus   *comp.SimpleBus[int]
+	decodeBus   *comp.SimpleBus[int32]
 	decodeUnit  *decodeUnit
-	executeBus  *comp.SimpleBus[risc.InstructionRunner]
+	executeBus  *comp.SimpleBus[risc.InstructionRunnerPc]
 	executeUnit *executeUnit
 	writeBus    *comp.SimpleBus[comp.ExecutionContext]
 	writeUnit   *writeUnit
@@ -25,16 +25,17 @@ type CPU struct {
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
+	bu := &simpleBranchUnit{}
 	return &CPU{
 		ctx:         risc.NewContext(debug, memoryBytes),
 		fetchUnit:   newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess),
-		decodeBus:   &comp.SimpleBus[int]{},
+		decodeBus:   &comp.SimpleBus[int32]{},
 		decodeUnit:  &decodeUnit{},
-		executeBus:  &comp.SimpleBus[risc.InstructionRunner]{},
-		executeUnit: &executeUnit{},
+		executeBus:  &comp.SimpleBus[risc.InstructionRunnerPc]{},
+		executeUnit: newExecuteUnit(bu),
 		writeBus:    &comp.SimpleBus[comp.ExecutionContext]{},
 		writeUnit:   &writeUnit{},
-		branchUnit:  &simpleBranchUnit{},
+		branchUnit:  bu,
 	}
 }
 
@@ -60,30 +61,23 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.branchUnit.assert(m.ctx, m.executeBus)
 
 		// Execute
-		err := m.executeUnit.cycle(m.ctx, app, m.executeBus, m.writeBus)
+		flush, pc, err := m.executeUnit.cycle(m.ctx, app, m.executeBus, m.writeBus)
 		if err != nil {
 			return 0, err
-		}
-
-		// Branch unit assertions check
-		flush := false
-		if m.branchUnit.shouldFlushPipeline(m.ctx) {
-			flush = true
 		}
 
 		// Write back
 		m.writeUnit.cycle(m.ctx, m.writeBus)
 
 		if flush {
-			m.flush(m.ctx.Pc)
+			m.flush(pc)
 			continue
 		}
 
 		if m.isComplete() {
 			if m.ctx.Registers[risc.Ra] != 0 {
-				m.ctx.Pc = m.ctx.Registers[risc.Ra]
 				m.ctx.Registers[risc.Ra] = 0
-				m.fetchUnit.reset(m.ctx.Pc)
+				m.fetchUnit.reset(m.ctx.Registers[risc.Ra])
 				continue
 			}
 			break

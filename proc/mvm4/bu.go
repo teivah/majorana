@@ -19,14 +19,14 @@ func newBTBBranchUnit(btbSize int, fu *fetchUnit) *btbBranchUnit {
 	}
 }
 
-func (bu *btbBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus[risc.InstructionRunner]) {
+func (bu *btbBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus[risc.InstructionRunnerPc]) {
 	runner, exists := executeBus.Peek()
 	if !exists {
 		return
 	}
-	instructionType := runner.InstructionType()
+	instructionType := runner.Runner.InstructionType()
 	if risc.IsJump(instructionType) {
-		nextPc, exists := bu.btb.get(ctx.Pc)
+		nextPc, exists := bu.btb.get(runner.Pc)
 		if !exists {
 			// Unknown branch, it will lead to a pipeline flush
 			bu.toCheck = true
@@ -38,11 +38,11 @@ func (bu *btbBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus[ri
 	} else if risc.IsConditionalBranching(instructionType) {
 		bu.toCheck = true
 		// Next instruction
-		bu.expectation = ctx.Pc + 4
+		bu.expectation = runner.Pc
 	}
 }
 
-func (bu *btbBranchUnit) shouldFlushPipeline(ctx *risc.Context) bool {
+func (bu *btbBranchUnit) shouldFlushPipeline(pc int32) bool {
 	if !bu.toCheck {
 		return false
 	}
@@ -50,7 +50,7 @@ func (bu *btbBranchUnit) shouldFlushPipeline(ctx *risc.Context) bool {
 
 	// If the expectation doesn't correspond to the current pc, we made a wrong
 	// assumption; therefore, we should flush
-	return bu.expectation != ctx.Pc
+	return bu.expectation != pc
 }
 
 func (bu *btbBranchUnit) branchNotify(pc, pcTo int32) {

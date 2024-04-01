@@ -7,17 +7,20 @@ import (
 
 type decodeUnit struct{}
 
-func (du *decodeUnit) cycle(app risc.Application, inBus *comp.SimpleBus[int], outBus *comp.SimpleBus[risc.InstructionRunner]) {
+func (du *decodeUnit) cycle(app risc.Application, inBus *comp.SimpleBus[int32], outBus *comp.SimpleBus[risc.InstructionRunnerPc]) {
 	if !outBus.CanAdd() {
 		return
 	}
 
-	idx, exists := inBus.Get()
+	pc, exists := inBus.Get()
 	if !exists {
 		return
 	}
-	runner := app.Instructions[idx]
-	outBus.Add(runner)
+	runner := app.Instructions[pc/4]
+	outBus.Add(risc.InstructionRunnerPc{
+		Runner: runner,
+		Pc:     pc,
+	})
 }
 
 func (du *decodeUnit) flush() {}

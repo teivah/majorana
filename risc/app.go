@@ -9,7 +9,6 @@ type Context struct {
 	Registers     map[RegisterType]int32
 	ReadRegisters map[RegisterType]struct{}
 	Memory        []int8
-	Pc            int32
 	Debug         bool
 }
 
@@ -54,20 +53,28 @@ type Execution struct {
 	Register RegisterType
 	Value    int32
 	Pc       int32
+	PcChange bool
 }
 
-func newExecution(register RegisterType, value, pc int32) Execution {
+func newExecutionWithPcChange(register RegisterType, value, pc int32) Execution {
 	return Execution{
 		Register: register,
 		Value:    value,
 		Pc:       pc,
+		PcChange: true,
 	}
 }
 
-func pc(pc int32) Execution {
+func newExecutionWithoutPcChange(register RegisterType, value int32) Execution {
 	return Execution{
-		Register: Zero,
-		Value:    0,
+		Register: register,
+		Value:    value,
+	}
+}
+
+func pcChange(pc int32) Execution {
+	return Execution{
 		Pc:       pc,
+		PcChange: true,
 	}
 }

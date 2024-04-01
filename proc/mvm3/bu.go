@@ -10,12 +10,12 @@ type simpleBranchUnit struct {
 	expectation int32
 }
 
-func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus[risc.InstructionRunner]) {
+func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus[risc.InstructionRunnerPc]) {
 	runner, exists := executeBus.Peek()
 	if !exists {
 		return
 	}
-	instructionType := runner.InstructionType()
+	instructionType := runner.Runner.InstructionType()
 	if risc.IsJump(instructionType) {
 		bu.toCheck = true
 		// Not implemented
@@ -23,11 +23,11 @@ func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus
 	} else if risc.IsConditionalBranching(instructionType) {
 		bu.toCheck = true
 		// Next instruction
-		bu.expectation = ctx.Pc + 4
+		bu.expectation = runner.Pc + 4
 	}
 }
 
-func (bu *simpleBranchUnit) shouldFlushPipeline(ctx *risc.Context) bool {
+func (bu *simpleBranchUnit) shouldFlushPipeline(pc int32) bool {
 	if !bu.toCheck {
 		return false
 	}
@@ -35,5 +35,5 @@ func (bu *simpleBranchUnit) shouldFlushPipeline(ctx *risc.Context) bool {
 
 	// If the expectation doesn't correspond to the current pc, we made a wrong
 	// assumption; therefore, we should flush
-	return bu.expectation != ctx.Pc
+	return bu.expectation != pc
 }

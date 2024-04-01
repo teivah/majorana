@@ -30,7 +30,7 @@ func (fu *fetchUnit) reset(pc int32, cleanPending bool) {
 	fu.toCleanPending = cleanPending
 }
 
-func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp.SimpleBus[int]) {
+func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp.SimpleBus[int32]) {
 	if fu.toCleanPending {
 		// In this case, the BU has notified that the pending element in the bus is the wrong one
 		if ctx.Debug {
@@ -70,7 +70,7 @@ func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp
 		if ctx.Debug {
 			fmt.Printf("\tFU: Pushing new element from pc %d\n", currentPC/4)
 		}
-		outBus.Add(int(currentPC / 4))
+		outBus.Add(currentPC)
 	}
 }
 

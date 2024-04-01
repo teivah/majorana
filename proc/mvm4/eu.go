@@ -1,8 +1,6 @@
 package mvm4
 
 import (
-	"fmt"
-
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -11,6 +9,7 @@ type executeUnit struct {
 	processing      bool
 	remainingCycles int
 	runner          risc.InstructionRunner
+	pc              int32
 	bu              *btbBranchUnit
 }
 
@@ -20,25 +19,26 @@ func newExecuteUnit(bu *btbBranchUnit) *executeUnit {
 	}
 }
 
-func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunner], outBus *comp.SimpleBus[comp.ExecutionContext]) error {
+func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunnerPc], outBus *comp.SimpleBus[comp.ExecutionContext]) (bool, int32, error) {
 	if !eu.processing {
 		runner, exists := inBus.Get()
 		if !exists {
-			return nil
+			return false, 0, nil
 		}
-		eu.runner = runner
-		eu.remainingCycles = risc.CyclesPerInstruction[runner.InstructionType()]
+		eu.runner = runner.Runner
+		eu.pc = runner.Pc
+		eu.remainingCycles = risc.CyclesPerInstruction[runner.Runner.InstructionType()]
 		eu.processing = true
 	}
 
 	eu.remainingCycles--
 	if eu.remainingCycles != 0 {
-		return nil
+		return false, 0, nil
 	}
 
 	if !outBus.CanAdd() {
 		eu.remainingCycles = 1
-		return nil
+		return false, 0, nil
 	}
 
 	runner := eu.runner
@@ -47,16 +47,14 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 	// written yet, we wait for it
 	if ctx.ContainWrittenRegisters(runner.ReadRegisters()) {
 		eu.remainingCycles = 1
-		return nil
+		return false, 0, nil
 	}
 
-	execution, err := runner.Run(ctx, app.Labels)
+	execution, err := runner.Run(ctx, app.Labels, eu.pc)
 	if err != nil {
-		return err
+		return false, 0, err
 	}
 
-	previousPc := ctx.Pc
-	ctx.Pc = execution.Pc
 	outBus.Add(comp.ExecutionContext{
 		Execution:       execution,
 		InstructionType: runner.InstructionType(),
@@ -68,14 +66,15 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 
 	if eu.bu != nil {
 		if risc.IsJump(runner.InstructionType()) {
-			if ctx.Debug {
-				fmt.Printf("\tEU: Branch notify, from %d to %d\n", previousPc/4, execution.Pc/4)
-			}
-			eu.bu.branchNotify(previousPc, execution.Pc)
+			eu.bu.branchNotify(eu.pc, execution.Pc)
 		}
 	}
 
-	return nil
+	if execution.PcChange && eu.bu.shouldFlushPipeline(execution.Pc) {
+		return true, execution.Pc, nil
+	}
+
+	return false, 0, nil
 }
 
 func (eu *executeUnit) isEmpty() bool {

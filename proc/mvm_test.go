@@ -51,37 +51,37 @@ func TestMvms(t *testing.T) {
 		name    string
 		factory func() virtualMachine
 	}{
-		//{
-		//	name: "mvm1",
-		//	factory: func() virtualMachine {
-		//		return mvm1.NewCPU(false, 5)
-		//	},
-		//},
-		//{
-		//	name: "mvm2",
-		//	factory: func() virtualMachine {
-		//		return mvm2.NewCPU(false, 5)
-		//	},
-		//},
-		//{
-		//	name: "mvm3",
-		//	factory: func() virtualMachine {
-		//		return mvm3.NewCPU(false, 5)
-		//	},
-		//},
+		{
+			name: "mvm1",
+			factory: func() virtualMachine {
+				return mvm1.NewCPU(false, 5)
+			},
+		},
+		{
+			name: "mvm2",
+			factory: func() virtualMachine {
+				return mvm2.NewCPU(false, 5)
+			},
+		},
+		{
+			name: "mvm3",
+			factory: func() virtualMachine {
+				return mvm3.NewCPU(false, 5)
+			},
+		},
 		{
 			name: "mvm4",
 			factory: func() virtualMachine {
-				return mvm4.NewCPU(true, 5)
+				return mvm4.NewCPU(false, 5)
 			},
 		},
 	}
 
 	for _, tc := range cases {
-		//from := 5
-		//to := 4096
-		from := 10
-		to := 11
+		from := 5
+		to := 4096
+		//from := 10
+		//to := 50
 		cache := make(map[int]bool, to-from+1)
 		for i := from; i < to; i++ {
 			cache[i] = isPrime(i)
@@ -103,16 +103,16 @@ func TestMvms(t *testing.T) {
 				}
 			})
 		}
-		//		t.Run(fmt.Sprintf("Jal: %s", tc.name), func(t *testing.T) {
-		//			vm := tc.factory()
-		//			_, err := execute(t, vm, `start:
-		// jal zero, func
-		// addi t1, t0, 3
+		//t.Run(fmt.Sprintf("Jal: %s", tc.name), func(t *testing.T) {
+		//	vm := tc.factory()
+		//	_, err := execute(t, vm, `start:
+		//jal zero, func
+		//addi t1, t0, 3
 		//func:
-		// addi t0, zero, 2`)
-		//			require.NoError(t, err)
-		//			assert.Equal(t, int32(5), vm.Context().Registers[risc.T1])
-		//		})
+		//addi t0, zero, 2`)
+		//	require.NoError(t, err)
+		//	assert.Equal(t, int32(5), vm.Context().Registers[risc.T1])
+		//})
 	}
 }
 
@@ -136,7 +136,7 @@ func TestMvm3(t *testing.T) {
 	vm := mvm3.NewCPU(false, 5)
 	cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), 1109))
 	require.NoError(t, err)
-	require.Equal(t, 5853, cycles)
+	require.Equal(t, 4746, cycles)
 	stats(cycles)
 }
 
@@ -144,6 +144,6 @@ func TestMvm4(t *testing.T) {
 	vm := mvm4.NewCPU(false, 5)
 	cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), 1109))
 	require.NoError(t, err)
-	require.Equal(t, 6406, cycles)
+	require.Equal(t, 4746, cycles)
 	stats(cycles)
 }
