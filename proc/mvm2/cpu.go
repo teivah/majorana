@@ -39,6 +39,9 @@ loop:
 		if err != nil {
 			return 0, err
 		}
+		if exe.Return {
+			return m.cycle, nil
+		}
 		if exe.PcChange {
 			pc = exe.NextPc
 		} else {
@@ -90,6 +93,6 @@ func (m *CPU) execute(app risc.Application, r risc.InstructionRunner, pc int32) 
 	if err != nil {
 		return risc.Execution{}, 0, err
 	}
-	m.cycle += risc.CyclesPerInstruction[r.InstructionType()]
+	m.cycle += risc.CyclesPerInstruction(r.InstructionType())
 	return exe, r.InstructionType(), nil
 }

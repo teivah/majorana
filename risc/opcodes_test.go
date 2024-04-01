@@ -181,6 +181,11 @@ func TestLui(t *testing.T) {
 		`lui t0, 3`, map[RegisterType]int32{T0: 12288}, map[int]int8{})
 }
 
+func TestLi(t *testing.T) {
+	runAssert(t, map[RegisterType]int32{}, 0, map[int]int8{},
+		`li t0, 42`, map[RegisterType]int32{T0: 42}, map[int]int8{})
+}
+
 func TestMul(t *testing.T) {
 	runAssert(t, map[RegisterType]int32{T1: 4, T2: 2}, 0, map[int]int8{},
 		`mul t0, t1, t2`, map[RegisterType]int32{T0: 8}, map[int]int8{})
@@ -277,11 +282,11 @@ lh t2, 2, t1`, map[RegisterType]int32{T2: 2047}, map[int]int8{4: -1, 5: 7})
 func TestSwLw(t *testing.T) {
 	runAssert(t, map[RegisterType]int32{T0: 258, T1: 2}, 8, map[int]int8{4: 1, 5: 1, 6: 1, 7: 1},
 		`sw t0, 2, t1
-lw t2, 2, t1`, map[RegisterType]int32{T2: 258}, map[int]int8{4: 2, 5: 1, 6: 0, 7: 0})
+lw t2, 2(t1)`, map[RegisterType]int32{T2: 258}, map[int]int8{4: 2, 5: 1, 6: 0, 7: 0})
 
 	runAssert(t, map[RegisterType]int32{T0: 2047, T1: 2}, 8, map[int]int8{4: 1, 5: 1, 6: 1, 7: 1},
 		`sw t0, 2, t1
-lw t2, 2, t1`, map[RegisterType]int32{T2: 2047}, map[int]int8{4: -1, 5: 7, 6: 0, 7: 0})
+lw t2, 2(t1)`, map[RegisterType]int32{T2: 2047}, map[int]int8{4: -1, 5: 7, 6: 0, 7: 0})
 }
 
 func TestXor(t *testing.T) {

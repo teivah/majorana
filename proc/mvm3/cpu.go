@@ -62,7 +62,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.branchUnit.assert(m.ctx, m.executeBus)
 
 		// Execute
-		flush, pc, err := m.executeUnit.cycle(m.ctx, app, m.executeBus, m.writeBus)
+		flush, pc, ret, err := m.executeUnit.cycle(m.ctx, app, m.executeBus, m.writeBus)
 		if err != nil {
 			return 0, err
 		}
@@ -70,6 +70,9 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		// Write back
 		m.writeUnit.cycle(m.ctx, m.writeBus)
 
+		if ret {
+			return cycle, nil
+		}
 		if flush {
 			m.flush(pc)
 			cycle += flushCycles

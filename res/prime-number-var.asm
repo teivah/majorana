@@ -3,7 +3,7 @@
     sw t0, 0, zero
 
     addi t0, zero, 0 # Address of the word
-    lw t0, 0, t0 # Load word in memory
+    lw t0, 0(t0) # Load word in memory
 
     # Compute max
     addi t1, zero, 2

@@ -121,7 +121,7 @@ func (a auipc) InstructionType() InstructionType {
 }
 
 func (a auipc) ReadRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 func (a auipc) WriteRegisters() []RegisterType {
@@ -154,7 +154,7 @@ func (b beq) ReadRegisters() []RegisterType {
 }
 
 func (b beq) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 type bge struct {
@@ -183,7 +183,7 @@ func (b bge) ReadRegisters() []RegisterType {
 }
 
 func (b bge) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 type bgeu struct {
@@ -212,7 +212,7 @@ func (b bgeu) ReadRegisters() []RegisterType {
 }
 
 func (b bgeu) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 type blt struct {
@@ -241,7 +241,7 @@ func (b blt) ReadRegisters() []RegisterType {
 }
 
 func (b blt) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 type bltu struct {
@@ -270,7 +270,7 @@ func (b bltu) ReadRegisters() []RegisterType {
 }
 
 func (b bltu) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 type bne struct {
@@ -299,7 +299,7 @@ func (b bne) ReadRegisters() []RegisterType {
 }
 
 func (b bne) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 type div struct {
@@ -348,7 +348,7 @@ func (j jal) InstructionType() InstructionType {
 }
 
 func (j jal) ReadRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 func (j jal) WriteRegisters() []RegisterType {
@@ -393,7 +393,7 @@ func (l lui) InstructionType() InstructionType {
 }
 
 func (l lui) ReadRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 func (l lui) WriteRegisters() []RegisterType {
@@ -423,7 +423,7 @@ func (l lb) ReadRegisters() []RegisterType {
 }
 
 func (l lb) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 type lh struct {
@@ -452,17 +452,39 @@ func (l lh) ReadRegisters() []RegisterType {
 }
 
 func (l lh) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
+}
+
+type li struct {
+	rd  RegisterType
+	imm int32
+}
+
+func (l li) Run(ctx *Context, _ map[string]int32, _ int32) (Execution, error) {
+	register, value := IsRegisterChange(l.rd, l.imm)
+	return newExecutionWithoutPcChange(register, value), nil
+}
+
+func (l li) InstructionType() InstructionType {
+	return Li
+}
+
+func (l li) ReadRegisters() []RegisterType {
+	return nil
+}
+
+func (l li) WriteRegisters() []RegisterType {
+	return []RegisterType{l.rd}
 }
 
 type lw struct {
-	rs2    RegisterType
+	rd     RegisterType
 	offset int32
-	rs1    RegisterType
+	rs     RegisterType
 }
 
 func (l lw) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	idx := ctx.Registers[l.rs1] + l.offset
+	idx := ctx.Registers[l.rs] + l.offset
 	i1 := ctx.Memory[idx]
 	idx++
 	i2 := ctx.Memory[idx]
@@ -472,7 +494,7 @@ func (l lw) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	i4 := ctx.Memory[idx]
 
 	n := i32FromBytes(i1, i2, i3, i4)
-	register, value := IsRegisterChange(l.rs2, n)
+	register, value := IsRegisterChange(l.rd, n)
 	return newExecutionWithoutPcChange(register, value), nil
 }
 
@@ -481,11 +503,11 @@ func (l lw) InstructionType() InstructionType {
 }
 
 func (l lw) ReadRegisters() []RegisterType {
-	return []RegisterType{l.rs1, l.rs2}
+	return []RegisterType{l.rs}
 }
 
 func (l lw) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return []RegisterType{l.rd}
 }
 
 type nop struct{}
@@ -499,11 +521,11 @@ func (n nop) InstructionType() InstructionType {
 }
 
 func (n nop) ReadRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 func (n nop) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 type mul struct {
@@ -526,6 +548,28 @@ func (m mul) ReadRegisters() []RegisterType {
 }
 
 func (m mul) WriteRegisters() []RegisterType {
+	return []RegisterType{m.rd}
+}
+
+type mv struct {
+	rd RegisterType
+	rs RegisterType
+}
+
+func (m mv) Run(ctx *Context, _ map[string]int32, _ int32) (Execution, error) {
+	register, value := IsRegisterChange(m.rd, ctx.Registers[m.rs])
+	return newExecutionWithoutPcChange(register, value), nil
+}
+
+func (m mv) InstructionType() InstructionType {
+	return Mv
+}
+
+func (m mv) ReadRegisters() []RegisterType {
+	return []RegisterType{m.rs}
+}
+
+func (m mv) WriteRegisters() []RegisterType {
 	return []RegisterType{m.rd}
 }
 
@@ -598,6 +642,24 @@ func (r rem) WriteRegisters() []RegisterType {
 	return []RegisterType{r.rd}
 }
 
+type ret struct{}
+
+func (r ret) Run(_ *Context, _ map[string]int32, _ int32) (Execution, error) {
+	return Execution{Return: true}, nil
+}
+
+func (r ret) InstructionType() InstructionType {
+	return Ret
+}
+
+func (r ret) ReadRegisters() []RegisterType {
+	return nil
+}
+
+func (r ret) WriteRegisters() []RegisterType {
+	return nil
+}
+
 type sb struct {
 	rs2    RegisterType
 	offset int32
@@ -620,7 +682,7 @@ func (s sb) ReadRegisters() []RegisterType {
 }
 
 func (s sb) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 type sh struct {
@@ -648,7 +710,7 @@ func (s sh) ReadRegisters() []RegisterType {
 }
 
 func (s sh) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 type sll struct {
@@ -928,7 +990,7 @@ func (s sw) ReadRegisters() []RegisterType {
 }
 
 func (s sw) WriteRegisters() []RegisterType {
-	return []RegisterType{}
+	return nil
 }
 
 type xor struct {

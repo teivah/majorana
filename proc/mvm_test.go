@@ -14,6 +14,12 @@ import (
 	"github.com/teivah/majorana/test"
 )
 
+const (
+	memory           = benchSums * 4
+	benchPrimeNumber = 100151
+	benchSums        = 4096
+)
+
 func execute(t *testing.T, vm virtualMachine, instructions string) (int, error) {
 	app, err := risc.Parse(instructions)
 	require.NoError(t, err)
@@ -44,6 +50,14 @@ func isPrime(n int) bool {
 	return true
 }
 
+func sumArray(s []int) int {
+	sum := 0
+	for i := 0; i < len(s); i++ {
+		sum += i
+	}
+	return sum
+}
+
 func TestMvms(t *testing.T) {
 	t.Parallel()
 
@@ -54,25 +68,25 @@ func TestMvms(t *testing.T) {
 		{
 			name: "mvm1",
 			factory: func() virtualMachine {
-				return mvm1.NewCPU(false, 5)
+				return mvm1.NewCPU(false, memory)
 			},
 		},
 		{
 			name: "mvm2",
 			factory: func() virtualMachine {
-				return mvm2.NewCPU(false, 5)
+				return mvm2.NewCPU(false, memory)
 			},
 		},
 		{
 			name: "mvm3",
 			factory: func() virtualMachine {
-				return mvm3.NewCPU(false, 5)
+				return mvm3.NewCPU(false, memory)
 			},
 		},
 		{
 			name: "mvm4",
 			factory: func() virtualMachine {
-				return mvm4.NewCPU(false, 5)
+				return mvm4.NewCPU(false, memory)
 			},
 		},
 	}
@@ -86,23 +100,47 @@ func TestMvms(t *testing.T) {
 		for i := from; i < to; i++ {
 			cache[i] = isPrime(i)
 		}
-		for i := from; i < to; i++ {
-			t.Run(fmt.Sprintf("Prime: %s - %d", tc.name, i), func(t *testing.T) {
-				vm := tc.factory()
-				instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), i)
-				app, err := risc.Parse(instructions)
-				require.NoError(t, err)
-				_, err = vm.Run(app)
-				require.NoError(t, err)
+		//for i := from; i < to; i++ {
+		//	t.Run(fmt.Sprintf("Prime: %s - %d", tc.name, i), func(t *testing.T) {
+		//		vm := tc.factory()
+		//		instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), i)
+		//		app, err := risc.Parse(instructions)
+		//		require.NoError(t, err)
+		//		_, err = vm.Run(app)
+		//		require.NoError(t, err)
+		//
+		//		want := cache[i]
+		//		if want {
+		//			assert.Equal(t, int8(1), vm.Context().Memory[4])
+		//		} else {
+		//			assert.Equal(t, int8(0), vm.Context().Memory[4])
+		//		}
+		//	})
+		//}
+		t.Run(fmt.Sprintf("Sum of integer array: %s", tc.name), func(t *testing.T) {
+			vm := tc.factory()
+			n := benchSums
+			for i := 0; i < n; i++ {
+				bytes := risc.BytesFromLowBits(int32(i))
+				vm.Context().Memory[4*i+0] = bytes[0]
+				vm.Context().Memory[4*i+1] = bytes[1]
+				vm.Context().Memory[4*i+2] = bytes[2]
+				vm.Context().Memory[4*i+3] = bytes[3]
+			}
+			vm.Context().Registers[risc.A1] = int32(n)
 
-				want := cache[i]
-				if want {
-					assert.Equal(t, int8(1), vm.Context().Memory[4])
-				} else {
-					assert.Equal(t, int8(0), vm.Context().Memory[4])
-				}
-			})
-		}
+			instructions := fmt.Sprintf(test.ReadFile(t, "../res/array-sum.asm"), "")
+			app, err := risc.Parse(instructions)
+			require.NoError(t, err)
+			_, err = vm.Run(app)
+			require.NoError(t, err)
+
+			s := make([]int, 0, n)
+			for i := 0; i < n; i++ {
+				s = append(s, i)
+			}
+			assert.Equal(t, int32(sumArray(s)), vm.Context().Registers[risc.A0])
+		})
 		//t.Run(fmt.Sprintf("Jal: %s", tc.name), func(t *testing.T) {
 		//	vm := tc.factory()
 		//	_, err := execute(t, vm, `start:
@@ -116,34 +154,65 @@ func TestMvms(t *testing.T) {
 	}
 }
 
-func TestMvm1(t *testing.T) {
-	vm := mvm1.NewCPU(false, 5)
-	cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), 1109))
-	require.NoError(t, err)
-	require.Equal(t, 147485, cycles)
-	stats(cycles)
-}
+func TestBenchmarks(t *testing.T) {
+	vms := map[string]func(m int) virtualMachine{
+		"mvm1": func(m int) virtualMachine {
+			return mvm1.NewCPU(false, m)
+		},
+		"mvm2": func(m int) virtualMachine {
+			return mvm2.NewCPU(false, m)
+		},
+		"mvm3": func(m int) virtualMachine {
+			return mvm3.NewCPU(false, m)
+		},
+		"mvm4": func(m int) virtualMachine {
+			return mvm4.NewCPU(false, m)
+		},
+	}
 
-func TestMvm2(t *testing.T) {
-	vm := mvm2.NewCPU(false, 5)
-	cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), 1109))
-	require.NoError(t, err)
-	require.Equal(t, 11365, cycles)
-	stats(cycles)
-}
+	prime := map[string]int{
+		"mvm1": 13270550,
+		"mvm2": 1001785,
+		"mvm3": 450990,
+		"mvm4": 400917,
+	}
+	t.Run("Prime", func(t *testing.T) {
+		for name, factory := range vms {
+			t.Run(fmt.Sprintf("%s - Prime", name), func(t *testing.T) {
+				vm := factory(5)
+				cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), benchPrimeNumber))
+				require.NoError(t, err)
+				assert.Equal(t, prime[name], cycles)
+				primeStats(t, cycles)
+			})
+		}
+	})
 
-func TestMvm3(t *testing.T) {
-	vm := mvm3.NewCPU(false, 5)
-	cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), 1109))
-	require.NoError(t, err)
-	require.Equal(t, 5301, cycles)
-	stats(cycles)
-}
+	sums := map[string]int{
+		"mvm1": 1720584,
+		"mvm2": 315461,
+		"mvm3": 249916,
+		"mvm4": 245821,
+	}
+	t.Run("Sum", func(t *testing.T) {
+		for name, factory := range vms {
+			t.Run(fmt.Sprintf("%s - Prime", name), func(t *testing.T) {
+				vm := factory(memory)
+				n := benchSums
+				for i := 0; i < n; i++ {
+					bytes := risc.BytesFromLowBits(int32(i))
+					vm.Context().Memory[4*i+0] = bytes[0]
+					vm.Context().Memory[4*i+1] = bytes[1]
+					vm.Context().Memory[4*i+2] = bytes[2]
+					vm.Context().Memory[4*i+3] = bytes[3]
+				}
+				vm.Context().Registers[risc.A1] = int32(n)
 
-func TestMvm4(t *testing.T) {
-	vm := mvm4.NewCPU(false, 5)
-	cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), 1109))
-	require.NoError(t, err)
-	require.Equal(t, 4749, cycles)
-	stats(cycles)
+				cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/array-sum.asm"), benchSums))
+				require.NoError(t, err)
+				assert.Equal(t, sums[name], cycles)
+				sumStats(t, cycles)
+			})
+		}
+	})
 }

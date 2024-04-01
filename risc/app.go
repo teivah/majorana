@@ -54,6 +54,7 @@ type Execution struct {
 	Value    int32
 	NextPc   int32
 	PcChange bool
+	Return   bool
 }
 
 func newExecutionWithPcChange(register RegisterType, value, pc int32) Execution {

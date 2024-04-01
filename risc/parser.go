@@ -2,6 +2,7 @@ package risc
 
 import (
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -356,26 +357,45 @@ func Parse(s string) (Application, error) {
 				offset: int32(offset),
 				rs1:    rs1,
 			})
+		case "li":
+			if err := validateArgs(2, elements, remainingLine); err != nil {
+				return Application{}, err
+			}
+			rd, err := parseRegister(strings.TrimSpace(elements[0]))
+			if err != nil {
+				return Application{}, err
+			}
+			imm, err := strconv.ParseInt(strings.TrimSpace(elements[1]), 10, 32)
+			if err != nil {
+				return Application{}, err
+			}
+			instructions = append(instructions, li{
+				rd:  rd,
+				imm: int32(imm),
+			})
 		case "lw":
-			if err := validateArgs(3, elements, remainingLine); err != nil {
+			if err := validateArgs(2, elements, remainingLine); err != nil {
 				return Application{}, err
 			}
-			rs2, err := parseRegister(strings.TrimSpace(elements[0]))
+			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
 				return Application{}, err
 			}
-			offset, err := strconv.ParseInt(strings.TrimSpace(elements[1]), 10, 32)
+
+			re := regexp.MustCompile(`(\d+)\((\w+)\)`)
+			matches := re.FindStringSubmatch(elements[1])
+			if len(matches) != 3 {
+				return Application{}, fmt.Errorf("invalid line")
+			}
+			offset, err := strconv.Atoi(matches[1])
 			if err != nil {
 				return Application{}, err
 			}
-			rs1, err := parseRegister(strings.TrimSpace(elements[2]))
-			if err != nil {
-				return Application{}, err
-			}
+			rs, err := parseRegister(strings.TrimSpace(matches[2]))
 			instructions = append(instructions, lw{
-				rs2:    rs2,
+				rd:     rd,
 				offset: int32(offset),
-				rs1:    rs1,
+				rs:     rs,
 			})
 		case "nop":
 			instructions = append(instructions, nop{})
@@ -399,6 +419,22 @@ func Parse(s string) (Application, error) {
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
+			})
+		case "mv":
+			if err := validateArgs(2, elements, remainingLine); err != nil {
+				return Application{}, err
+			}
+			rd, err := parseRegister(strings.TrimSpace(elements[0]))
+			if err != nil {
+				return Application{}, err
+			}
+			rs, err := parseRegister(strings.TrimSpace(elements[1]))
+			if err != nil {
+				return Application{}, err
+			}
+			instructions = append(instructions, mv{
+				rd: rd,
+				rs: rs,
 			})
 		case "or":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
@@ -463,6 +499,8 @@ func Parse(s string) (Application, error) {
 				rs1: rs1,
 				rs2: rs2,
 			})
+		case "ret":
+			instructions = append(instructions, ret{})
 		case "sb":
 			if err := validateArgsInterval(2, 3, elements, remainingLine); err != nil {
 				return Application{}, err

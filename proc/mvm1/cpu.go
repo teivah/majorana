@@ -1,6 +1,8 @@
 package mvm1
 
 import (
+	"fmt"
+
 	"github.com/teivah/majorana/risc"
 )
 
@@ -35,6 +37,9 @@ loop:
 		if err != nil {
 			return 0, err
 		}
+		if exe.Return {
+			return m.cycle, nil
+		}
 		if exe.PcChange {
 			pc = exe.NextPc
 		} else {
@@ -43,6 +48,9 @@ loop:
 
 		if risc.IsWriteBack(ins) {
 			m.ctx.Write(exe)
+			if m.ctx.Debug {
+				fmt.Println(ins, m.ctx.Registers)
+			}
 			m.cycle += cyclesRegisterAccess
 		}
 	}
@@ -70,6 +78,6 @@ func (m *CPU) execute(app risc.Application, r risc.InstructionRunner, pc int32) 
 	if err != nil {
 		return risc.Execution{}, 0, err
 	}
-	m.cycle += risc.CyclesPerInstruction[r.InstructionType()]
+	m.cycle += risc.CyclesPerInstruction(r.InstructionType())
 	return exe, r.InstructionType(), nil
 }

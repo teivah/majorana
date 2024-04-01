@@ -80,18 +80,15 @@ This helps in preventing a full pipeline flush. Facing an unconditional branch n
 
 ## Benchmarks
 
-All the benchmarks are executed at a fixed CPU clock frequency of 2.3 GHz.
+All the benchmarks are executed at a fixed CPU clock frequency of 3.2 GHz.
 
-Meanwhile, we have executed a benchmark on an Intel i5-7360U (same CPU clock frequency). This benchmark was on a different microarchitecture, different ISA, etc. is hardly comparable with the MVM benchmarks. Yet, it gives us a vague reference to show how good (or bad :) the MVM implementations are.
+Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency). This benchmark was on a different microarchitecture, different ISA, etc. is hardly comparable with the MVM benchmarks. Yet, it gives us a reference to show how good (or bad :) the MVM implementations are.
 
-### Is Prime Number
 
-RISC source: [prime-number.asm](res/risc/prime-number.asm)
-
-|Machine|            n=1109             |
-|:--------:|:-----------------------------:|
-|i5-7360U|            253 ns             |
-|MVM-1| 64123 ns, ~253.5 times slower |
-|MVM-2|  4941 ns, ~19.5 times slower  |
-|MVM-3|  2304 ns, ~9.1 times slower   |
-|MVM-4|  2064 ns, ~8.2 times slower   |
+|Machine|            Prime number            | Sum of array |
+|:--------:|:----------------------------------:|:------------:|
+|i5-7360U|              70.29 ns              |   1300 ns    |
+|MVM-1| 4,147,046 ns, ~58,999 times slower |      537,682 ns, ~413.6 times slower        |
+|MVM-2|  313,057 ns, ~4,453 times slower   |   98,581 ns, ~75.8 times slower           |
+|MVM-3|  140,934 ns, ~2,005 times slower   | 78,098 ns, ~60.1 times slower              |
+|MVM-4|  125,286 ns, ~1,782 times slower   |  76,819 ns, ~59.1 times slower             |
