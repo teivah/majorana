@@ -27,7 +27,7 @@ func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int) *fetchU
 func (fu *fetchUnit) reset(pc int32, cleanPending bool) {
 	fu.complete = false
 	fu.pc = pc
-	fu.toCleanPending = true
+	fu.toCleanPending = cleanPending
 }
 
 func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp.SimpleBus[int]) {
