@@ -40,6 +40,9 @@ func (ctx *Context) DeleteWriteRegisters(registers []RegisterType) {
 
 func (ctx *Context) ContainWrittenRegisters(registers []RegisterType) bool {
 	for _, register := range registers {
+		if register == Zero {
+			continue
+		}
 		if _, exists := ctx.ReadRegisters[register]; exists {
 			return true
 		}

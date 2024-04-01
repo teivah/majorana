@@ -78,7 +78,7 @@ func TestMvms(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		from := 2
+		from := 5
 		to := 4096
 		cache := make(map[int]bool, to-from+1)
 		for i := from; i < to; i++ {

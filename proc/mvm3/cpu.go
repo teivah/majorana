@@ -1,6 +1,8 @@
 package mvm3
 
 import (
+	"fmt"
+
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -44,6 +46,9 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	cycles := 0
 	for {
 		cycles += 1
+		if m.ctx.Debug {
+			fmt.Printf("%d\n", int32(cycles))
+		}
 
 		// Fetch
 		m.fetchUnit.cycle(app, m.ctx, m.decodeBus)
@@ -67,7 +72,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 
 		// Write back
-		m.writeBus.Connect()
 		m.writeUnit.cycle(m.ctx, m.writeBus)
 
 		if flush {
