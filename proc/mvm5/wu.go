@@ -15,16 +15,16 @@ func newWriteUnit(inBus *comp.BufferedBus[comp.ExecutionContext]) *writeUnit {
 	return &writeUnit{inBus: inBus}
 }
 
-func (wu *writeUnit) cycle(ctx *risc.Context) {
-	if wu.pendingMemoryWrite {
-		wu.cycles--
-		if wu.cycles == 0 {
-			wu.pendingMemoryWrite = false
+func (u *writeUnit) cycle(ctx *risc.Context) {
+	if u.pendingMemoryWrite {
+		u.cycles--
+		if u.cycles == 0 {
+			u.pendingMemoryWrite = false
 		}
 		return
 	}
 
-	execution, exists := wu.inBus.Get()
+	execution, exists := u.inBus.Get()
 	if !exists {
 		return
 	}
@@ -32,11 +32,11 @@ func (wu *writeUnit) cycle(ctx *risc.Context) {
 		ctx.Write(execution.Execution)
 		ctx.DeleteWriteRegisters(execution.WriteRegisters)
 	} else {
-		wu.pendingMemoryWrite = true
-		wu.cycles = cyclesMemoryAccess
+		u.pendingMemoryWrite = true
+		u.cycles = cyclesMemoryAccess
 	}
 }
 
-func (wu *writeUnit) isEmpty() bool {
+func (u *writeUnit) isEmpty() bool {
 	return true
 }

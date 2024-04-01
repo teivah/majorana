@@ -17,16 +17,16 @@ func newDecodeUnit(inBus *comp.BufferedBus[int32], outBus *comp.BufferedBus[risc
 	return &decodeUnit{inBus: inBus, outBus: outBus}
 }
 
-func (du *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
-	if du.pendingBranchResolution {
+func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
+	if u.pendingBranchResolution {
 		return
 	}
 
-	for i := 0; i < du.outBus.InLength(); i++ {
-		if !du.outBus.CanAdd() {
+	for i := 0; i < u.outBus.InLength(); i++ {
+		if !u.outBus.CanAdd() {
 			return
 		}
-		pc, exists := du.inBus.Get()
+		pc, exists := u.inBus.Get()
 		if !exists {
 			return
 		}
@@ -35,24 +35,24 @@ func (du *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) 
 		}
 		runner := app.Instructions[pc/4]
 		if risc.IsJump(runner.InstructionType()) {
-			du.pendingBranchResolution = true
+			u.pendingBranchResolution = true
 		}
-		du.outBus.Add(risc.InstructionRunnerPc{
+		u.outBus.Add(risc.InstructionRunnerPc{
 			Runner: runner,
 			Pc:     pc,
 		}, cycle)
 	}
 }
 
-func (du *decodeUnit) notifyBranchResolved() {
-	du.pendingBranchResolution = false
+func (u *decodeUnit) notifyBranchResolved() {
+	u.pendingBranchResolution = false
 }
 
-func (du *decodeUnit) flush() {
-	du.pendingBranchResolution = false
+func (u *decodeUnit) flush() {
+	u.pendingBranchResolution = false
 }
 
-func (du *decodeUnit) isEmpty() bool {
+func (u *decodeUnit) isEmpty() bool {
 	// As the decode unit takes only one cycle, it is considered as empty by default
 	return true
 }

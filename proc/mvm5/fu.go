@@ -27,68 +27,68 @@ func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int, outBus 
 	}
 }
 
-func (fu *fetchUnit) reset(pc int32, cleanPending bool) {
-	fu.complete = false
-	fu.pc = pc
-	fu.toCleanPending = cleanPending
+func (u *fetchUnit) reset(pc int32, cleanPending bool) {
+	u.complete = false
+	u.pc = pc
+	u.toCleanPending = cleanPending
 }
 
-func (fu *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
-	if fu.toCleanPending {
+func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
+	if u.toCleanPending {
 		// The fetch unit may have sent to the bus wrong instruction, we make sure
 		// this is not the case by cleaning it
 		if ctx.Debug {
 			fmt.Printf("\tFU: Cleaning output bus\n")
 		}
-		fu.outBus.Clean()
-		fu.toCleanPending = false
+		u.outBus.Clean()
+		u.toCleanPending = false
 	}
-	if fu.complete {
+	if u.complete {
 		return
 	}
 
-	if fu.pendingMemoryFetch {
-		fu.remainingCycles--
-		if fu.remainingCycles == 0 {
-			fu.pendingMemoryFetch = false
+	if u.pendingMemoryFetch {
+		u.remainingCycles--
+		if u.remainingCycles == 0 {
+			u.pendingMemoryFetch = false
 		} else {
 			return
 		}
 	}
 
-	if fu.l1i.present(fu.pc) {
-		fu.remainingCycles = 1
+	if u.l1i.present(u.pc) {
+		u.remainingCycles = 1
 	} else {
-		fu.pendingMemoryFetch = true
-		fu.remainingCycles = fu.cyclesMemoryAccess
+		u.pendingMemoryFetch = true
+		u.remainingCycles = u.cyclesMemoryAccess
 		// Should be done after the processing of the 50 cycles
-		fu.l1i.fetch(fu.pc)
+		u.l1i.fetch(u.pc)
 		return
 	}
 
-	for i := 0; i < fu.outBus.OutLength(); i++ {
-		if !fu.outBus.CanAdd() {
+	for i := 0; i < u.outBus.OutLength(); i++ {
+		if !u.outBus.CanAdd() {
 			return
 		}
-		fu.processing = false
-		currentPc := fu.pc
-		fu.pc += 4
-		if fu.pc/4 >= int32(len(app.Instructions)) {
-			fu.complete = true
+		u.processing = false
+		currentPc := u.pc
+		u.pc += 4
+		if u.pc/4 >= int32(len(app.Instructions)) {
+			u.complete = true
 		}
 		if ctx.Debug {
 			fmt.Printf("\tFU: Pushing new element from pc %d\n", currentPc/4)
 		}
-		fu.outBus.Add(currentPc, cycle)
+		u.outBus.Add(currentPc, cycle)
 	}
 }
 
-func (fu *fetchUnit) flush(pc int32) {
-	fu.processing = false
-	fu.complete = false
-	fu.pc = pc
+func (u *fetchUnit) flush(pc int32) {
+	u.processing = false
+	u.complete = false
+	u.pc = pc
 }
 
-func (fu *fetchUnit) isEmpty() bool {
-	return fu.complete
+func (u *fetchUnit) isEmpty() bool {
+	return u.complete
 }

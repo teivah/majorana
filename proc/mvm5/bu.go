@@ -20,41 +20,41 @@ func newBTBBranchUnit(btbSize int, fu *fetchUnit, du *decodeUnit) *btbBranchUnit
 	}
 }
 
-func (bu *btbBranchUnit) assert(runner risc.InstructionRunnerPc) {
+func (u *btbBranchUnit) assert(runner risc.InstructionRunnerPc) {
 	instructionType := runner.Runner.InstructionType()
 	if risc.IsJump(instructionType) {
-		nextPc, exists := bu.btb.get(runner.Pc)
+		nextPc, exists := u.btb.get(runner.Pc)
 		if !exists {
 			// Unknown branch, it will lead to a pipeline flush
-			bu.toCheck = true
-			bu.expectation = -1
+			u.toCheck = true
+			u.expectation = -1
 		} else {
 			// Known branch, no need to check
-			bu.toCheck = false
-			bu.fu.reset(nextPc, true)
+			u.toCheck = false
+			u.fu.reset(nextPc, true)
 		}
 	} else if risc.IsConditionalBranching(instructionType) {
 		// Assuming next instruction
-		bu.toCheck = true
-		bu.expectation = runner.Pc + 4
+		u.toCheck = true
+		u.expectation = runner.Pc + 4
 	} else {
-		bu.toCheck = false
+		u.toCheck = false
 	}
 }
 
-func (bu *btbBranchUnit) shouldFlushPipeline(pc int32) bool {
-	if !bu.toCheck {
+func (u *btbBranchUnit) shouldFlushPipeline(pc int32) bool {
+	if !u.toCheck {
 		return false
 	}
-	bu.toCheck = false
+	u.toCheck = false
 
 	// If the expectation doesn't correspond to the current pc, we made a wrong
 	// assumption; therefore, we should flush
-	return bu.expectation != pc
+	return u.expectation != pc
 }
 
-func (bu *btbBranchUnit) notifyJumpAddressResolved(pc, pcTo int32) {
-	bu.btb.add(pc, pcTo)
-	bu.fu.reset(pcTo, true)
-	bu.du.notifyBranchResolved()
+func (u *btbBranchUnit) notifyJumpAddressResolved(pc, pcTo int32) {
+	u.btb.add(pc, pcTo)
+	u.fu.reset(pcTo, true)
+	u.du.notifyBranchResolved()
 }
