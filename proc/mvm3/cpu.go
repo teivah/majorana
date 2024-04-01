@@ -75,14 +75,10 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.writeUnit.cycle(m.ctx, m.writeBus)
 
 		if flush {
-			if !m.writeBus.CanAdd() {
-				// We need to waste a cycle to write the element in the queue buffer
-				cycles++
-				m.writeBus.Connect()
-				m.writeUnit.cycle(m.ctx, m.writeBus)
-			}
 			m.flush(m.ctx.Pc)
+			continue
 		}
+
 		if m.isComplete() {
 			if m.ctx.Registers[risc.Ra] != 0 {
 				m.ctx.Pc = m.ctx.Registers[risc.Ra]
@@ -106,10 +102,10 @@ func (m *CPU) flush(pc int32) {
 
 func (m *CPU) isComplete() bool {
 	return m.fetchUnit.IsEmpty() &&
-		m.decodeUnit.isEmpty() &&
-		m.alu.isEmpty() &&
-		m.writeUnit.isEmpty() &&
-		m.decodeBus.IsEmpty() &&
-		m.executeBus.IsEmpty() &&
-		m.writeBus.IsEmpty()
+			m.decodeUnit.isEmpty() &&
+			m.alu.isEmpty() &&
+			m.writeUnit.isEmpty() &&
+			m.decodeBus.IsEmpty() &&
+			m.executeBus.IsEmpty() &&
+			m.writeBus.IsEmpty()
 }
