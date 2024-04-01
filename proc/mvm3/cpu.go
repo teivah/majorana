@@ -13,11 +13,11 @@ const (
 type CPU struct {
 	ctx        *risc.Context
 	fetchUnit  *fetchUnit
-	decodeBus  comp.Bus[int]
+	decodeBus  *comp.SimpleBus[int]
 	decodeUnit *decodeUnit
-	executeBus comp.Bus[risc.InstructionRunner]
+	executeBus *comp.SimpleBus[risc.InstructionRunner]
 	alu        *executeUnit
-	writeBus   comp.Bus[comp.ExecutionContext]
+	writeBus   *comp.SimpleBus[comp.ExecutionContext]
 	writeUnit  *writeUnit
 	branchUnit *simpleBranchUnit
 }
@@ -26,11 +26,11 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 	return &CPU{
 		ctx:        risc.NewContext(debug, memoryBytes),
 		fetchUnit:  newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess),
-		decodeBus:  comp.NewBufferedBus[int](1, 1),
+		decodeBus:  &comp.SimpleBus[int]{},
 		decodeUnit: &decodeUnit{},
-		executeBus: comp.NewBufferedBus[risc.InstructionRunner](1, 1),
+		executeBus: &comp.SimpleBus[risc.InstructionRunner]{},
 		alu:        &executeUnit{},
-		writeBus:   comp.NewBufferedBus[comp.ExecutionContext](1, 1),
+		writeBus:   &comp.SimpleBus[comp.ExecutionContext]{},
 		writeUnit:  &writeUnit{},
 		branchUnit: &simpleBranchUnit{},
 	}
@@ -49,11 +49,11 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.fetchUnit.cycle(cycles, app, m.ctx, m.decodeBus)
 
 		// Decode
-		m.decodeBus.Connect(cycles)
+		m.decodeBus.Connect()
 		m.decodeUnit.cycle(cycles, app, m.decodeBus, m.executeBus)
 
 		// Execute
-		m.executeBus.Connect(cycles)
+		m.executeBus.Connect()
 
 		// Create branch unit assertions
 		m.branchUnit.assert(m.ctx, m.executeBus)
@@ -71,14 +71,14 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 
 		// Write back
-		m.writeBus.Connect(cycles)
+		m.writeBus.Connect()
 		m.writeUnit.cycle(m.ctx, m.writeBus)
 
 		if flush {
-			if m.writeBus.IsElementInBuffer() {
+			if !m.writeBus.CanAdd() {
 				// We need to waste a cycle to write the element in the queue buffer
 				cycles++
-				m.writeBus.Connect(cycles)
+				m.writeBus.Connect()
 				m.writeUnit.cycle(m.ctx, m.writeBus)
 			}
 			m.flush(m.ctx.Pc)

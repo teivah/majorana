@@ -7,12 +7,11 @@ import (
 
 type writeUnit struct{}
 
-func (wu *writeUnit) cycle(ctx *risc.Context, writeBus comp.Bus[comp.ExecutionContext]) {
-	if !writeBus.IsElementInQueue() {
+func (wu *writeUnit) cycle(ctx *risc.Context, writeBus *comp.SimpleBus[comp.ExecutionContext]) {
+	execution, exists := writeBus.Get()
+	if !exists {
 		return
 	}
-
-	execution := writeBus.Get()
 	// TODO If write to memory +50
 	if risc.IsWriteBack(execution.InstructionType) {
 		ctx.Write(execution.Execution)

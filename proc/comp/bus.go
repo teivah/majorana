@@ -131,6 +131,14 @@ func (b *SimpleBus[T]) Peek() (t T, res bool) {
 	return
 }
 
+func (b *SimpleBus[T]) Connect() {
+	if b.current.exists {
+		return
+	}
+	b.current = b.pending
+	b.pending = entry[T]{}
+}
+
 func (b *SimpleBus[T]) CanAdd() bool {
 	return !b.pending.exists
 }

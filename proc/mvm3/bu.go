@@ -10,11 +10,11 @@ type simpleBranchUnit struct {
 	expectation int32
 }
 
-func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus comp.Bus[risc.InstructionRunner]) {
-	if !executeBus.IsElementInQueue() {
+func (bu *simpleBranchUnit) assert(ctx *risc.Context, executeBus *comp.SimpleBus[risc.InstructionRunner]) {
+	runner, exists := executeBus.Peek()
+	if !exists {
 		return
 	}
-	runner := executeBus.Peek()
 	instructionType := runner.InstructionType()
 	if risc.IsJump(instructionType) {
 		bu.toCheck = true

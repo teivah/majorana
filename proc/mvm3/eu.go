@@ -11,12 +11,12 @@ type executeUnit struct {
 	runner          risc.InstructionRunner
 }
 
-func (eu *executeUnit) cycle(currentCycle int, ctx *risc.Context, app risc.Application, inBus comp.Bus[risc.InstructionRunner], outBus comp.Bus[comp.ExecutionContext]) error {
+func (eu *executeUnit) cycle(currentCycle int, ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunner], outBus *comp.SimpleBus[comp.ExecutionContext]) error {
 	if !eu.processing {
-		if !inBus.IsElementInQueue() {
+		runner, exists := inBus.Get()
+		if !exists {
 			return nil
 		}
-		runner := inBus.Get()
 		eu.runner = runner
 		eu.remainingCycles = risc.CyclesPerInstruction[runner.InstructionType()]
 		eu.processing = true
@@ -27,7 +27,7 @@ func (eu *executeUnit) cycle(currentCycle int, ctx *risc.Context, app risc.Appli
 		return nil
 	}
 
-	if outBus.IsBufferFull() {
+	if !outBus.CanAdd() {
 		eu.remainingCycles = 1
 		return nil
 	}
@@ -50,7 +50,7 @@ func (eu *executeUnit) cycle(currentCycle int, ctx *risc.Context, app risc.Appli
 		Execution:       execution,
 		InstructionType: runner.InstructionType(),
 		WriteRegisters:  runner.WriteRegisters(),
-	}, currentCycle)
+	})
 	ctx.AddWriteRegisters(runner.WriteRegisters())
 	eu.runner = nil
 	eu.processing = false

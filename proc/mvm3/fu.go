@@ -30,7 +30,7 @@ func (fu *fetchUnit) reset(pc int32) {
 	fu.toReset = true
 }
 
-func (fu *fetchUnit) cycle(currentCycle int, app risc.Application, ctx *risc.Context, outBus comp.Bus[int]) {
+func (fu *fetchUnit) cycle(currentCycle int, app risc.Application, ctx *risc.Context, outBus *comp.SimpleBus[int]) {
 	if fu.complete {
 		return
 	}
@@ -48,7 +48,7 @@ func (fu *fetchUnit) cycle(currentCycle int, app risc.Application, ctx *risc.Con
 
 	fu.remainingCycles -= 1.0
 	if fu.remainingCycles == 0.0 {
-		if outBus.IsBufferFull() {
+		if !outBus.CanAdd() {
 			fu.remainingCycles = 1.0
 			return
 		}
@@ -62,7 +62,7 @@ func (fu *fetchUnit) cycle(currentCycle int, app risc.Application, ctx *risc.Con
 		if ctx.Debug {
 			fmt.Printf("\tFU: Pushing new element from pc %d\n", currentPC/4)
 		}
-		outBus.Add(int(currentPC/4), currentCycle)
+		outBus.Add(int(currentPC / 4))
 	}
 }
 
