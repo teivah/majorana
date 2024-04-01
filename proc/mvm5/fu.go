@@ -13,14 +13,17 @@ type fetchUnit struct {
 	remainingCycles    int
 	complete           bool
 	processing         bool
+	pendingMemoryFetch bool
 	cyclesMemoryAccess int
 	toCleanPending     bool
+	outBus             *comp.BufferedBus[int32]
 }
 
-func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int) *fetchUnit {
+func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int, outBus *comp.BufferedBus[int32]) *fetchUnit {
 	return &fetchUnit{
 		l1i:                newL1I(l1iCacheLineSizeInBytes),
 		cyclesMemoryAccess: cyclesMemoryAccess,
+		outBus:             outBus,
 	}
 }
 
@@ -30,38 +33,43 @@ func (fu *fetchUnit) reset(pc int32, cleanPending bool) {
 	fu.toCleanPending = cleanPending
 }
 
-func (fu *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context, outBus *comp.BufferedBus[int32]) {
+func (fu *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 	if fu.toCleanPending {
 		// The fetch unit may have sent to the bus wrong instruction, we make sure
 		// this is not the case by cleaning it
 		if ctx.Debug {
 			fmt.Printf("\tFU: Cleaning output bus\n")
 		}
-		outBus.Clean()
+		fu.outBus.Clean()
 		fu.toCleanPending = false
 	}
 	if fu.complete {
 		return
 	}
 
-	if !fu.processing {
-		fu.processing = true
-		if fu.l1i.present(fu.pc) {
-			fu.remainingCycles = 1
+	if fu.pendingMemoryFetch {
+		fu.remainingCycles--
+		if fu.remainingCycles == 0 {
+			fu.pendingMemoryFetch = false
 		} else {
-			fu.remainingCycles = fu.cyclesMemoryAccess
-			// Should be done after the processing of the 50 cycles
-			fu.l1i.fetch(fu.pc)
+			return
 		}
 	}
 
-	fu.remainingCycles -= 1.0
-	if fu.remainingCycles == 0.0 {
-		if !outBus.CanAdd() {
-			fu.remainingCycles = 1.0
+	if fu.l1i.present(fu.pc) {
+		fu.remainingCycles = 1
+	} else {
+		fu.pendingMemoryFetch = true
+		fu.remainingCycles = fu.cyclesMemoryAccess
+		// Should be done after the processing of the 50 cycles
+		fu.l1i.fetch(fu.pc)
+		return
+	}
+
+	for i := 0; i < fu.outBus.OutLength(); i++ {
+		if !fu.outBus.CanAdd() {
 			return
 		}
-
 		fu.processing = false
 		currentPc := fu.pc
 		fu.pc += 4
@@ -71,7 +79,7 @@ func (fu *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context, o
 		if ctx.Debug {
 			fmt.Printf("\tFU: Pushing new element from pc %d\n", currentPc/4)
 		}
-		outBus.Add(currentPc, cycle)
+		fu.outBus.Add(currentPc, cycle)
 	}
 }
 

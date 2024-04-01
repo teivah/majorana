@@ -66,58 +66,66 @@ func NewBufferedBus[T any](queueLength, bufferLength int) *BufferedBus[T] {
 	}
 }
 
-func (bus *BufferedBus[T]) Clean() {
-	bus.buffer = make([]BufferEntry[T], 0)
-	bus.queue = make([]T, 0)
+func (b *BufferedBus[T]) InLength() int {
+	return b.queueLength
 }
 
-func (bus *BufferedBus[T]) Add(t T, currentCycle int) {
-	bus.buffer = append(bus.buffer, BufferEntry[T]{
+func (b *BufferedBus[T]) OutLength() int {
+	return b.bufferLength
+}
+
+func (b *BufferedBus[T]) Clean() {
+	b.buffer = make([]BufferEntry[T], 0)
+	b.queue = make([]T, 0)
+}
+
+func (b *BufferedBus[T]) Add(t T, currentCycle int) {
+	b.buffer = append(b.buffer, BufferEntry[T]{
 		availableFromCycle: currentCycle + 1,
 		t:                  t,
 	})
 }
 
-func (bus *BufferedBus[T]) DeleteLast() {
-	if len(bus.buffer) == 0 {
+func (b *BufferedBus[T]) DeleteLast() {
+	if len(b.buffer) == 0 {
 		return
 	}
-	bus.buffer = bus.buffer[:len(bus.buffer)-1]
+	b.buffer = b.buffer[:len(b.buffer)-1]
 }
 
-func (bus *BufferedBus[T]) Get() (T, bool) {
+func (b *BufferedBus[T]) Get() (T, bool) {
 	var zero T
-	if len(bus.queue) == 0 {
+	if len(b.queue) == 0 {
 		return zero, false
 	}
-	elem := bus.queue[0]
-	bus.queue = bus.queue[1:]
+	elem := b.queue[0]
+	b.queue = b.queue[1:]
 	return elem, true
 }
 
-func (bus *BufferedBus[T]) CanAdd() bool {
-	return len(bus.buffer) != bus.bufferLength
+func (b *BufferedBus[T]) CanAdd() bool {
+	return len(b.buffer) != b.bufferLength
 }
 
-func (bus *BufferedBus[T]) IsEmpty() bool {
-	return len(bus.queue) == 0 && len(bus.buffer) == 0
+func (b *BufferedBus[T]) IsEmpty() bool {
+	return len(b.queue) == 0 && len(b.buffer) == 0
 }
 
-func (bus *BufferedBus[T]) Connect(currentCycle int) {
-	if len(bus.queue) == bus.queueLength {
+func (b *BufferedBus[T]) Connect(currentCycle int) {
+	if len(b.queue) == b.queueLength {
 		return
 	}
 
 	i := 0
-	for ; i < len(bus.buffer); i++ {
-		if len(bus.queue) == bus.queueLength {
+	for ; i < len(b.buffer); i++ {
+		if len(b.queue) == b.queueLength {
 			break
 		}
-		entry := bus.buffer[i]
+		entry := b.buffer[i]
 		if entry.availableFromCycle > currentCycle {
 			break
 		}
-		bus.queue = append(bus.queue, entry.t)
+		b.queue = append(b.queue, entry.t)
 	}
-	bus.buffer = bus.buffer[i:]
+	b.buffer = b.buffer[i:]
 }

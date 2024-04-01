@@ -8,9 +8,14 @@ import (
 type writeUnit struct {
 	pendingMemoryWrite bool
 	cycles             int
+	inBus              *comp.BufferedBus[comp.ExecutionContext]
 }
 
-func (wu *writeUnit) cycle(ctx *risc.Context, inBus *comp.BufferedBus[comp.ExecutionContext]) {
+func newWriteUnit(inBus *comp.BufferedBus[comp.ExecutionContext]) *writeUnit {
+	return &writeUnit{inBus: inBus}
+}
+
+func (wu *writeUnit) cycle(ctx *risc.Context) {
 	if wu.pendingMemoryWrite {
 		wu.cycles--
 		if wu.cycles == 0 {
@@ -19,7 +24,7 @@ func (wu *writeUnit) cycle(ctx *risc.Context, inBus *comp.BufferedBus[comp.Execu
 		return
 	}
 
-	execution, exists := inBus.Get()
+	execution, exists := wu.inBus.Get()
 	if !exists {
 		return
 	}

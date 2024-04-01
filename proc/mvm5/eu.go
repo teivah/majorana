@@ -12,17 +12,17 @@ type executeUnit struct {
 	remainingCycles int
 	runner          risc.InstructionRunnerPc
 	bu              *btbBranchUnit
+	inBus           *comp.BufferedBus[risc.InstructionRunnerPc]
+	outBus          *comp.BufferedBus[comp.ExecutionContext]
 }
 
-func newExecuteUnit(bu *btbBranchUnit) *executeUnit {
-	return &executeUnit{
-		bu: bu,
-	}
+func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[comp.ExecutionContext]) *executeUnit {
+	return &executeUnit{bu: bu, inBus: inBus, outBus: outBus}
 }
 
-func (eu *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[comp.ExecutionContext]) (bool, int32, bool, error) {
+func (eu *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error) {
 	if !eu.processing {
-		runner, exists := inBus.Get()
+		runner, exists := eu.inBus.Get()
 		if !exists {
 			return false, 0, false, nil
 		}
@@ -36,7 +36,7 @@ func (eu *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application,
 		return false, 0, false, nil
 	}
 
-	if !outBus.CanAdd() {
+	if !eu.outBus.CanAdd() {
 		eu.remainingCycles = 1
 		return false, 0, false, nil
 	}
@@ -66,7 +66,7 @@ func (eu *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application,
 		eu.runner = risc.InstructionRunnerPc{}
 	}()
 
-	outBus.Add(comp.ExecutionContext{
+	eu.outBus.Add(comp.ExecutionContext{
 		Execution:       execution,
 		InstructionType: runner.Runner.InstructionType(),
 		WriteRegisters:  runner.Runner.WriteRegisters(),

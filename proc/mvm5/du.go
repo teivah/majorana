@@ -9,31 +9,39 @@ import (
 
 type decodeUnit struct {
 	pendingBranchResolution bool
+	inBus                   *comp.BufferedBus[int32]
+	outBus                  *comp.BufferedBus[risc.InstructionRunnerPc]
 }
 
-func (du *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context, inBus *comp.BufferedBus[int32], outBus *comp.BufferedBus[risc.InstructionRunnerPc]) {
+func newDecodeUnit(inBus *comp.BufferedBus[int32], outBus *comp.BufferedBus[risc.InstructionRunnerPc]) *decodeUnit {
+	return &decodeUnit{inBus: inBus, outBus: outBus}
+}
+
+func (du *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 	if du.pendingBranchResolution {
 		return
 	}
-	if !outBus.CanAdd() {
-		return
-	}
 
-	pc, exists := inBus.Get()
-	if !exists {
-		return
+	for i := 0; i < du.outBus.InLength(); i++ {
+		if !du.outBus.CanAdd() {
+			return
+		}
+		pc, exists := du.inBus.Get()
+		if !exists {
+			return
+		}
+		if ctx.Debug {
+			fmt.Printf("\tDU: Decoding instruction %d\n", pc/4)
+		}
+		runner := app.Instructions[pc/4]
+		if risc.IsJump(runner.InstructionType()) {
+			du.pendingBranchResolution = true
+		}
+		du.outBus.Add(risc.InstructionRunnerPc{
+			Runner: runner,
+			Pc:     pc,
+		}, cycle)
 	}
-	if ctx.Debug {
-		fmt.Printf("\tDU: Decoding instruction %d\n", pc/4)
-	}
-	runner := app.Instructions[pc/4]
-	if risc.IsJump(runner.InstructionType()) {
-		du.pendingBranchResolution = true
-	}
-	outBus.Add(risc.InstructionRunnerPc{
-		Runner: runner,
-		Pc:     pc,
-	}, cycle)
 }
 
 func (du *decodeUnit) notifyBranchResolved() {

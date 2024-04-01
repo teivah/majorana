@@ -99,8 +99,8 @@ func TestMvms(t *testing.T) {
 	}
 
 	for _, tc := range cases {
-		from := 5
-		to := 100
+		from := 2
+		to := 200
 		cache := make(map[int]bool, to-from+1)
 		for i := from; i < to; i++ {
 			cache[i] = isPrime(i)
@@ -122,7 +122,7 @@ func TestMvms(t *testing.T) {
 				}
 			})
 		}
-		for i := 0; i < 100; i++ {
+		for i := 0; i < 200; i++ {
 			t.Run(fmt.Sprintf("Sum of integer array: %s", tc.name), func(t *testing.T) {
 				vm := tc.factory()
 				n := i

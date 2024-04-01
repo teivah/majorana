@@ -26,18 +26,22 @@ type CPU struct {
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
-	fu := newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess)
-	du := &decodeUnit{}
+	decodeBus := comp.NewBufferedBus[int32](2, 2)
+	executeBus := comp.NewBufferedBus[risc.InstructionRunnerPc](2, 2)
+	writeBus := comp.NewBufferedBus[comp.ExecutionContext](2, 2)
+
+	fu := newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess, decodeBus)
+	du := newDecodeUnit(decodeBus, executeBus)
 	bu := newBTBBranchUnit(4, fu, du)
 	return &CPU{
 		ctx:         risc.NewContext(debug, memoryBytes),
 		fetchUnit:   fu,
-		decodeBus:   comp.NewBufferedBus[int32](2, 2),
+		decodeBus:   decodeBus,
 		decodeUnit:  du,
-		executeBus:  comp.NewBufferedBus[risc.InstructionRunnerPc](2, 2),
-		executeUnit: newExecuteUnit(bu),
-		writeBus:    comp.NewBufferedBus[comp.ExecutionContext](2, 2),
-		writeUnit:   &writeUnit{},
+		executeBus:  executeBus,
+		executeUnit: newExecuteUnit(bu, executeBus, writeBus),
+		writeBus:    writeBus,
+		writeUnit:   newWriteUnit(writeBus),
 		branchUnit:  bu,
 	}
 }
@@ -58,19 +62,19 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.writeBus.Connect(cycle)
 
 		// Fetch
-		m.fetchUnit.cycle(cycle, app, m.ctx, m.decodeBus)
+		m.fetchUnit.cycle(cycle, app, m.ctx)
 
 		// Decode
-		m.decodeUnit.cycle(cycle, app, m.ctx, m.decodeBus, m.executeBus)
+		m.decodeUnit.cycle(cycle, app, m.ctx)
 
 		// Execute
-		flush, pc, ret, err := m.executeUnit.cycle(cycle, m.ctx, app, m.executeBus, m.writeBus)
+		flush, pc, ret, err := m.executeUnit.cycle(cycle, m.ctx, app)
 		if err != nil {
 			return 0, err
 		}
 
 		// Write back
-		m.writeUnit.cycle(m.ctx, m.writeBus)
+		m.writeUnit.cycle(m.ctx)
 		if m.ctx.Debug {
 			fmt.Printf("\tMemory: %v\n", m.ctx.Registers)
 		}
