@@ -14,7 +14,7 @@ type fetchUnit struct {
 	complete           bool
 	processing         bool
 	cyclesMemoryAccess int
-	toReset            bool
+	toCleanPending     bool
 }
 
 func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int) *fetchUnit {
@@ -24,21 +24,20 @@ func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int) *fetchU
 	}
 }
 
-func (fu *fetchUnit) reset(pc int32) {
+func (fu *fetchUnit) reset(pc int32, cleanPending bool) {
 	fu.complete = false
 	fu.pc = pc
-	fu.toReset = true
+	fu.toCleanPending = true
 }
 
 func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp.SimpleBus[int]) {
-	// TODO Explain better why
-	// In case of a reset, we need to delete the last element in the bus
-	if fu.toReset {
+	// In case of a reset, the pending element in the bus is the wrong one
+	if fu.toCleanPending {
 		if ctx.Debug {
 			fmt.Printf("\tFU: Delete latest element from the queue\n")
 		}
 		outBus.DeletePending()
-		fu.toReset = false
+		fu.toCleanPending = false
 	}
 	if fu.complete {
 		return

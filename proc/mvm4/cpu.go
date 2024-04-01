@@ -88,7 +88,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			if m.ctx.Registers[risc.Ra] != 0 {
 				m.ctx.Pc = m.ctx.Registers[risc.Ra]
 				m.ctx.Registers[risc.Ra] = 0
-				m.fetchUnit.reset(m.ctx.Pc)
+				m.fetchUnit.reset(m.ctx.Pc, false)
 				continue
 			}
 			break

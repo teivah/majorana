@@ -49,5 +49,5 @@ func (bu *btbBranchUnit) shouldFlushPipeline(ctx *risc.Context) bool {
 
 func (bu *btbBranchUnit) branchNotify(pc, pcTo int32) {
 	bu.btb.add(pc, pcTo)
-	bu.fu.reset(pcTo)
+	bu.fu.reset(pcTo, true)
 }
