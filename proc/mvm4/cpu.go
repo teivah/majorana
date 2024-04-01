@@ -53,23 +53,23 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 
 		// Fetch
-		m.fetchUnit.cycle(cycles, app, m.ctx, m.decodeBus)
+		m.fetchUnit.cycle(app, m.ctx, m.decodeBus)
 
 		// Decode
-		m.decodeUnit.cycle(cycles, app, m.decodeBus, m.executeBus)
+		m.decodeUnit.cycle(app, m.decodeBus, m.executeBus)
 
 		// Create branch unit assertions
 		m.branchUnit.assert(m.ctx, m.executeBus)
 
 		// Execute
-		err := m.executeUnit.cycle(cycles, m.ctx, app, m.executeBus, m.writeBus)
+		err := m.executeUnit.cycle(m.ctx, app, m.executeBus, m.writeBus)
 		if err != nil {
 			return 0, err
 		}
 
 		// Branch unit assertions check
 		flush := false
-		if m.branchUnit.shouldFlushPipeline(m.ctx, m.writeBus) {
+		if m.branchUnit.shouldFlushPipeline(m.ctx) {
 			if m.ctx.Debug {
 				fmt.Println("\tFlush")
 			}
@@ -81,7 +81,9 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 		if flush {
 			m.flush(m.ctx.Pc)
+			continue
 		}
+
 		if m.isComplete() {
 			if m.ctx.Registers[risc.Ra] != 0 {
 				m.ctx.Pc = m.ctx.Registers[risc.Ra]

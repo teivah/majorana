@@ -9,7 +9,7 @@ type decodeUnit struct {
 	pendingBranchResolution int
 }
 
-func (du *decodeUnit) cycle(currentCycle int, app risc.Application, inBus *comp.SimpleBus[int], outBus *comp.SimpleBus[risc.InstructionRunner]) {
+func (du *decodeUnit) cycle(app risc.Application, inBus *comp.SimpleBus[int], outBus *comp.SimpleBus[risc.InstructionRunner]) {
 	if du.pendingBranchResolution > 0 {
 		du.pendingBranchResolution--
 		return

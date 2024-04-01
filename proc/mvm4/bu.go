@@ -45,7 +45,7 @@ func (bu *btbBranchUnit) branchNotify(pc, pcTo int32) {
 	bu.fu.reset(pcTo)
 }
 
-func (bu *btbBranchUnit) shouldFlushPipeline(ctx *risc.Context, writeBus *comp.SimpleBus[comp.ExecutionContext]) bool {
+func (bu *btbBranchUnit) shouldFlushPipeline(ctx *risc.Context) bool {
 	if !bu.toCheck {
 		return false
 	}

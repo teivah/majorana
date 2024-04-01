@@ -20,7 +20,7 @@ func newExecuteUnit(bu *btbBranchUnit) *executeUnit {
 	}
 }
 
-func (eu *executeUnit) cycle(currentCycle int, ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunner], outBus *comp.SimpleBus[comp.ExecutionContext]) error {
+func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunner], outBus *comp.SimpleBus[comp.ExecutionContext]) error {
 	if !eu.processing {
 		runner, exists := inBus.Get()
 		if !exists {
@@ -43,7 +43,8 @@ func (eu *executeUnit) cycle(currentCycle int, ctx *risc.Context, app risc.Appli
 
 	runner := eu.runner
 
-	// To avoid writeback hazard, if the pipeline contains read registers not written yet, we wait for it.
+	// To avoid writeback hazard, if the pipeline contains read registers not
+	// written yet, we wait for it
 	if ctx.ContainWrittenRegisters(runner.ReadRegisters()) {
 		eu.remainingCycles = 1
 		return nil
