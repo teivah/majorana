@@ -107,6 +107,10 @@ func (b *BufferedBus[T]) CanAdd() bool {
 	return len(b.buffer) != b.bufferLength
 }
 
+func (b *BufferedBus[T]) RemainingToAdd() int {
+	return b.bufferLength - len(b.buffer)
+}
+
 func (b *BufferedBus[T]) IsEmpty() bool {
 	return len(b.queue) == 0 && len(b.buffer) == 0
 }

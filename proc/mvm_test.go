@@ -66,30 +66,30 @@ func TestMvms(t *testing.T) {
 		name    string
 		factory func() virtualMachine
 	}{
-		//{
-		//	name: "mvm1",
-		//	factory: func() virtualMachine {
-		//		return mvm1.NewCPU(false, memory)
-		//	},
-		//},
-		//{
-		//	name: "mvm2",
-		//	factory: func() virtualMachine {
-		//		return mvm2.NewCPU(false, memory)
-		//	},
-		//},
-		//{
-		//	name: "mvm3",
-		//	factory: func() virtualMachine {
-		//		return mvm3.NewCPU(false, memory)
-		//	},
-		//},
-		//{
-		//	name: "mvm4",
-		//	factory: func() virtualMachine {
-		//		return mvm4.NewCPU(false, memory)
-		//	},
-		//},
+		{
+			name: "mvm1",
+			factory: func() virtualMachine {
+				return mvm1.NewCPU(false, memory)
+			},
+		},
+		{
+			name: "mvm2",
+			factory: func() virtualMachine {
+				return mvm2.NewCPU(false, memory)
+			},
+		},
+		{
+			name: "mvm3",
+			factory: func() virtualMachine {
+				return mvm3.NewCPU(false, memory)
+			},
+		},
+		{
+			name: "mvm4",
+			factory: func() virtualMachine {
+				return mvm4.NewCPU(false, memory)
+			},
+		},
 		{
 			name: "mvm5",
 			factory: func() virtualMachine {
