@@ -30,7 +30,7 @@ func (fu *fetchUnit) reset(pc int32) {
 	fu.toReset = true
 }
 
-func (fu *fetchUnit) cycle(currentCycle int, app risc.Application, ctx *risc.Context, outBus *comp.SimpleBus[int]) {
+func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp.SimpleBus[int]) {
 	if fu.complete {
 		return
 	}

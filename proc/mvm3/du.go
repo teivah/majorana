@@ -7,7 +7,7 @@ import (
 
 type decodeUnit struct{}
 
-func (du *decodeUnit) cycle(currentCycle int, app risc.Application, inBus *comp.SimpleBus[int], outBus *comp.SimpleBus[risc.InstructionRunner]) {
+func (du *decodeUnit) cycle(app risc.Application, inBus *comp.SimpleBus[int], outBus *comp.SimpleBus[risc.InstructionRunner]) {
 	if !outBus.CanAdd() {
 		return
 	}

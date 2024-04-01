@@ -46,11 +46,11 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		cycles += 1
 
 		// Fetch
-		m.fetchUnit.cycle(cycles, app, m.ctx, m.decodeBus)
+		m.fetchUnit.cycle(app, m.ctx, m.decodeBus)
 
 		// Decode
 		m.decodeBus.Connect()
-		m.decodeUnit.cycle(cycles, app, m.decodeBus, m.executeBus)
+		m.decodeUnit.cycle(app, m.decodeBus, m.executeBus)
 
 		// Execute
 		m.executeBus.Connect()
@@ -59,7 +59,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.branchUnit.assert(m.ctx, m.executeBus)
 
 		// Execute
-		err := m.alu.cycle(cycles, m.ctx, app, m.executeBus, m.writeBus)
+		err := m.alu.cycle(m.ctx, app, m.executeBus, m.writeBus)
 		if err != nil {
 			return 0, err
 		}

@@ -11,7 +11,7 @@ type executeUnit struct {
 	runner          risc.InstructionRunner
 }
 
-func (eu *executeUnit) cycle(currentCycle int, ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunner], outBus *comp.SimpleBus[comp.ExecutionContext]) error {
+func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunner], outBus *comp.SimpleBus[comp.ExecutionContext]) error {
 	if !eu.processing {
 		runner, exists := inBus.Get()
 		if !exists {
