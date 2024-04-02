@@ -2,14 +2,13 @@
     addi t0, zero, %d
     sw t0, 0, zero
 
-    # TODO Remove once we've got a bench that tests memory accesses
     addi t0, zero, 0 # Address of the word
     lw t0, 0(t0) # Load word in memory
 
     # Compute max
-    addi t1, zero, 2
-    div t1, t0, t1
-    addi t1, t1, 1
+    addi t1, zero, 2 # 4 t1 = 2
+    div t1, t0, t1   # 5 t1 = num / t1 (2)
+    addi t1, t1, 1   # 6 t1++
 
     addi t2, zero, 2 # Counter init
 

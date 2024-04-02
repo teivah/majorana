@@ -193,7 +193,7 @@ func (b bge) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, er
 			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
 		}
 		if ctx.Debug {
-			fmt.Printf("\t\tRun: bge true %d\n", addr)
+			fmt.Printf("\t\tRun: bge true %d\n", addr/4)
 		}
 		return Execution{
 			NextPc:   addr,
