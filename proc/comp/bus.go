@@ -112,6 +112,10 @@ func (b *BufferedBus[T]) Get() (T, bool) {
 	return elem, true
 }
 
+func (b *BufferedBus[T]) CanGet() bool {
+	return len(b.queue) != 0
+}
+
 func (b *BufferedBus[T]) CanAdd() bool {
 	return len(b.buffer) != b.bufferLength
 }

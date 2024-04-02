@@ -130,7 +130,13 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 func (m *CPU) Stats() map[string]any {
 	return map[string]any{
-		"flush": m.counterFlush,
+		"flush":                  m.counterFlush,
+		"cu_push":                m.controlUnit.pushed.stats(),
+		"cu_blocked":             m.controlUnit.blocked.stats(),
+		"cu_total":               m.controlUnit.total,
+		"cu_cant_add":            m.controlUnit.cantAdd,
+		"cu_blocked_branch":      m.controlUnit.blockedBranch,
+		"cu_blocked_data_hazard": m.controlUnit.blockedDataHazard,
 	}
 }
 
