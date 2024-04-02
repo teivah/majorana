@@ -36,6 +36,9 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		if !exists {
 			return
 		}
+		if int(pc)/4 >= len(app.Instructions) {
+			return
+		}
 		runner := app.Instructions[pc/4]
 		logi(ctx, "DU", runner.InstructionType(), pc/4, "decoding")
 		jump := false

@@ -28,10 +28,11 @@ type CPU struct {
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
-	decodeBus := comp.NewBufferedBus[int32](2, 2)
-	controlBus := comp.NewBufferedBus[risc.InstructionRunnerPc](2, 2)
-	executeBus := comp.NewBufferedBus[risc.InstructionRunnerPc](2, 2)
-	writeBus := comp.NewBufferedBus[comp.ExecutionContext](2, 2)
+	busSize := 2
+	decodeBus := comp.NewBufferedBus[int32](busSize, busSize)
+	controlBus := comp.NewBufferedBus[risc.InstructionRunnerPc](busSize, busSize)
+	executeBus := comp.NewBufferedBus[risc.InstructionRunnerPc](busSize, busSize)
+	writeBus := comp.NewBufferedBus[comp.ExecutionContext](busSize, busSize)
 
 	fu := newFetchUnit(l1ICacheLineSizeInBytes, decodeBus)
 	du := newDecodeUnit(decodeBus, controlBus)
