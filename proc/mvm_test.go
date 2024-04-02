@@ -240,7 +240,6 @@ func testJal(t *testing.T, factory func() virtualMachine) {
 }
 
 func TestBenchmarks(t *testing.T) {
-	//t.SkipNow()
 	vms := map[string]func(m int) virtualMachine{
 		"mvm1": func(m int) virtualMachine {
 			return mvm1.NewCPU(false, m)
@@ -260,17 +259,17 @@ func TestBenchmarks(t *testing.T) {
 	}
 
 	prime := map[string]int{
-		"mvm1": 13170403,
-		"mvm2": 901640,
-		"mvm3": 450894,
-		"mvm4": 400821,
-		"mvm5": 400826,
+		"mvm1": 13170146,
+		"mvm2": 901529,
+		"mvm3": 450790,
+		"mvm4": 400717,
+		"mvm5": 400721,
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
 			t.Run(name, func(t *testing.T) {
 				vm := factory(5)
-				cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), benchPrimeNumber))
+				cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var-no-memory.asm"), benchPrimeNumber))
 				require.NoError(t, err)
 				assert.Equal(t, prime[name], cycles)
 				primeStats(t, cycles)

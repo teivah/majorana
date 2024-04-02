@@ -89,11 +89,11 @@ All the benchmarks are executed at a fixed CPU clock frequency of 3.2 GHz.
 Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency). This benchmark was on a different microarchitecture, different ISA, etc. is hardly comparable with the MVM benchmarks. Yet, it gives us a reference to show how good (or bad :) the MVM implementations are.
 
 
-| Machine  |            Prime number            | Sum of array |
-|:--------:|:----------------------------------:|:------------:|
-| Apple M1 |              70.29 ns              |   1300 ns    |
-|  MVM-1   | 4115751 nanoseconds, 58553.9 slower | 536402 nanoseconds, 412.6 slower |
-|  MVM-2   |  281762 nanoseconds, 4008.6 slower | 97301 nanoseconds, 74.8 slower |
-|  MVM-3   |  140904 nanoseconds, 2004.6 slower | 78099 nanoseconds, 60.1 slower |
-|  MVM-4   |  125257 nanoseconds, 1782.0 slower | 76819 nanoseconds, 59.1 slower |
-|  MVM-5   |  140926 nanoseconds, 2004.9 slower | 81961 nanoseconds, 63.0 slower |
+| Machine  |            Prime number             | Sum of array |
+|:--------:|:-----------------------------------:|:------------:|
+| Apple M1 |              70.29 ns               |   1300 ns    |
+|  MVM-1   | 4115671 nanoseconds, 58552.7 slower | 536402 nanoseconds, 412.6 slower |
+|  MVM-2   |  281728 nanoseconds, 4008.1 slower  | 97301 nanoseconds, 74.8 slower |
+|  MVM-3   |  140872 nanoseconds, 2004.2 slower  | 78099 nanoseconds, 60.1 slower |
+|  MVM-4   |  125224 nanoseconds, 1781.5 slower  | 76819 nanoseconds, 59.1 slower |
+|  MVM-5   | 125225 nanoseconds, 1781.6 slower   | 81961 nanoseconds, 63.0 slower |
