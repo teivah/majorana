@@ -15,7 +15,7 @@ func BenchmarkPrime(b *testing.B) {
 
 func BenchmarkSums(b *testing.B) {
 	b.StopTimer()
-	// We recreate the slice to prevent L1 cache hit
+	// We recreate the slice to prevent CPU cache hit
 	n := benchSums
 	s := make([]int, 0, n)
 	for i := 0; i < n; i++ {

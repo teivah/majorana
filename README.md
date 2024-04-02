@@ -31,11 +31,11 @@ In a nutshell, pipelining allows keeping every stage as busy as possible. For ex
 
 This way, the first instruction can be executed in 4 cycles (assuming the fetch is done from L1I), whereas the next instructions will be executed in only 1 cycle.
 
-One of the complexity with pipelining is to handle conditional branches. What if we fetch a [bge](https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#bge) instruction for example? The next instruction fetched will not be necessarily the one we should have fetched/decoded/executed/written. As a solution, we implemented the first version of branch prediction handled by the Branch Unit.
+One of the complexity with pipelining is to handle branches. What if we fetch a [bge](https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#bge) instruction for example? The next instruction fetched will not be necessarily the one we should have fetched/decoded/executed/written. As a solution, we implemented the first version of branch prediction handled by the branch unit.
 
-The Branch Unit takes the hypothesis that a condition branch will **not** be taken. Hence, after having fetched an instruction, regardless if it's a conditional branch, we will fetch the next instruction after it. If the prediction was wrong, we need to flush the pipeline, revert the program counter to the destination marked by the conditional branch instruction, and continue the execution.
+The branch unit takes the hypothesis that a conditional branch will **not** be taken. Hence, after having fetched an instruction, regardless if it's a conditional branch, we will fetch the next instruction after it. If the prediction was wrong, we need to flush the pipeline, revert the program counter to the destination marked by the conditional branch instruction, and continue the execution.
 
-Of course, pipeline flushing has an immediate performance impact. Modern CPUs have a branch prediction mechanism that is more evolved than MVM-3.
+Pipeline flushing has a significant performance penalty as it requires discarding partially completed instruction and restarting the pipeline, leading to wasted cycles.
 
 There is another problem with pipelining. We might face what we call a data hazard. For example:
 
@@ -64,11 +64,11 @@ foo:
 
 In this case, the fetch unit, after fetching the first line (`jal`), was fetching the second line (first `addi`), which ended up being a problem because the execution is branching to line 3 (second `addi`). It was resolved by flushing the whole pipeline, which is very costly.
 
-The microarchitecture of MVM-4 is very similar to MVM-3, except that the Branch Unit is now coupled with a Branch Target Buffer (BTB):
+The microarchitecture of MVM-4 is very similar to MVM-3, except that the branch unit is now coupled with a Branch Target Buffer (BTB):
 
 ![](res/majorana-mvm-4.drawio.png)
 
-One the fetch unit fetches a branch, it doesn't know whether it's a branch; it's the job of the decode unit. Therefore, the fetch unit can't simply say: "_I fetched a branch, I'm going to wait for the Execute Unit to tell me the next instruction to fetch_".
+One the fetch unit fetches a branch, it doesn't know whether it's a branch; it's the job of the decode unit. Therefore, the fetch unit can't simply say: "_I fetched a branch, I'm going to wait for the execute unit to tell me the next instruction to fetch_".
 
 The workflow is now the following:
 - The fetch unit fetches an instruction.
