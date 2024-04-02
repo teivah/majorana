@@ -16,12 +16,12 @@ func primeStats(t *testing.T, cycles int) {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1PrimeExecutionTime
-	t.Logf("%d cycles, %.2f nanoseconds, %.1f slower\n", cycles, ns, slower)
+	t.Logf("%.0f nanoseconds, %.1f slower\n", ns, slower)
 }
 
 func sumStats(t *testing.T, cycles int) {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1SumsExecutionTime
-	t.Logf("%d cycles, %.2f nanoseconds, %.1f slower\n", cycles, ns, slower)
+	t.Logf("%.0f nanoseconds, %.1f slower\n", ns, slower)
 }

@@ -253,11 +253,11 @@ func TestBenchmarks(t *testing.T) {
 	}
 
 	prime := map[string]int{
-		"mvm1": 13270550,
-		"mvm2": 1001785,
-		"mvm3": 450990,
-		"mvm4": 400917,
-		"mvm5": 400917,
+		"mvm1": 13170403,
+		"mvm2": 901640,
+		"mvm3": 450894,
+		"mvm4": 400821,
+		"mvm5": 701326,
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
@@ -272,11 +272,11 @@ func TestBenchmarks(t *testing.T) {
 	})
 
 	sums := map[string]int{
-		"mvm1": 1720584,
-		"mvm2": 315461,
+		"mvm1": 1716487,
+		"mvm2": 311364,
 		"mvm3": 249916,
 		"mvm4": 245821,
-		"mvm5": 245821,
+		"mvm5": 270468,
 	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {

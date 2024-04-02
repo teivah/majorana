@@ -88,7 +88,8 @@ Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency
 | Machine  |            Prime number            | Sum of array |
 |:--------:|:----------------------------------:|:------------:|
 | Apple M1 |              70.29 ns              |   1300 ns    |
-|  MVM-1   | 4,147,046 ns, ~58,999 times slower |      537,682 ns, ~413.6 times slower        |
-|  MVM-2   |  313,057 ns, ~4,453 times slower   |   98,581 ns, ~75.8 times slower           |
-|  MVM-3   |  140,934 ns, ~2,005 times slower   | 78,098 ns, ~60.1 times slower              |
-|  MVM-4   |  125,286 ns, ~1,782 times slower   |  76,819 ns, ~59.1 times slower             |
+|  MVM-1   | 4115751 nanoseconds, 58553.9 slower | 536402 nanoseconds, 412.6 slower |
+|  MVM-2   |  281762 nanoseconds, 4008.6 slower | 97301 nanoseconds, 74.8 slower |
+|  MVM-3   |  140904 nanoseconds, 2004.6 slower | 78099 nanoseconds, 60.1 slower |
+|  MVM-4   |  125257 nanoseconds, 1782.0 slower | 76819 nanoseconds, 59.1 slower |
+|  MVM-5   |  219164 nanoseconds, 3118.0 slower | 84521 nanoseconds, 65.0 slower |

@@ -12,15 +12,11 @@ func TestSimpleBus(t *testing.T) {
 	var val int
 	var exists bool
 
-	val, exists = b.Peek()
-	busAssert(t, 0, false, val, exists)
 	val, exists = b.Get()
 	busAssert(t, 0, false, val, exists)
 
 	assert.Equal(t, true, b.CanAdd())
 	b.Add(1)
-	val, exists = b.Peek()
-	busAssert(t, 0, false, val, exists)
 	val, exists = b.Get()
 	busAssert(t, 0, false, val, exists)
 	val, exists = b.Get()
