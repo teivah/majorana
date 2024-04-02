@@ -80,15 +80,13 @@ This helps in preventing a full pipeline flush. Facing an unconditional branch n
 
 ## MVM-5
 
-The next stage is to implement a so-called superscalar processor. A superscalar processor can execute multiple instructions during a clock cycle by dispatching multiple instructions to different execution units.
-
-![](res/majorana-mvm-5.drawio.png)
-
-This is one of the magical things with modern CPUs: even sequential code can be executed in parallel!
+The next stage is to implement a so-called superscalar processor. A superscalar processor can execute multiple instructions during a clock cycle by dispatching multiple instructions to different execution units. This is one of the magical things with modern CPUs: even sequential code can be executed in parallel!
 
 The fetch unit and the decode unit are now capable to fetch/decode two instruction within a single cycle. Yet, before to dispatch the executions to the execute units, a new stage comes in: the control unit.
 
-The role of the control unit plays a pivotal role in coordinating the execution of multiple instructions simultanously. It performs depedency checking between the decoded instructions to guarantee it won't lead to any hazard.
+![](res/majorana-mvm-5.drawio.png)
+
+The control unit plays a pivotal role in coordinating the execution of multiple instructions simultaneously. It performs depedency checking between the decoded instructions to guarantee it won't lead to any hazard.
 
 One _small_ issue: MVM-5 is slightly slower than MVM-4. How is that possible? The control unit implementation is very basic at the moment and because of that, on average the control unit dispatches less than 0.6 instruction per cycle. Therefore, a suboptimal additional coordination stage, despite two execution units, doesn't make any good.
 
