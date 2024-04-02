@@ -21,7 +21,7 @@ type CPU struct {
 	executeBus   *comp.BufferedBus[risc.InstructionRunnerPc]
 	executeUnits []*executeUnit
 	writeBus     *comp.BufferedBus[comp.ExecutionContext]
-	writeUnit    *writeUnit
+	writeUnits   []*writeUnit
 	branchUnit   *btbBranchUnit
 
 	counterFlush int
@@ -48,8 +48,11 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 			newExecuteUnit(bu, executeBus, writeBus),
 			newExecuteUnit(bu, executeBus, writeBus),
 		},
-		writeBus:   writeBus,
-		writeUnit:  newWriteUnit(writeBus),
+		writeBus: writeBus,
+		writeUnits: []*writeUnit{
+			newWriteUnit(writeBus),
+			newWriteUnit(writeBus),
+		},
 		branchUnit: bu,
 	}
 }
@@ -83,8 +86,8 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			pc    int32
 			ret   bool
 		)
-		for _, executeUnit := range m.executeUnits {
-			f, p, r, err := executeUnit.cycle(cycle, m.ctx, app)
+		for _, eu := range m.executeUnits {
+			f, p, r, err := eu.cycle(cycle, m.ctx, app)
 			if err != nil {
 				return 0, err
 			}
@@ -94,7 +97,9 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 
 		// Write back
-		m.writeUnit.cycle(m.ctx)
+		for _, wu := range m.writeUnits {
+			wu.cycle(m.ctx)
+		}
 		log(m.ctx, "\tRegisters: %v", m.ctx.Registers)
 
 		if ret {
@@ -102,8 +107,10 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			m.counterFlush++
 			cycle++
 			m.writeBus.Connect(cycle)
-			for !m.writeUnit.isEmpty() || !m.writeBus.IsEmpty() {
-				m.writeUnit.cycle(m.ctx)
+			for !m.areWriteUnitsEmpty() || !m.writeBus.IsEmpty() {
+				for _, wu := range m.writeUnits {
+					wu.cycle(m.ctx)
+				}
 				cycle++
 				m.writeBus.Connect(cycle)
 			}
@@ -158,20 +165,25 @@ func (m *CPU) isEmpty() bool {
 	empty := m.fetchUnit.isEmpty() &&
 		m.decodeUnit.isEmpty() &&
 		m.controlUnit.isEmpty() &&
-		m.writeUnit.isEmpty() &&
+		m.areWriteUnitsEmpty() &&
 		m.decodeBus.IsEmpty() &&
 		m.controlBus.IsEmpty() &&
 		m.executeBus.IsEmpty() &&
 		m.writeBus.IsEmpty()
 	if !empty {
-		//if m.ctx.Debug {
-		//	fmt.Println("fu:", m.fetchUnit.isEmpty(), "du:", m.decodeUnit.isEmpty(), "cu:", m.controlUnit.isEmpty(), "wu:", m.writeUnit.isEmpty(),
-		//		"db:", m.decodeBus.IsEmpty(), "cb:", m.controlBus.IsEmpty(), "eb:", m.executeBus.IsEmpty(), "wb:", m.writeBus.IsEmpty())
-		//}
 		return false
 	}
-	for _, executeUnit := range m.executeUnits {
-		if !executeUnit.isEmpty() {
+	for _, eu := range m.executeUnits {
+		if !eu.isEmpty() {
+			return false
+		}
+	}
+	return true
+}
+
+func (m *CPU) areWriteUnitsEmpty() bool {
+	for _, wu := range m.writeUnits {
+		if !wu.isEmpty() {
 			return false
 		}
 	}

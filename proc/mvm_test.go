@@ -264,7 +264,7 @@ func TestBenchmarks(t *testing.T) {
 		"mvm2": 901640,
 		"mvm3": 450894,
 		"mvm4": 400821,
-		"mvm5": 450963,
+		"mvm5": 400826,
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
@@ -283,7 +283,7 @@ func TestBenchmarks(t *testing.T) {
 		"mvm2": 311364,
 		"mvm3": 249916,
 		"mvm4": 245821,
-		"mvm5": 262274,
+		"mvm5": 258113,
 	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {
