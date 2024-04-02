@@ -268,7 +268,7 @@ func TestBenchmarks(t *testing.T) {
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
-			t.Run(fmt.Sprintf("%s - Prime", name), func(t *testing.T) {
+			t.Run(name, func(t *testing.T) {
 				vm := factory(5)
 				cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), benchPrimeNumber))
 				require.NoError(t, err)
@@ -287,7 +287,7 @@ func TestBenchmarks(t *testing.T) {
 	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {
-			t.Run(fmt.Sprintf("%s - Prime", name), func(t *testing.T) {
+			t.Run(name, func(t *testing.T) {
 				vm := factory(memory)
 				n := benchSums
 				for i := 0; i < n; i++ {
