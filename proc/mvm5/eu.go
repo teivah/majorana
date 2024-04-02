@@ -1,8 +1,6 @@
 package mvm5
 
 import (
-	"fmt"
-
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -38,6 +36,7 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 
 	if !u.outBus.CanAdd() {
 		u.remainingCycles = 1
+		logu(ctx, "EU", "can't add")
 		return false, 0, false, nil
 	}
 
@@ -45,16 +44,7 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 	// Create the branch unit assertions
 	u.bu.assert(runner)
 
-	// To avoid writeback hazard, if the pipeline contains read registers not
-	// written yet, we wait for it
-	if ctx.ContainWrittenRegisters(runner.Runner.ReadRegisters()) {
-		u.remainingCycles = 1
-		return false, 0, false, nil
-	}
-
-	if ctx.Debug {
-		fmt.Printf("\tEU: Executing instruction %d\n", u.runner.Pc/4)
-	}
+	logi(ctx, "EU", runner.Runner.InstructionType(), runner.Pc, "executing")
 	execution, err := runner.Runner.Run(ctx, app.Labels, u.runner.Pc)
 	if err != nil {
 		return false, 0, false, err
@@ -70,18 +60,19 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 		Execution:       execution,
 		InstructionType: runner.Runner.InstructionType(),
 		WriteRegisters:  runner.Runner.WriteRegisters(),
+		ReadRegisters:   runner.Runner.ReadRegisters(),
 	}, cycle)
-	ctx.AddWriteRegisters(runner.Runner.WriteRegisters())
 	u.pending = false
 
-	if risc.IsJump(runner.Runner.InstructionType()) {
-		if ctx.Debug {
-			fmt.Printf("\tEU: Notify jump address resolved from %d to %d\n", u.runner.Pc/4, execution.NextPc/4)
-		}
+	if risc.IsUnconditionalBranch(runner.Runner.InstructionType()) {
+		logi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
+			"notify jump address resolved from %d to %d", u.runner.Pc/4, execution.NextPc/4)
 		u.bu.notifyJumpAddressResolved(u.runner.Pc, execution.NextPc)
 	}
 
 	if execution.PcChange && u.bu.shouldFlushPipeline(execution.NextPc) {
+		logi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
+			"should be a flush")
 		return true, execution.NextPc, false, nil
 	}
 

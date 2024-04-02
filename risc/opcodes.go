@@ -380,6 +380,7 @@ func (j jal) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, er
 	if !ok {
 		return Execution{}, fmt.Errorf("label %s does not exist", j.label)
 	}
+	// TODO Shouldn't be a direct write
 	ctx.Registers[Ra] = pc
 	register, value := IsRegisterChange(j.rd, pc+4)
 	return Execution{

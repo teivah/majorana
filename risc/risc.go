@@ -340,7 +340,7 @@ func IsWriteBack(ins InstructionType) bool {
 	return true
 }
 
-func IsJump(ins InstructionType) bool {
+func IsUnconditionalBranch(ins InstructionType) bool {
 	switch ins {
 	case Jal, Jalr:
 		return true
@@ -348,12 +348,17 @@ func IsJump(ins InstructionType) bool {
 	return false
 }
 
-func IsConditionalBranching(ins InstructionType) bool {
+func IsConditionalBranch(ins InstructionType) bool {
 	switch ins {
 	case Beq, Bne, Blt, Bge, Bgeu:
 		return true
 	}
 	return false
+}
+
+// TOOD Should be a method
+func IsBranch(ins InstructionType) bool {
+	return IsUnconditionalBranch(ins) || IsConditionalBranch(ins)
 }
 
 func IsRegisterChange(register RegisterType, value int32) (RegisterType, int32) {

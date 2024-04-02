@@ -7,7 +7,7 @@ import (
 
 type writeUnit struct {
 	pendingMemoryWrite bool
-	memoryWrite        risc.Execution
+	memoryWrite        comp.ExecutionContext
 	cycles             int
 	inBus              *comp.BufferedBus[comp.ExecutionContext]
 }
@@ -21,7 +21,12 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 		u.cycles--
 		if u.cycles == 0 {
 			u.pendingMemoryWrite = false
-			ctx.WriteMemory(u.memoryWrite)
+			ctx.WriteMemory(u.memoryWrite.Execution)
+			ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
+			if risc.IsBranch(u.memoryWrite.InstructionType) {
+				ctx.DeletePendingBranch()
+			}
+			logi(ctx, "WU", u.memoryWrite.InstructionType, -1, "write to memory")
 		}
 		return
 	}
@@ -32,15 +37,18 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 	}
 	if execution.Execution.RegisterChange {
 		ctx.WriteRegister(execution.Execution)
-		ctx.DeleteWriteRegisters(execution.WriteRegisters)
+		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
+		if risc.IsBranch(execution.InstructionType) {
+			ctx.DeletePendingBranch()
+		}
+		logi(ctx, "WU", u.memoryWrite.InstructionType, -1, "write to register")
 	} else if execution.Execution.MemoryChange {
-		// TODO Do after
 		u.pendingMemoryWrite = true
 		u.cycles = cyclesMemoryAccess
-		u.memoryWrite = execution.Execution
+		u.memoryWrite = execution
 	}
 }
 
 func (u *writeUnit) isEmpty() bool {
-	return true
+	return !u.pendingMemoryWrite
 }

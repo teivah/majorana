@@ -1,8 +1,6 @@
 package mvm5
 
 import (
-	"fmt"
-
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -35,9 +33,7 @@ func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 	if u.toCleanPending {
 		// The fetch unit may have sent to the bus wrong instruction, we make sure
 		// this is not the case by cleaning it
-		if ctx.Debug {
-			fmt.Printf("\tFU: Cleaning output bus\n")
-		}
+		logu(ctx, "FU", "cleaning output bus")
 		u.outBus.Clean()
 		u.toCleanPending = false
 	}
@@ -74,9 +70,7 @@ func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		if u.pc/4 >= int32(len(app.Instructions)) {
 			u.complete = true
 		}
-		if ctx.Debug {
-			fmt.Printf("\tFU: Pushing new element from pc %d\n", currentPc/4)
-		}
+		logu(ctx, "FU", "pushing new element from pc %d", currentPc/4)
 		u.outBus.Add(currentPc, cycle)
 	}
 }

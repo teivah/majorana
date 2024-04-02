@@ -20,9 +20,7 @@ func newDecodeUnit(inBus *comp.BufferedBus[int32], outBus *comp.BufferedBus[risc
 
 func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 	if u.pendingBranchResolution {
-		if ctx.Debug {
-			fmt.Printf("\tDU: Blocked %v\n", u.log)
-		}
+		logu(ctx, "DU", "blocked")
 		return
 	}
 
@@ -32,13 +30,11 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 			return
 		}
 		runner := app.Instructions[pc/4]
-		if ctx.Debug {
-			fmt.Printf("\tDU: Decoding instruction %s at %d\n", runner.InstructionType(), pc/4)
-		}
+		logi(ctx, "DU", runner.InstructionType(), pc/4, "decoding")
 		jump := false
-		if risc.IsJump(runner.InstructionType()) {
+		if risc.IsUnconditionalBranch(runner.InstructionType()) {
 			u.pendingBranchResolution = true
-			u.log = fmt.Sprintf("%v", runner.InstructionType())
+			u.log = fmt.Sprintf("%v at %d", runner.InstructionType(), pc/4)
 			jump = true
 		}
 		u.outBus.Add(risc.InstructionRunnerPc{

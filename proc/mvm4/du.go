@@ -27,7 +27,7 @@ func (du *decodeUnit) cycle(app risc.Application, ctx *risc.Context, inBus *comp
 		fmt.Printf("\tDU: Decoding instruction %d\n", pc/4)
 	}
 	runner := app.Instructions[pc/4]
-	if risc.IsJump(runner.InstructionType()) {
+	if risc.IsUnconditionalBranch(runner.InstructionType()) {
 		du.pendingBranchResolution = true
 	}
 	outBus.Add(risc.InstructionRunnerPc{

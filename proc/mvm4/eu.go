@@ -47,7 +47,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 
 	// To avoid writeback hazard, if the pipeline contains read registers not
 	// written yet, we wait for it
-	if ctx.ContainWrittenRegisters(runner.Runner.ReadRegisters()) {
+	if ctx.IsWriteDataHazard(runner.Runner.ReadRegisters()) {
 		eu.remainingCycles = 1
 		return false, 0, false, nil
 	}
@@ -71,10 +71,10 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 		InstructionType: runner.Runner.InstructionType(),
 		WriteRegisters:  runner.Runner.WriteRegisters(),
 	})
-	ctx.AddWriteRegisters(runner.Runner.WriteRegisters())
+	ctx.AddPendingWriteRegisters(runner.Runner.WriteRegisters())
 	eu.processing = false
 
-	if risc.IsJump(runner.Runner.InstructionType()) {
+	if risc.IsUnconditionalBranch(runner.Runner.InstructionType()) {
 		eu.bu.notifyJumpAddressResolved(eu.runner.Pc, execution.NextPc)
 	}
 

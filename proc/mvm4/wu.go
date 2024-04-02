@@ -25,7 +25,7 @@ func (wu *writeUnit) cycle(ctx *risc.Context, inBus *comp.SimpleBus[comp.Executi
 	}
 	if execution.Execution.RegisterChange {
 		ctx.WriteRegister(execution.Execution)
-		ctx.DeleteWriteRegisters(execution.WriteRegisters)
+		ctx.DeletePendingWriteRegisters(execution.WriteRegisters)
 	} else if execution.Execution.MemoryChange {
 		// TODO Do after
 		wu.pendingMemoryWrite = true

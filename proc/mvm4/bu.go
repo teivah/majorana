@@ -22,7 +22,7 @@ func newBTBBranchUnit(btbSize int, fu *fetchUnit, du *decodeUnit) *btbBranchUnit
 
 func (bu *btbBranchUnit) assert(runner risc.InstructionRunnerPc) {
 	instructionType := runner.Runner.InstructionType()
-	if risc.IsJump(instructionType) {
+	if risc.IsUnconditionalBranch(instructionType) {
 		nextPc, exists := bu.btb.get(runner.Pc)
 		if !exists {
 			// Unknown branch, it will lead to a pipeline flush
@@ -33,7 +33,7 @@ func (bu *btbBranchUnit) assert(runner risc.InstructionRunnerPc) {
 			bu.toCheck = false
 			bu.fu.reset(nextPc, true)
 		}
-	} else if risc.IsConditionalBranching(instructionType) {
+	} else if risc.IsConditionalBranch(instructionType) {
 		// Assuming next instruction
 		bu.toCheck = true
 		bu.expectation = runner.Pc + 4

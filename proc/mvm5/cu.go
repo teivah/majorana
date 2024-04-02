@@ -1,16 +1,16 @@
 package mvm5
 
 import (
-	"fmt"
+	"slices"
 
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
 
 type controlUnit struct {
-	inBus   *comp.BufferedBus[risc.InstructionRunnerPc]
-	outBus  *comp.BufferedBus[risc.InstructionRunnerPc]
-	pending *risc.InstructionRunnerPc
+	inBus    *comp.BufferedBus[risc.InstructionRunnerPc]
+	outBus   *comp.BufferedBus[risc.InstructionRunnerPc]
+	pendings []risc.InstructionRunnerPc
 }
 
 func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.InstructionRunnerPc]) *controlUnit {
@@ -22,89 +22,71 @@ func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *c
 
 func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	if !u.outBus.CanAdd() {
+		logu(ctx, "CU", "can't add")
+		return
+	}
+	if ctx.IsControlHazard() {
+		logu(ctx, "CU", "control hazard")
 		return
 	}
 
-	if u.pending != nil {
-		u.outBus.Add(*u.pending, cycle)
-		u.pending = nil
-		return
-	}
-
+	pushed := 0
 	remaining := u.outBus.RemainingToAdd()
-	var runners []risc.InstructionRunnerPc
-	for i := 0; i < remaining; i++ {
+	for i := 0; i < len(u.pendings) && remaining > 0; i++ {
+		pending := u.pendings[i]
+		if pushed > 0 && risc.IsBranch(pending.Runner.InstructionType()) {
+			return
+		}
+
+		hazard, reason := ctx.IsDataHazard(pending.Runner)
+		if !hazard {
+			u.outBus.Add(pending, cycle)
+			ctx.AddPendingRegisters(pending.Runner)
+			if risc.IsBranch(pending.Runner.InstructionType()) {
+				ctx.SetPendingBranch()
+			}
+			logi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "pushing runner")
+			u.pendings = slices.Delete(u.pendings, i, i+1)
+			remaining--
+			pushed++
+		} else {
+			logi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "data hazard: reason=%s", reason)
+			return
+		}
+	}
+
+	for remaining > 0 {
 		runner, exists := u.inBus.Get()
 		if !exists {
 			return
 		}
-		if ctx.ContainWrittenRegisters(runner.Runner.ReadRegisters()) {
-			u.inBus.Revert(runner, cycle)
-			break
+		if pushed > 0 && risc.IsBranch(runner.Runner.InstructionType()) {
+			u.pendings = append(u.pendings, runner)
+			return
 		}
-		if ctx.Debug {
-			fmt.Printf("\tCU: Adding runner %s at %d\n", runner.Runner.InstructionType(), runner.Pc/4)
-		}
-		runners = append(runners, runner)
-	}
 
-	if len(runners) == 1 {
-		u.outBus.Add(runners[0], cycle)
-		return
-	}
-
-	readRegs := make(map[risc.RegisterType]bool)
-	writeRegs := make(map[risc.RegisterType]bool)
-	for _, runner := range runners {
-		for _, reg := range runner.Runner.ReadRegisters() {
-			readRegs[reg] = true
-		}
-		for _, reg := range runner.Runner.WriteRegisters() {
-			writeRegs[reg] = true
-		}
-	}
-
-	if !isHazard(runners, readRegs, writeRegs) {
-		for _, runner := range runners {
+		hazard, reason := ctx.IsDataHazard(runner.Runner)
+		if !hazard {
 			u.outBus.Add(runner, cycle)
-		}
-	} else {
-		u.outBus.Add(runners[0], cycle)
-		for i := 1; i < len(runners); i++ {
-			// TODO Logic only works if buffer == 2
-			//u.outBus.Add(runners[i], cycle+1)
-			u.pending = &runners[i]
+			ctx.AddPendingRegisters(runner.Runner)
+			if risc.IsBranch(runner.Runner.InstructionType()) {
+				ctx.SetPendingBranch()
+			}
+			logi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
+			remaining--
+			pushed++
+		} else {
+			u.pendings = append(u.pendings, runner)
+			logi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", reason)
 			return
 		}
 	}
 }
 
-func isHazard(runners []risc.InstructionRunnerPc, readRegs, writeRegs map[risc.RegisterType]bool) bool {
-	// Data hazard
-	for reg := range writeRegs {
-		if readRegs[reg] {
-			return true
-		}
-	}
-	for reg := range readRegs {
-		if writeRegs[reg] {
-			return true
-		}
-	}
-
-	// Control hazard
-	for _, runner := range runners {
-		if risc.IsJump(runner.Runner.InstructionType()) ||
-			risc.IsConditionalBranching(runner.Runner.InstructionType()) {
-			return true
-		}
-	}
-	return false
-}
-
 func (u *controlUnit) flush() {
+	u.pendings = nil
 }
 
 func (u *controlUnit) isEmpty() bool {
-	return true
+	return len(u.pendings) == 0
 }

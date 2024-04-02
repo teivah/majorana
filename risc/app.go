@@ -1,24 +1,35 @@
 package risc
 
+import "fmt"
+
 type Application struct {
 	Instructions []InstructionRunner
 	Labels       map[string]int32
 }
 
 type Context struct {
-	Registers     map[RegisterType]int32
-	ReadRegisters map[RegisterType]int
-	Memory        []int8
-	Debug         bool
+	Registers             map[RegisterType]int32
+	PendingWriteRegisters map[RegisterType]int
+	PendingReadRegisters  map[RegisterType]int
+	PendingBranch         bool
+	Memory                []int8
+	Debug                 bool
 }
 
 func NewContext(debug bool, memoryBytes int) *Context {
 	return &Context{
-		Registers:     make(map[RegisterType]int32),
-		ReadRegisters: make(map[RegisterType]int),
-		Memory:        make([]int8, memoryBytes),
-		Debug:         debug,
+		Registers:             make(map[RegisterType]int32),
+		PendingWriteRegisters: make(map[RegisterType]int),
+		PendingReadRegisters:  make(map[RegisterType]int),
+		Memory:                make([]int8, memoryBytes),
+		Debug:                 debug,
 	}
+}
+
+func (ctx *Context) Flush() {
+	ctx.PendingBranch = false
+	ctx.PendingWriteRegisters = make(map[RegisterType]int)
+	ctx.PendingReadRegisters = make(map[RegisterType]int)
 }
 
 func (ctx *Context) WriteRegister(exe Execution) {
@@ -31,31 +42,102 @@ func (ctx *Context) WriteMemory(exe Execution) {
 	}
 }
 
-func (ctx *Context) AddWriteRegisters(registers []RegisterType) {
-	for _, register := range registers {
-		ctx.ReadRegisters[register]++
+func (ctx *Context) SetPendingBranch() {
+	ctx.PendingBranch = true
+}
+
+func (ctx *Context) DeletePendingBranch() {
+	ctx.PendingBranch = false
+}
+
+func (ctx *Context) IsControlHazard() bool {
+	return ctx.PendingBranch
+}
+
+func (ctx *Context) AddPendingRegisters(runner InstructionRunner) {
+	for _, register := range runner.ReadRegisters() {
+		if register == Zero {
+			continue
+		}
+		ctx.PendingReadRegisters[register]++
+	}
+	for _, register := range runner.WriteRegisters() {
+		if register == Zero {
+			continue
+		}
+		ctx.PendingWriteRegisters[register]++
 	}
 }
 
-func (ctx *Context) DeleteWriteRegisters(registers []RegisterType) {
+func (ctx *Context) AddPendingWriteRegisters(registers []RegisterType) {
 	for _, register := range registers {
-		ctx.ReadRegisters[register]--
+		ctx.PendingWriteRegisters[register]++
+	}
+}
+
+func (ctx *Context) DeletePendingRegisters(readRegisters, writeRegisters []RegisterType) {
+	for _, register := range readRegisters {
+		if register == Zero {
+			continue
+		}
+		ctx.PendingReadRegisters[register]--
+		if ctx.PendingReadRegisters[register] <= 0 {
+			delete(ctx.PendingReadRegisters, register)
+		}
+	}
+	for _, register := range writeRegisters {
+		if register == Zero {
+			continue
+		}
+		ctx.PendingWriteRegisters[register]--
+		if ctx.PendingWriteRegisters[register] <= 0 {
+			delete(ctx.PendingWriteRegisters, register)
+		}
+	}
+}
+
+func (ctx *Context) DeletePendingWriteRegisters(registers []RegisterType) {
+	for _, register := range registers {
+		ctx.PendingWriteRegisters[register]--
 		if ctx.Registers[register] <= 0 {
 			delete(ctx.Registers, register)
 		}
 	}
 }
 
-func (ctx *Context) ContainWrittenRegisters(registers []RegisterType) bool {
+// IsWriteDataHazard returns true if there's already a register pending to be
+// written among the provided list.
+func (ctx *Context) IsWriteDataHazard(registers []RegisterType) bool {
 	for _, register := range registers {
 		if register == Zero {
 			continue
 		}
-		if v, exists := ctx.ReadRegisters[register]; exists && v > 0 {
+		if v, exists := ctx.PendingWriteRegisters[register]; exists && v > 0 {
 			return true
 		}
 	}
 	return false
+}
+
+func (ctx *Context) IsDataHazard(runner InstructionRunner) (bool, string) {
+	// TODO write write?
+	for _, register := range runner.ReadRegisters() {
+		if register == Zero {
+			continue
+		}
+		if v, exists := ctx.PendingWriteRegisters[register]; exists && v > 0 {
+			return true, fmt.Sprintf("Read hazard on %s", register)
+		}
+	}
+	for _, register := range runner.WriteRegisters() {
+		if register == Zero {
+			continue
+		}
+		if v, exists := ctx.PendingReadRegisters[register]; exists && v > 0 {
+			return true, fmt.Sprintf("Write hazard on %s", register)
+		}
+	}
+	return false, ""
 }
 
 type Execution struct {

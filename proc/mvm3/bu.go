@@ -11,11 +11,11 @@ type simpleBranchUnit struct {
 
 func (bu *simpleBranchUnit) assert(runner risc.InstructionRunnerPc) {
 	instructionType := runner.Runner.InstructionType()
-	if risc.IsJump(instructionType) {
+	if risc.IsUnconditionalBranch(instructionType) {
 		bu.toCheck = true
 		// Not implemented
 		bu.expectation = -1
-	} else if risc.IsConditionalBranching(instructionType) {
+	} else if risc.IsConditionalBranch(instructionType) {
 		// Assuming next instruction
 		bu.toCheck = true
 		bu.expectation = runner.Pc + 4

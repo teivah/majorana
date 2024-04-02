@@ -1,8 +1,6 @@
 package mvm5
 
 import (
-	"fmt"
-
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -62,11 +60,8 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	cycle := 0
 	for {
 		cycle += 1
-		if m.ctx.Debug {
-			fmt.Printf("%d\n", int32(cycle))
-		}
-		// TODO
-		if cycle > 3000 {
+		log(m.ctx, "Cycle %d", cycle)
+		if cycle > 1000 {
 			return 0, nil
 		}
 		m.decodeBus.Connect(cycle)
@@ -101,17 +96,13 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 		// Write back
 		m.writeUnit.cycle(m.ctx)
-		if m.ctx.Debug {
-			fmt.Printf("\tRegisters: %v\n", m.ctx.Registers)
-		}
+		log(m.ctx, "\tRegisters: %v", m.ctx.Registers)
 
 		if ret {
 			return cycle, nil
 		}
 		if flush {
-			if m.ctx.Debug {
-				fmt.Printf("\tFlush to %d\n", pc/4)
-			}
+			log(m.ctx, "\t️⚠️ Flush to %d", pc/4)
 			m.flush(pc)
 			cycle += flushCycles
 			continue
@@ -140,6 +131,7 @@ func (m *CPU) flush(pc int32) {
 	m.controlBus.Clean()
 	m.executeBus.Clean()
 	m.writeBus.Clean()
+	m.ctx.Flush()
 }
 
 func (m *CPU) isEmpty() bool {
@@ -152,10 +144,10 @@ func (m *CPU) isEmpty() bool {
 		m.executeBus.IsEmpty() &&
 		m.writeBus.IsEmpty()
 	if !empty {
-		if m.ctx.Debug {
-			fmt.Println("fu:", m.fetchUnit.isEmpty(), "du:", m.decodeUnit.isEmpty(), "cu:", m.controlUnit.isEmpty(), "wu:", m.writeUnit.isEmpty(),
-				"db:", m.decodeBus.IsEmpty(), "cb:", m.controlBus.IsEmpty(), "eb:", m.executeBus.IsEmpty(), "wb:", m.writeBus.IsEmpty())
-		}
+		//if m.ctx.Debug {
+		//	fmt.Println("fu:", m.fetchUnit.isEmpty(), "du:", m.decodeUnit.isEmpty(), "cu:", m.controlUnit.isEmpty(), "wu:", m.writeUnit.isEmpty(),
+		//		"db:", m.decodeBus.IsEmpty(), "cb:", m.controlBus.IsEmpty(), "eb:", m.executeBus.IsEmpty(), "wb:", m.writeBus.IsEmpty())
+		//}
 		return false
 	}
 	for _, executeUnit := range m.executeUnits {

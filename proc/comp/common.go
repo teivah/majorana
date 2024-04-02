@@ -6,4 +6,5 @@ type ExecutionContext struct {
 	Execution       risc.Execution
 	InstructionType risc.InstructionType
 	WriteRegisters  []risc.RegisterType
+	ReadRegisters   []risc.RegisterType
 }
