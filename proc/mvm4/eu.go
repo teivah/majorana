@@ -27,7 +27,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 			return false, 0, false, nil
 		}
 		eu.runner = runner
-		eu.remainingCycles = risc.CyclesPerInstruction(runner.Runner.InstructionType())
+		eu.remainingCycles = runner.Runner.InstructionType().Cycles()
 		eu.processing = true
 	}
 
@@ -74,7 +74,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 	ctx.AddPendingWriteRegisters(runner.Runner.WriteRegisters())
 	eu.processing = false
 
-	if risc.IsUnconditionalBranch(runner.Runner.InstructionType()) {
+	if runner.Runner.InstructionType().IsUnconditionalBranch() {
 		eu.bu.notifyJumpAddressResolved(eu.runner.Pc, execution.NextPc)
 	}
 

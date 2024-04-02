@@ -39,7 +39,7 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		runner := app.Instructions[pc/4]
 		logi(ctx, "DU", runner.InstructionType(), pc/4, "decoding")
 		jump := false
-		if risc.IsUnconditionalBranch(runner.InstructionType()) {
+		if runner.InstructionType().IsUnconditionalBranch() {
 			u.pendingBranchResolution = true
 			u.log = fmt.Sprintf("%v at %d", runner.InstructionType(), pc/4)
 			jump = true

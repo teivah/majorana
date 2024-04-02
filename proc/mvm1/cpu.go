@@ -85,6 +85,6 @@ func (m *CPU) execute(app risc.Application, r risc.InstructionRunner, pc int32) 
 	if err != nil {
 		return risc.Execution{}, 0, err
 	}
-	m.cycle += risc.CyclesPerInstruction(r.InstructionType())
+	m.cycle += r.InstructionType().Cycles()
 	return exe, r.InstructionType(), nil
 }

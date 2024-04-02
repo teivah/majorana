@@ -154,8 +154,8 @@ const (
 	Xori
 )
 
-func (inst InstructionType) String() string {
-	switch inst {
+func (ins InstructionType) String() string {
+	switch ins {
 	case Add:
 		return "Add"
 	case Addi:
@@ -239,11 +239,11 @@ func (inst InstructionType) String() string {
 	case Xori:
 		return "Xori"
 	default:
-		panic(inst)
+		panic(ins)
 	}
 }
 
-func CyclesPerInstruction(ins InstructionType) int {
+func (ins InstructionType) Cycles() int {
 	switch ins {
 	case Add:
 		return 1
@@ -335,7 +335,7 @@ func CyclesPerInstruction(ins InstructionType) int {
 	}
 }
 
-func IsWriteBack(ins InstructionType) bool {
+func (ins InstructionType) IsWriteBack() bool {
 	switch ins {
 	case Sb, Sw, Sh:
 		return false
@@ -343,7 +343,7 @@ func IsWriteBack(ins InstructionType) bool {
 	return true
 }
 
-func IsUnconditionalBranch(ins InstructionType) bool {
+func (ins InstructionType) IsUnconditionalBranch() bool {
 	switch ins {
 	case Jal, Jalr:
 		return true
@@ -351,7 +351,7 @@ func IsUnconditionalBranch(ins InstructionType) bool {
 	return false
 }
 
-func IsConditionalBranch(ins InstructionType) bool {
+func (ins InstructionType) IsConditionalBranch() bool {
 	switch ins {
 	case Beq, Bne, Blt, Bge, Bgeu:
 		return true
@@ -359,9 +359,8 @@ func IsConditionalBranch(ins InstructionType) bool {
 	return false
 }
 
-// TOOD Should be a method
-func IsBranch(ins InstructionType) bool {
-	return IsUnconditionalBranch(ins) || IsConditionalBranch(ins)
+func (ins InstructionType) IsBranch() bool {
+	return ins.IsUnconditionalBranch() || ins.IsConditionalBranch()
 }
 
 func IsRegisterChange(register RegisterType, value int32) (RegisterType, int32) {

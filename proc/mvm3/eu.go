@@ -25,7 +25,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 			return false, 0, false, nil
 		}
 		eu.runner = runner
-		eu.remainingCycles = risc.CyclesPerInstruction(runner.Runner.InstructionType())
+		eu.remainingCycles = runner.Runner.InstructionType().Cycles()
 		eu.processing = true
 	}
 

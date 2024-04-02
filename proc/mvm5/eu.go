@@ -25,7 +25,7 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 			return false, 0, false, nil
 		}
 		u.runner = runner
-		u.remainingCycles = risc.CyclesPerInstruction(runner.Runner.InstructionType())
+		u.remainingCycles = runner.Runner.InstructionType().Cycles()
 		u.pending = true
 	}
 
@@ -64,7 +64,7 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 	}, cycle)
 	u.pending = false
 
-	if risc.IsUnconditionalBranch(runner.Runner.InstructionType()) {
+	if runner.Runner.InstructionType().IsUnconditionalBranch() {
 		logi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
 			"notify jump address resolved from %d to %d", u.runner.Pc/4, execution.NextPc/4)
 		u.bu.notifyJumpAddressResolved(u.runner.Pc, execution.NextPc)

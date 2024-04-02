@@ -29,12 +29,8 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	pushed := 0
 	remaining := u.outBus.RemainingToAdd()
 	for i := 0; i < len(u.pendings) && remaining > 0; i++ {
-		if ctx.IsControlHazard() {
-			logu(ctx, "CU", "control hazard")
-			return
-		}
 		pending := u.pendings[i]
-		if pushed > 0 && risc.IsBranch(pending.Runner.InstructionType()) {
+		if pushed > 0 && pending.Runner.InstructionType().IsBranch() {
 			return
 		}
 
@@ -42,7 +38,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		if !hazard {
 			u.outBus.Add(pending, cycle)
 			ctx.AddPendingRegisters(pending.Runner)
-			if risc.IsBranch(pending.Runner.InstructionType()) {
+			if pending.Runner.InstructionType().IsBranch() {
 				ctx.SetPendingBranch()
 			}
 			logi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "pushing runner")
@@ -56,15 +52,11 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	}
 
 	for remaining > 0 {
-		if ctx.IsControlHazard() {
-			logu(ctx, "CU", "control hazard")
-			return
-		}
 		runner, exists := u.inBus.Get()
 		if !exists {
 			return
 		}
-		if pushed > 0 && risc.IsBranch(runner.Runner.InstructionType()) {
+		if pushed > 0 && runner.Runner.InstructionType().IsBranch() {
 			u.pendings = append(u.pendings, runner)
 			return
 		}
@@ -73,7 +65,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		if !hazard {
 			u.outBus.Add(runner, cycle)
 			ctx.AddPendingRegisters(runner.Runner)
-			if risc.IsBranch(runner.Runner.InstructionType()) {
+			if runner.Runner.InstructionType().IsBranch() {
 				ctx.SetPendingBranch()
 			}
 			logi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
