@@ -61,9 +61,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	for {
 		cycle += 1
 		log(m.ctx, "Cycle %d", cycle)
-		if cycle > 1000 {
-			return 0, nil
-		}
 		m.decodeBus.Connect(cycle)
 		m.controlBus.Connect(cycle)
 		m.executeBus.Connect(cycle)

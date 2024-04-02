@@ -25,14 +25,14 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		logu(ctx, "CU", "can't add")
 		return
 	}
-	if ctx.IsControlHazard() {
-		logu(ctx, "CU", "control hazard")
-		return
-	}
 
 	pushed := 0
 	remaining := u.outBus.RemainingToAdd()
 	for i := 0; i < len(u.pendings) && remaining > 0; i++ {
+		if ctx.IsControlHazard() {
+			logu(ctx, "CU", "control hazard")
+			return
+		}
 		pending := u.pendings[i]
 		if pushed > 0 && risc.IsBranch(pending.Runner.InstructionType()) {
 			return
@@ -56,6 +56,10 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	}
 
 	for remaining > 0 {
+		if ctx.IsControlHazard() {
+			logu(ctx, "CU", "control hazard")
+			return
+		}
 		runner, exists := u.inBus.Get()
 		if !exists {
 			return

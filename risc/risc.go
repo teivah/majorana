@@ -298,9 +298,11 @@ func CyclesPerInstruction(ins InstructionType) int {
 	case Ret:
 		return 1
 	case Sb:
-		return 50
+		// Write back
+		return 1
 	case Sh:
-		return 50
+		// Write back
+		return 1
 	case Sll:
 		return 1
 	case Slli:
@@ -322,7 +324,8 @@ func CyclesPerInstruction(ins InstructionType) int {
 	case Sub:
 		return 1
 	case Sw:
-		return 50
+		// Write back
+		return 1
 	case Xor:
 		return 1
 	case Xori:

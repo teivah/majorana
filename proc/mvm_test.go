@@ -92,10 +92,9 @@ func TestMvm4Prime(t *testing.T) {
 
 func TestMvm5Prime(t *testing.T) {
 	factory := func() virtualMachine {
-		return mvm5.NewCPU(true, memory)
+		return mvm5.NewCPU(false, memory)
 	}
-	//testPrime(t, factory, primeFrom, primeTo)
-	testPrime(t, factory, 5, 6)
+	testPrime(t, factory, primeFrom, primeTo)
 }
 
 func testPrime(t *testing.T, factory func() virtualMachine, from, to int) {

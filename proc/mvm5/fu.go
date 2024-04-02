@@ -62,6 +62,7 @@ func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 
 	for i := 0; i < u.outBus.OutLength(); i++ {
 		if !u.outBus.CanAdd() {
+			logu(ctx, "FU", "can't add")
 			return
 		}
 		u.processing = false

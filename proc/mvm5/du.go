@@ -24,7 +24,10 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		return
 	}
 
-	for u.outBus.CanAdd() {
+	for {
+		if !u.outBus.CanAdd() {
+			logu(ctx, "DU", "can't add")
+		}
 		pc, exists := u.inBus.Get()
 		if !exists {
 			return
