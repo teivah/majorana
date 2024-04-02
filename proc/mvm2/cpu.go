@@ -72,6 +72,10 @@ loop:
 	return m.cycle, nil
 }
 
+func (m *CPU) Stats() map[string]any {
+	return nil
+}
+
 func (m *CPU) fetchInstruction(pc int32) int32 {
 	if m.isPresentInL1i(pc) {
 		m.cycle += cyclesL1Access

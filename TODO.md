@@ -1,5 +1,4 @@
 - In the case of inner function calls, push $ra to a RAM stack
 - Stats
-- Stack $ra to memory
 - j instruction
-- Superscalar
+- Test jal

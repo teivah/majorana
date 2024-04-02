@@ -23,6 +23,8 @@ type CPU struct {
 	writeBus     *comp.BufferedBus[comp.ExecutionContext]
 	writeUnit    *writeUnit
 	branchUnit   *btbBranchUnit
+
+	counterFlush int
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
@@ -97,6 +99,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 		if ret {
 			log(m.ctx, "\t🛑 Return")
+			m.counterFlush++
 			cycle++
 			m.writeBus.Connect(cycle)
 			for !m.writeUnit.isEmpty() || !m.writeBus.IsEmpty() {
@@ -123,6 +126,12 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 	}
 	return cycle, nil
+}
+
+func (m *CPU) Stats() map[string]any {
+	return map[string]any{
+		"flush": m.counterFlush,
+	}
 }
 
 func (m *CPU) flush(pc int32) {

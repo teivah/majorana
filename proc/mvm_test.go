@@ -126,38 +126,38 @@ func TestMvm1Sums(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm1.NewCPU(false, memory)
 	}
-	testSums(t, factory, testFrom, testTo)
+	testSums(t, factory, testFrom, testTo, false)
 }
 
 func TestMvm2Sums(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm2.NewCPU(false, memory)
 	}
-	testSums(t, factory, testFrom, testTo)
+	testSums(t, factory, testFrom, testTo, false)
 }
 
 func TestMvm3Sums(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm3.NewCPU(false, memory)
 	}
-	testSums(t, factory, testFrom, testTo)
+	testSums(t, factory, testFrom, testTo, false)
 }
 
 func TestMvm4Sums(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm4.NewCPU(false, memory)
 	}
-	testSums(t, factory, testFrom, testTo)
+	testSums(t, factory, testFrom, testTo, false)
 }
 
 func TestMvm5Sums(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm5.NewCPU(false, memory)
 	}
-	testSums(t, factory, testFrom, testTo)
+	testSums(t, factory, testFrom, testTo, false)
 }
 
-func testSums(t *testing.T, factory func() virtualMachine, from, to int) {
+func testSums(t *testing.T, factory func() virtualMachine, from, to int, stats bool) {
 	for i := from; i < to; i++ {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			vm := factory()
@@ -174,7 +174,7 @@ func testSums(t *testing.T, factory func() virtualMachine, from, to int) {
 			instructions := fmt.Sprintf(test.ReadFile(t, "../res/array-sum.asm"), "")
 			app, err := risc.Parse(instructions)
 			require.NoError(t, err)
-			_, err = vm.Run(app)
+			cycle, err := vm.Run(app)
 			require.NoError(t, err)
 
 			s := make([]int, 0, n)
@@ -182,6 +182,13 @@ func testSums(t *testing.T, factory func() virtualMachine, from, to int) {
 				s = append(s, i)
 			}
 			assert.Equal(t, int32(sumArray(s)), vm.Context().Registers[risc.A0])
+
+			if stats {
+				t.Logf("Cycle: %d", cycle)
+				for k, v := range vm.Stats() {
+					t.Log(k, v)
+				}
+			}
 		})
 	}
 }

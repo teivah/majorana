@@ -90,6 +90,10 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	return cycle, nil
 }
 
+func (m *CPU) Stats() map[string]any {
+	return nil
+}
+
 func (m *CPU) flush(pc int32) {
 	m.fetchUnit.flush(pc)
 	m.decodeUnit.flush()
