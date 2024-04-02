@@ -8,7 +8,7 @@ import (
 )
 
 type executeUnit struct {
-	processing      bool
+	pending         bool
 	remainingCycles int
 	runner          risc.InstructionRunnerPc
 	bu              *btbBranchUnit
@@ -21,14 +21,14 @@ func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[risc.InstructionR
 }
 
 func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error) {
-	if !u.processing {
+	if !u.pending {
 		runner, exists := u.inBus.Get()
 		if !exists {
 			return false, 0, false, nil
 		}
 		u.runner = runner
 		u.remainingCycles = risc.CyclesPerInstruction(runner.Runner.InstructionType())
-		u.processing = true
+		u.pending = true
 	}
 
 	u.remainingCycles--
@@ -72,9 +72,12 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 		WriteRegisters:  runner.Runner.WriteRegisters(),
 	}, cycle)
 	ctx.AddWriteRegisters(runner.Runner.WriteRegisters())
-	u.processing = false
+	u.pending = false
 
 	if risc.IsJump(runner.Runner.InstructionType()) {
+		if ctx.Debug {
+			fmt.Printf("\tEU: Notify jump address resolved from %d to %d\n", u.runner.Pc/4, execution.NextPc/4)
+		}
 		u.bu.notifyJumpAddressResolved(u.runner.Pc, execution.NextPc)
 	}
 
@@ -86,10 +89,10 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 }
 
 func (u *executeUnit) flush() {
-	u.processing = false
+	u.pending = false
 	u.remainingCycles = 0
 }
 
 func (u *executeUnit) isEmpty() bool {
-	return !u.processing
+	return !u.pending
 }

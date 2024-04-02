@@ -2,6 +2,7 @@
     addi t0, zero, %d
     sw t0, 0, zero
 
+    # TODO Remove once we've got a bench that tests memory accesses
     addi t0, zero, 0 # Address of the word
     lw t0, 0(t0) # Load word in memory
 

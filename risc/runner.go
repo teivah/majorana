@@ -20,7 +20,11 @@ func (r *Runner) Run() error {
 		if err != nil {
 			return err
 		}
-		r.Ctx.Write(exe)
+		if exe.RegisterChange {
+			r.Ctx.WriteRegister(exe)
+		} else if exe.MemoryChange {
+			r.Ctx.WriteMemory(exe)
+		}
 
 		if exe.PcChange {
 			pc = exe.NextPc

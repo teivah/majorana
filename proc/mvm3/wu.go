@@ -23,12 +23,14 @@ func (wu *writeUnit) cycle(ctx *risc.Context, inBus *comp.SimpleBus[comp.Executi
 	if !exists {
 		return
 	}
-	if risc.IsWriteBack(execution.InstructionType) {
-		ctx.Write(execution.Execution)
+	if execution.Execution.RegisterChange {
+		ctx.WriteRegister(execution.Execution)
 		ctx.DeleteWriteRegisters(execution.WriteRegisters)
-	} else {
+	} else if execution.Execution.MemoryChange {
+		// TODO Do after
 		wu.pendingMemoryWrite = true
 		wu.cycles = cyclesMemoryAccess
+		ctx.WriteMemory(execution.Execution)
 	}
 }
 

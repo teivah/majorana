@@ -7,7 +7,7 @@ type Application struct {
 
 type Context struct {
 	Registers     map[RegisterType]int32
-	ReadRegisters map[RegisterType]struct{}
+	ReadRegisters map[RegisterType]int
 	Memory        []int8
 	Debug         bool
 }
@@ -15,25 +15,34 @@ type Context struct {
 func NewContext(debug bool, memoryBytes int) *Context {
 	return &Context{
 		Registers:     make(map[RegisterType]int32),
-		ReadRegisters: make(map[RegisterType]struct{}),
+		ReadRegisters: make(map[RegisterType]int),
 		Memory:        make([]int8, memoryBytes),
 		Debug:         debug,
 	}
 }
 
-func (ctx *Context) Write(exe Execution) {
-	ctx.Registers[exe.Register] = exe.Value
+func (ctx *Context) WriteRegister(exe Execution) {
+	ctx.Registers[exe.Register] = exe.RegisterValue
+}
+
+func (ctx *Context) WriteMemory(exe Execution) {
+	for k, v := range exe.MemoryChanges {
+		ctx.Memory[k] = v
+	}
 }
 
 func (ctx *Context) AddWriteRegisters(registers []RegisterType) {
 	for _, register := range registers {
-		ctx.ReadRegisters[register] = struct{}{}
+		ctx.ReadRegisters[register]++
 	}
 }
 
 func (ctx *Context) DeleteWriteRegisters(registers []RegisterType) {
 	for _, register := range registers {
-		delete(ctx.ReadRegisters, register)
+		ctx.ReadRegisters[register]--
+		if ctx.Registers[register] <= 0 {
+			delete(ctx.Registers, register)
+		}
 	}
 }
 
@@ -42,7 +51,7 @@ func (ctx *Context) ContainWrittenRegisters(registers []RegisterType) bool {
 		if register == Zero {
 			continue
 		}
-		if _, exists := ctx.ReadRegisters[register]; exists {
+		if v, exists := ctx.ReadRegisters[register]; exists && v > 0 {
 			return true
 		}
 	}
@@ -50,32 +59,12 @@ func (ctx *Context) ContainWrittenRegisters(registers []RegisterType) bool {
 }
 
 type Execution struct {
-	Register RegisterType
-	Value    int32
-	NextPc   int32
-	PcChange bool
-	Return   bool
-}
-
-func newExecutionWithPcChange(register RegisterType, value, pc int32) Execution {
-	return Execution{
-		Register: register,
-		Value:    value,
-		NextPc:   pc,
-		PcChange: true,
-	}
-}
-
-func newExecutionWithoutPcChange(register RegisterType, value int32) Execution {
-	return Execution{
-		Register: register,
-		Value:    value,
-	}
-}
-
-func pcChange(pc int32) Execution {
-	return Execution{
-		NextPc:   pc,
-		PcChange: true,
-	}
+	RegisterChange bool
+	Register       RegisterType
+	RegisterValue  int32
+	MemoryChange   bool
+	MemoryChanges  map[int32]int8
+	NextPc         int32
+	PcChange       bool
+	Return         bool
 }

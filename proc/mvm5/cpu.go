@@ -14,17 +14,17 @@ const (
 )
 
 type CPU struct {
-	ctx         *risc.Context
-	fetchUnit   *fetchUnit
-	decodeBus   *comp.BufferedBus[int32]
-	decodeUnit  *decodeUnit
-	controlBus  *comp.BufferedBus[risc.InstructionRunnerPc]
-	controlUnit *controlUnit
-	executeBus  *comp.BufferedBus[risc.InstructionRunnerPc]
-	executeUnit *executeUnit
-	writeBus    *comp.BufferedBus[comp.ExecutionContext]
-	writeUnit   *writeUnit
-	branchUnit  *btbBranchUnit
+	ctx          *risc.Context
+	fetchUnit    *fetchUnit
+	decodeBus    *comp.BufferedBus[int32]
+	decodeUnit   *decodeUnit
+	controlBus   *comp.BufferedBus[risc.InstructionRunnerPc]
+	controlUnit  *controlUnit
+	executeBus   *comp.BufferedBus[risc.InstructionRunnerPc]
+	executeUnits []*executeUnit
+	writeBus     *comp.BufferedBus[comp.ExecutionContext]
+	writeUnit    *writeUnit
+	branchUnit   *btbBranchUnit
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
@@ -44,10 +44,13 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 		controlBus:  controlBus,
 		controlUnit: newControlUnit(controlBus, executeBus),
 		executeBus:  executeBus,
-		executeUnit: newExecuteUnit(bu, executeBus, writeBus),
-		writeBus:    writeBus,
-		writeUnit:   newWriteUnit(writeBus),
-		branchUnit:  bu,
+		executeUnits: []*executeUnit{
+			newExecuteUnit(bu, executeBus, writeBus),
+			newExecuteUnit(bu, executeBus, writeBus),
+		},
+		writeBus:   writeBus,
+		writeUnit:  newWriteUnit(writeBus),
+		branchUnit: bu,
 	}
 }
 
@@ -61,6 +64,10 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		cycle += 1
 		if m.ctx.Debug {
 			fmt.Printf("%d\n", int32(cycle))
+		}
+		// TODO
+		if cycle > 3000 {
+			return 0, nil
 		}
 		m.decodeBus.Connect(cycle)
 		m.controlBus.Connect(cycle)
@@ -77,27 +84,40 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.controlUnit.cycle(cycle, m.ctx)
 
 		// Execute
-		flush, pc, ret, err := m.executeUnit.cycle(cycle, m.ctx, app)
-		if err != nil {
-			return 0, err
+		var (
+			flush bool
+			pc    int32
+			ret   bool
+		)
+		for _, executeUnit := range m.executeUnits {
+			f, p, r, err := executeUnit.cycle(cycle, m.ctx, app)
+			if err != nil {
+				return 0, err
+			}
+			flush = flush || f
+			pc = max(pc, p)
+			ret = ret || r
 		}
 
 		// Write back
 		m.writeUnit.cycle(m.ctx)
 		if m.ctx.Debug {
-			fmt.Printf("\tMemory: %v\n", m.ctx.Registers)
+			fmt.Printf("\tRegisters: %v\n", m.ctx.Registers)
 		}
 
 		if ret {
 			return cycle, nil
 		}
 		if flush {
+			if m.ctx.Debug {
+				fmt.Printf("\tFlush to %d\n", pc/4)
+			}
 			m.flush(pc)
 			cycle += flushCycles
 			continue
 		}
 
-		if m.isComplete() {
+		if m.isEmpty() {
 			if m.ctx.Registers[risc.Ra] != 0 {
 				m.ctx.Registers[risc.Ra] = 0
 				m.fetchUnit.reset(m.ctx.Registers[risc.Ra], false)
@@ -113,21 +133,35 @@ func (m *CPU) flush(pc int32) {
 	m.fetchUnit.flush(pc)
 	m.decodeUnit.flush()
 	m.controlUnit.flush()
-	m.executeUnit.flush()
+	for _, executeUnit := range m.executeUnits {
+		executeUnit.flush()
+	}
 	m.decodeBus.Clean()
 	m.controlBus.Clean()
 	m.executeBus.Clean()
 	m.writeBus.Clean()
 }
 
-func (m *CPU) isComplete() bool {
-	return m.fetchUnit.isEmpty() &&
+func (m *CPU) isEmpty() bool {
+	empty := m.fetchUnit.isEmpty() &&
 		m.decodeUnit.isEmpty() &&
 		m.controlUnit.isEmpty() &&
-		m.executeUnit.isEmpty() &&
 		m.writeUnit.isEmpty() &&
 		m.decodeBus.IsEmpty() &&
 		m.controlBus.IsEmpty() &&
 		m.executeBus.IsEmpty() &&
 		m.writeBus.IsEmpty()
+	if !empty {
+		if m.ctx.Debug {
+			fmt.Println("fu:", m.fetchUnit.isEmpty(), "du:", m.decodeUnit.isEmpty(), "cu:", m.controlUnit.isEmpty(), "wu:", m.writeUnit.isEmpty(),
+				"db:", m.decodeBus.IsEmpty(), "cb:", m.controlBus.IsEmpty(), "eb:", m.executeBus.IsEmpty(), "wb:", m.writeBus.IsEmpty())
+		}
+		return false
+	}
+	for _, executeUnit := range m.executeUnits {
+		if !executeUnit.isEmpty() {
+			return false
+		}
+	}
+	return true
 }

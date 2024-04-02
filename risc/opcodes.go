@@ -22,7 +22,11 @@ type add struct {
 
 func (a add) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(a.rd, ctx.Registers[a.rs1]+ctx.Registers[a.rs2])
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (a add) InstructionType() InstructionType {
@@ -45,7 +49,11 @@ type addi struct {
 
 func (a addi) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(a.rd, ctx.Registers[a.rs]+a.imm)
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (a addi) InstructionType() InstructionType {
@@ -68,7 +76,11 @@ type and struct {
 
 func (a and) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(a.rd, ctx.Registers[a.rs1]&ctx.Registers[a.rs2])
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (a and) InstructionType() InstructionType {
@@ -91,7 +103,11 @@ type andi struct {
 
 func (a andi) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(a.rd, ctx.Registers[a.rs]&a.imm)
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (a andi) InstructionType() InstructionType {
@@ -113,7 +129,11 @@ type auipc struct {
 
 func (a auipc) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(a.rd, pc+(a.imm<<12))
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (a auipc) InstructionType() InstructionType {
@@ -140,7 +160,10 @@ func (b beq) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, er
 		if !ok {
 			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
 		}
-		return pcChange(addr), nil
+		return Execution{
+			NextPc:   addr,
+			PcChange: true,
+		}, nil
 	}
 	return Execution{}, nil
 }
@@ -169,7 +192,10 @@ func (b bge) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, er
 		if !ok {
 			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
 		}
-		return pcChange(addr), nil
+		return Execution{
+			NextPc:   addr,
+			PcChange: true,
+		}, nil
 	}
 	return Execution{}, nil
 }
@@ -198,7 +224,10 @@ func (b bgeu) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, e
 		if !ok {
 			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
 		}
-		return pcChange(addr), nil
+		return Execution{
+			NextPc:   addr,
+			PcChange: true,
+		}, nil
 	}
 	return Execution{}, nil
 }
@@ -227,7 +256,10 @@ func (b blt) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, er
 		if !ok {
 			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
 		}
-		return pcChange(addr), nil
+		return Execution{
+			NextPc:   addr,
+			PcChange: true,
+		}, nil
 	}
 	return Execution{}, nil
 }
@@ -256,7 +288,10 @@ func (b bltu) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, e
 		if !ok {
 			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
 		}
-		return pcChange(addr), nil
+		return Execution{
+			NextPc:   addr,
+			PcChange: true,
+		}, nil
 	}
 	return Execution{}, nil
 }
@@ -285,7 +320,10 @@ func (b bne) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, er
 		if !ok {
 			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
 		}
-		return pcChange(addr), nil
+		return Execution{
+			NextPc:   addr,
+			PcChange: true,
+		}, nil
 	}
 	return Execution{}, nil
 }
@@ -313,7 +351,11 @@ func (d div) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 		return Execution{}, fmt.Errorf("division by zero")
 	}
 	register, value := IsRegisterChange(d.rd, ctx.Registers[d.rs1]/ctx.Registers[d.rs2])
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (d div) InstructionType() InstructionType {
@@ -340,7 +382,13 @@ func (j jal) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, er
 	}
 	ctx.Registers[Ra] = pc
 	register, value := IsRegisterChange(j.rd, pc+4)
-	return newExecutionWithPcChange(register, value, addr), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+		NextPc:         addr,
+		PcChange:       true,
+	}, nil
 }
 
 func (j jal) InstructionType() InstructionType {
@@ -363,7 +411,13 @@ type jalr struct {
 
 func (j jalr) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(j.rd, pc+4)
-	return newExecutionWithPcChange(register, value, ctx.Registers[j.rs]+j.imm), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+		NextPc:         ctx.Registers[j.rs] + j.imm,
+		PcChange:       true,
+	}, nil
 }
 
 func (j jalr) InstructionType() InstructionType {
@@ -385,7 +439,11 @@ type lui struct {
 
 func (l lui) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(l.rd, l.imm<<12)
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (l lui) InstructionType() InstructionType {
@@ -411,7 +469,11 @@ func (l lb) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	n := ctx.Memory[idx]
 
 	register, value := IsRegisterChange(l.rs2, int32(n))
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (l lb) InstructionType() InstructionType {
@@ -440,7 +502,11 @@ func (l lh) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 
 	n := i32FromBytes(i1, i2, 0, 0)
 	register, value := IsRegisterChange(l.rs2, n)
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (l lh) InstructionType() InstructionType {
@@ -462,7 +528,11 @@ type li struct {
 
 func (l li) Run(ctx *Context, _ map[string]int32, _ int32) (Execution, error) {
 	register, value := IsRegisterChange(l.rd, l.imm)
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (l li) InstructionType() InstructionType {
@@ -495,7 +565,14 @@ func (l lw) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 
 	n := i32FromBytes(i1, i2, i3, i4)
 	register, value := IsRegisterChange(l.rd, n)
-	return newExecutionWithoutPcChange(register, value), nil
+	if ctx.Debug {
+		fmt.Printf("\t\tRun: Lw %s %d\n", register, value)
+	}
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (l lw) InstructionType() InstructionType {
@@ -536,7 +613,11 @@ type mul struct {
 
 func (m mul) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(m.rd, ctx.Registers[m.rs1]*ctx.Registers[m.rs2])
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (m mul) InstructionType() InstructionType {
@@ -558,7 +639,11 @@ type mv struct {
 
 func (m mv) Run(ctx *Context, _ map[string]int32, _ int32) (Execution, error) {
 	register, value := IsRegisterChange(m.rd, ctx.Registers[m.rs])
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (m mv) InstructionType() InstructionType {
@@ -581,7 +666,11 @@ type or struct {
 
 func (o or) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(o.rd, ctx.Registers[o.rs1]|ctx.Registers[o.rs2])
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (o or) InstructionType() InstructionType {
@@ -604,7 +693,11 @@ type ori struct {
 
 func (o ori) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(o.rd, ctx.Registers[o.rs]|o.imm)
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (o ori) InstructionType() InstructionType {
@@ -626,8 +719,15 @@ type rem struct {
 }
 
 func (r rem) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	if ctx.Debug {
+		fmt.Printf("\t\tRun: Rem %d %d\n", ctx.Registers[r.rs1], ctx.Registers[r.rs2])
+	}
 	register, value := IsRegisterChange(r.rd, ctx.Registers[r.rs1]%ctx.Registers[r.rs2])
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (r rem) InstructionType() InstructionType {
@@ -669,8 +769,10 @@ type sb struct {
 func (s sb) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	idx := ctx.Registers[s.rs1] + s.offset
 	n := ctx.Registers[s.rs2]
-	ctx.Memory[idx] = int8(n)
-	return Execution{}, nil
+	return Execution{
+		MemoryChange:  true,
+		MemoryChanges: map[int32]int8{idx: int8(n)},
+	}, nil
 }
 
 func (s sb) InstructionType() InstructionType {
@@ -695,10 +797,13 @@ func (s sh) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	idx := ctx.Registers[s.rs1] + s.offset
 	n := ctx.Registers[s.rs2]
 	bytes := BytesFromLowBits(n)
-	ctx.Memory[idx] = bytes[0]
-	idx++
-	ctx.Memory[idx] = bytes[1]
-	return Execution{}, nil
+	return Execution{
+		MemoryChange: true,
+		MemoryChanges: map[int32]int8{
+			idx:     bytes[0],
+			idx + 1: bytes[1],
+		},
+	}, nil
 }
 
 func (s sh) InstructionType() InstructionType {
@@ -721,7 +826,11 @@ type sll struct {
 
 func (s sll) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs1]<<uint(ctx.Registers[s.rs2]))
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (s sll) InstructionType() InstructionType {
@@ -744,7 +853,11 @@ type slli struct {
 
 func (s slli) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs]<<uint(s.imm))
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (s slli) InstructionType() InstructionType {
@@ -773,7 +886,11 @@ func (s slt) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	} else {
 		register, value = IsRegisterChange(s.rd, 0)
 	}
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (s slt) InstructionType() InstructionType {
@@ -802,7 +919,11 @@ func (s sltu) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error)
 	} else {
 		register, value = IsRegisterChange(s.rd, 0)
 	}
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (s sltu) InstructionType() InstructionType {
@@ -831,7 +952,11 @@ func (s slti) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error)
 	} else {
 		register, value = IsRegisterChange(s.rd, 0)
 	}
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (s slti) InstructionType() InstructionType {
@@ -854,7 +979,11 @@ type sra struct {
 
 func (s sra) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs1]>>ctx.Registers[s.rs2])
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (s sra) InstructionType() InstructionType {
@@ -877,7 +1006,11 @@ type srai struct {
 
 func (s srai) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs]>>s.imm)
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (s srai) InstructionType() InstructionType {
@@ -900,7 +1033,11 @@ type srl struct {
 
 func (s srl) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs1]>>ctx.Registers[s.rs2])
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (s srl) InstructionType() InstructionType {
@@ -923,7 +1060,11 @@ type srli struct {
 
 func (s srli) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs]>>s.imm)
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (s srli) InstructionType() InstructionType {
@@ -946,7 +1087,11 @@ type sub struct {
 
 func (s sub) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs1]-ctx.Registers[s.rs2])
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (s sub) InstructionType() InstructionType {
@@ -971,14 +1116,18 @@ func (s sw) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	idx := ctx.Registers[s.rs1] + s.offset
 	n := ctx.Registers[s.rs2]
 	bytes := BytesFromLowBits(n)
-	ctx.Memory[idx] = bytes[0]
-	idx++
-	ctx.Memory[idx] = bytes[1]
-	idx++
-	ctx.Memory[idx] = bytes[2]
-	idx++
-	ctx.Memory[idx] = bytes[3]
-	return Execution{}, nil
+	if ctx.Debug {
+		fmt.Printf("\t\tRun: Sw %d to %d\n", idx, n)
+	}
+	return Execution{
+		MemoryChange: true,
+		MemoryChanges: map[int32]int8{
+			idx:     bytes[0],
+			idx + 1: bytes[1],
+			idx + 2: bytes[2],
+			idx + 3: bytes[3],
+		},
+	}, nil
 }
 
 func (s sw) InstructionType() InstructionType {
@@ -1001,7 +1150,11 @@ type xor struct {
 
 func (x xor) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(x.rd, ctx.Registers[x.rs1]^ctx.Registers[x.rs2])
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (x xor) InstructionType() InstructionType {
@@ -1024,7 +1177,11 @@ type xori struct {
 
 func (x xori) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	register, value := IsRegisterChange(x.rd, ctx.Registers[x.rs]^x.imm)
-	return newExecutionWithoutPcChange(register, value), nil
+	return Execution{
+		RegisterChange: true,
+		Register:       register,
+		RegisterValue:  value,
+	}, nil
 }
 
 func (x xori) InstructionType() InstructionType {

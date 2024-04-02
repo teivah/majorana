@@ -7,6 +7,7 @@ import (
 
 type writeUnit struct {
 	pendingMemoryWrite bool
+	memoryWrite        risc.Execution
 	cycles             int
 	inBus              *comp.BufferedBus[comp.ExecutionContext]
 }
@@ -20,6 +21,7 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 		u.cycles--
 		if u.cycles == 0 {
 			u.pendingMemoryWrite = false
+			ctx.WriteMemory(u.memoryWrite)
 		}
 		return
 	}
@@ -28,12 +30,14 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 	if !exists {
 		return
 	}
-	if risc.IsWriteBack(execution.InstructionType) {
-		ctx.Write(execution.Execution)
+	if execution.Execution.RegisterChange {
+		ctx.WriteRegister(execution.Execution)
 		ctx.DeleteWriteRegisters(execution.WriteRegisters)
-	} else {
+	} else if execution.Execution.MemoryChange {
+		// TODO Do after
 		u.pendingMemoryWrite = true
 		u.cycles = cyclesMemoryAccess
+		u.memoryWrite = execution.Execution
 	}
 }
 

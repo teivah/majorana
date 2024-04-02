@@ -1,6 +1,10 @@
 package mvm2
 
-import "github.com/teivah/majorana/risc"
+import (
+	"fmt"
+
+	"github.com/teivah/majorana/risc"
+)
 
 const (
 	cyclesL1Access             = 1
@@ -48,9 +52,15 @@ loop:
 			pc += 4
 		}
 
-		if risc.IsWriteBack(ins) {
-			m.ctx.Write(exe)
+		if exe.RegisterChange {
+			m.ctx.WriteRegister(exe)
+			if m.ctx.Debug {
+				fmt.Println(ins, m.ctx.Registers)
+			}
 			m.cycle += cyclesRegisterAccess
+		} else if exe.MemoryChange {
+			m.ctx.WriteMemory(exe)
+			m.cycle += cyclesMemoryAccess
 		}
 	}
 	if m.ctx.Registers[risc.Ra] != 0 {

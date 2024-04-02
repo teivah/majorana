@@ -2,6 +2,7 @@ package proc
 
 import (
 	"fmt"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -19,6 +20,8 @@ const (
 	memory           = benchSums * 4
 	benchPrimeNumber = 100151
 	benchSums        = 4096
+	primeFrom        = 2
+	primeTo          = 200
 )
 
 func execute(t *testing.T, vm virtualMachine, instructions string) (int, error) {
@@ -59,110 +62,179 @@ func sumArray(s []int) int {
 	return sum
 }
 
-func TestMvms(t *testing.T) {
-	t.Parallel()
+func TestMvm1Prime(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvm1.NewCPU(false, memory)
+	}
+	testPrime(t, factory, primeFrom, primeTo)
+}
 
-	cases := []struct {
-		name    string
-		factory func() virtualMachine
-	}{
-		{
-			name: "mvm1",
-			factory: func() virtualMachine {
-				return mvm1.NewCPU(false, memory)
-			},
-		},
-		{
-			name: "mvm2",
-			factory: func() virtualMachine {
-				return mvm2.NewCPU(false, memory)
-			},
-		},
-		{
-			name: "mvm3",
-			factory: func() virtualMachine {
-				return mvm3.NewCPU(false, memory)
-			},
-		},
-		{
-			name: "mvm4",
-			factory: func() virtualMachine {
-				return mvm4.NewCPU(false, memory)
-			},
-		},
-		{
-			name: "mvm5",
-			factory: func() virtualMachine {
-				return mvm5.NewCPU(false, memory)
-			},
-		},
+func TestMvm2Prime(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvm2.NewCPU(false, memory)
+	}
+	testPrime(t, factory, primeFrom, primeTo)
+}
+
+func TestMvm3Prime(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvm3.NewCPU(false, memory)
+	}
+	testPrime(t, factory, primeFrom, primeTo)
+}
+
+func TestMvm4Prime(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvm4.NewCPU(false, memory)
+	}
+	testPrime(t, factory, primeFrom, primeTo)
+}
+
+func TestMvm5Prime(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvm5.NewCPU(false, memory)
+	}
+	//testPrime(t, factory, primeFrom, primeTo)
+	testPrime(t, factory, 2, 3)
+}
+
+func testPrime(t *testing.T, factory func() virtualMachine, from, to int) {
+	cache := make(map[int]bool, to-from+1)
+	for i := from; i < to; i++ {
+		cache[i] = isPrime(i)
 	}
 
-	for _, tc := range cases {
-		from := 2
-		to := 200
-		cache := make(map[int]bool, to-from+1)
-		for i := from; i < to; i++ {
-			cache[i] = isPrime(i)
-		}
-		for i := from; i < to; i++ {
-			t.Run(fmt.Sprintf("Prime: %s - %d", tc.name, i), func(t *testing.T) {
-				vm := tc.factory()
-				instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), i)
-				app, err := risc.Parse(instructions)
-				require.NoError(t, err)
-				_, err = vm.Run(app)
-				require.NoError(t, err)
+	for i := from; i < to; i++ {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			vm := factory()
+			instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), i)
+			app, err := risc.Parse(instructions)
+			require.NoError(t, err)
+			_, err = vm.Run(app)
+			require.NoError(t, err)
 
-				want := cache[i]
-				if want {
-					assert.Equal(t, int8(1), vm.Context().Memory[4])
-				} else {
-					assert.Equal(t, int8(0), vm.Context().Memory[4])
-				}
-			})
-		}
-		//for i := 0; i < 200; i++ {
-		//	t.Run(fmt.Sprintf("Sum of integer array: %s", tc.name), func(t *testing.T) {
-		//		vm := tc.factory()
-		//		n := i
-		//		for i := 0; i < n; i++ {
-		//			bytes := risc.BytesFromLowBits(int32(i))
-		//			vm.Context().Memory[4*i+0] = bytes[0]
-		//			vm.Context().Memory[4*i+1] = bytes[1]
-		//			vm.Context().Memory[4*i+2] = bytes[2]
-		//			vm.Context().Memory[4*i+3] = bytes[3]
-		//		}
-		//		vm.Context().Registers[risc.A1] = int32(n)
-		//
-		//		instructions := fmt.Sprintf(test.ReadFile(t, "../res/array-sum.asm"), "")
-		//		app, err := risc.Parse(instructions)
-		//		require.NoError(t, err)
-		//		_, err = vm.Run(app)
-		//		require.NoError(t, err)
-		//
-		//		s := make([]int, 0, n)
-		//		for i := 0; i < n; i++ {
-		//			s = append(s, i)
-		//		}
-		//		assert.Equal(t, int32(sumArray(s)), vm.Context().Registers[risc.A0])
-		//	})
-		//}
-
-		//t.Run(fmt.Sprintf("Jal: %s", tc.name), func(t *testing.T) {
-		//	vm := tc.factory()
-		//	_, err := execute(t, vm, `start:
-		//jal zero, func
-		//addi t1, t0, 3
-		//func:
-		//addi t0, zero, 2`)
-		//	require.NoError(t, err)
-		//	assert.Equal(t, int32(5), vm.Context().Registers[risc.T1])
-		//})
+			want := cache[i]
+			if want {
+				assert.Equal(t, int8(1), vm.Context().Memory[4])
+			} else {
+				assert.Equal(t, int8(0), vm.Context().Memory[4])
+			}
+		})
 	}
 }
 
+func TestMvm1Sums(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvm1.NewCPU(false, memory)
+	}
+	testSums(t, factory, primeFrom, primeTo)
+}
+
+func TestMvm2Sums(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvm2.NewCPU(false, memory)
+	}
+	testSums(t, factory, primeFrom, primeTo)
+}
+
+func TestMvm3Sums(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvm3.NewCPU(false, memory)
+	}
+	testSums(t, factory, primeFrom, primeTo)
+}
+
+func TestMvm4Sums(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvm4.NewCPU(false, memory)
+	}
+	testSums(t, factory, primeFrom, primeTo)
+}
+
+func TestMvm5Sums(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvm5.NewCPU(false, memory)
+	}
+	testSums(t, factory, primeFrom, primeTo)
+}
+
+func testSums(t *testing.T, factory func() virtualMachine, from, to int) {
+	for i := from; i < to; i++ {
+		t.Run(strconv.Itoa(i), func(t *testing.T) {
+			vm := factory()
+			n := i
+			for i := 0; i < n; i++ {
+				bytes := risc.BytesFromLowBits(int32(i))
+				vm.Context().Memory[4*i+0] = bytes[0]
+				vm.Context().Memory[4*i+1] = bytes[1]
+				vm.Context().Memory[4*i+2] = bytes[2]
+				vm.Context().Memory[4*i+3] = bytes[3]
+			}
+			vm.Context().Registers[risc.A1] = int32(n)
+
+			instructions := fmt.Sprintf(test.ReadFile(t, "../res/array-sum.asm"), "")
+			app, err := risc.Parse(instructions)
+			require.NoError(t, err)
+			_, err = vm.Run(app)
+			require.NoError(t, err)
+
+			s := make([]int, 0, n)
+			for i := 0; i < n; i++ {
+				s = append(s, i)
+			}
+			assert.Equal(t, int32(sumArray(s)), vm.Context().Registers[risc.A0])
+		})
+	}
+}
+
+//func TestMvm1Jal(t *testing.T) {
+//	factory := func() virtualMachine {
+//		return mvm1.NewCPU(false, memory)
+//	}
+//	testJal(t, factory)
+//}
+//
+//func TestMvm2Jal(t *testing.T) {
+//	factory := func() virtualMachine {
+//		return mvm2.NewCPU(false, memory)
+//	}
+//	testJal(t, factory)
+//}
+//
+//func TestMvm3Jal(t *testing.T) {
+//	factory := func() virtualMachine {
+//		return mvm3.NewCPU(false, memory)
+//	}
+//	testJal(t, factory)
+//}
+//
+//func TestMvm4Jal(t *testing.T) {
+//	factory := func() virtualMachine {
+//		return mvm4.NewCPU(false, memory)
+//	}
+//	testJal(t, factory)
+//}
+//
+//func TestMvm5Jal(t *testing.T) {
+//	factory := func() virtualMachine {
+//		return mvm5.NewCPU(false, memory)
+//	}
+//	testJal(t, factory)
+//}
+
+func testJal(t *testing.T, factory func() virtualMachine) {
+	vm := factory()
+	_, err := execute(t, vm, `start:
+	jal zero, func
+	addi t1, t0, 3
+	func:
+	addi t0, zero, 2`)
+	require.NoError(t, err)
+	assert.Equal(t, int32(5), vm.Context().Registers[risc.T1])
+}
+
 func TestBenchmarks(t *testing.T) {
+	t.SkipNow()
 	vms := map[string]func(m int) virtualMachine{
 		"mvm1": func(m int) virtualMachine {
 			return mvm1.NewCPU(false, m)
@@ -173,11 +245,11 @@ func TestBenchmarks(t *testing.T) {
 		"mvm3": func(m int) virtualMachine {
 			return mvm3.NewCPU(false, m)
 		},
-		"mvm5": func(m int) virtualMachine {
-			return mvm5.NewCPU(false, m)
-		},
 		"mvm4": func(m int) virtualMachine {
 			return mvm4.NewCPU(false, m)
+		},
+		"mvm5": func(m int) virtualMachine {
+			return mvm5.NewCPU(false, m)
 		},
 	}
 

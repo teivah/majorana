@@ -86,6 +86,15 @@ func (b *BufferedBus[T]) Add(t T, currentCycle int) {
 	})
 }
 
+func (b *BufferedBus[T]) Revert(t T, currentCycle int) {
+	b.buffer = append([]BufferEntry[T]{
+		{
+			availableFromCycle: currentCycle,
+			t:                  t,
+		},
+	}, b.buffer...)
+}
+
 func (b *BufferedBus[T]) DeleteLast() {
 	if len(b.buffer) == 0 {
 		return

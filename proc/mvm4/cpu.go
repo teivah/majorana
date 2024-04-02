@@ -69,13 +69,16 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		// Write back
 		m.writeUnit.cycle(m.ctx, m.writeBus)
 		if m.ctx.Debug {
-			fmt.Printf("\tMemory: %v\n", m.ctx.Registers)
+			fmt.Printf("\tRegisters: %v\n", m.ctx.Registers)
 		}
 
 		if ret {
 			return cycle, nil
 		}
 		if flush {
+			if m.ctx.Debug {
+				fmt.Printf("\tFlush to %d\n", pc/4)
+			}
 			m.flush(pc)
 			cycle += flushCycles
 			continue
@@ -104,10 +107,10 @@ func (m *CPU) flush(pc int32) {
 
 func (m *CPU) isComplete() bool {
 	return m.fetchUnit.isEmpty() &&
-			m.decodeUnit.isEmpty() &&
-			m.executeUnit.isEmpty() &&
-			m.writeUnit.isEmpty() &&
-			m.decodeBus.IsEmpty() &&
-			m.executeBus.IsEmpty() &&
-			m.writeBus.IsEmpty()
+		m.decodeUnit.isEmpty() &&
+		m.executeUnit.isEmpty() &&
+		m.writeUnit.isEmpty() &&
+		m.decodeBus.IsEmpty() &&
+		m.executeBus.IsEmpty() &&
+		m.writeBus.IsEmpty()
 }
