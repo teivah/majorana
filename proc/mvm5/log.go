@@ -10,7 +10,7 @@ func logi(ctx *risc.Context, unit string, insType risc.InstructionType, pc int32
 	if !ctx.Debug {
 		return
 	}
-	fmt.Printf("\t%s: %s (ins=%s, pc=%d)\n", unit, fmt.Sprintf(detail, args...), insType, pc/4)
+	fmt.Printf("\t%s: %s (pc=%d, ins=%s)\n", unit, fmt.Sprintf(detail, args...), pc/4, insType)
 }
 
 func logu(ctx *risc.Context, unit string, detail string, args ...any) {

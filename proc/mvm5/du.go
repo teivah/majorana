@@ -8,6 +8,7 @@ import (
 )
 
 type decodeUnit struct {
+	ret                     bool
 	pendingBranchResolution bool
 	log                     string
 	inBus                   *comp.BufferedBus[int32]
@@ -19,6 +20,9 @@ func newDecodeUnit(inBus *comp.BufferedBus[int32], outBus *comp.BufferedBus[risc
 }
 
 func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
+	if u.ret {
+		return
+	}
 	if u.pendingBranchResolution {
 		logu(ctx, "DU", "blocked")
 		return
@@ -46,6 +50,9 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		}, cycle)
 		if jump {
 			return
+		}
+		if runner.InstructionType() == risc.Ret {
+			u.ret = true
 		}
 	}
 }

@@ -96,6 +96,14 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		log(m.ctx, "\tRegisters: %v", m.ctx.Registers)
 
 		if ret {
+			log(m.ctx, "\t🛑 Return")
+			cycle++
+			m.writeBus.Connect(cycle)
+			for !m.writeUnit.isEmpty() || !m.writeBus.IsEmpty() {
+				m.writeUnit.cycle(m.ctx)
+				cycle++
+				m.writeBus.Connect(cycle)
+			}
 			return cycle, nil
 		}
 		if flush {

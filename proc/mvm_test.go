@@ -20,8 +20,8 @@ const (
 	memory           = benchSums * 4
 	benchPrimeNumber = 100151
 	benchSums        = 4096
-	primeFrom        = 2
-	primeTo          = 200
+	testFrom         = 2
+	testTo           = 200
 )
 
 func execute(t *testing.T, vm virtualMachine, instructions string) (int, error) {
@@ -66,35 +66,35 @@ func TestMvm1Prime(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm1.NewCPU(false, memory)
 	}
-	testPrime(t, factory, primeFrom, primeTo)
+	testPrime(t, factory, testFrom, testTo)
 }
 
 func TestMvm2Prime(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm2.NewCPU(false, memory)
 	}
-	testPrime(t, factory, primeFrom, primeTo)
+	testPrime(t, factory, testFrom, testTo)
 }
 
 func TestMvm3Prime(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm3.NewCPU(false, memory)
 	}
-	testPrime(t, factory, primeFrom, primeTo)
+	testPrime(t, factory, testFrom, testTo)
 }
 
 func TestMvm4Prime(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm4.NewCPU(false, memory)
 	}
-	testPrime(t, factory, primeFrom, primeTo)
+	testPrime(t, factory, testFrom, testTo)
 }
 
 func TestMvm5Prime(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm5.NewCPU(false, memory)
 	}
-	testPrime(t, factory, primeFrom, primeTo)
+	testPrime(t, factory, testFrom, testTo)
 }
 
 func testPrime(t *testing.T, factory func() virtualMachine, from, to int) {
@@ -126,35 +126,35 @@ func TestMvm1Sums(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm1.NewCPU(false, memory)
 	}
-	testSums(t, factory, primeFrom, primeTo)
+	testSums(t, factory, testFrom, testTo)
 }
 
 func TestMvm2Sums(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm2.NewCPU(false, memory)
 	}
-	testSums(t, factory, primeFrom, primeTo)
+	testSums(t, factory, testFrom, testTo)
 }
 
 func TestMvm3Sums(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm3.NewCPU(false, memory)
 	}
-	testSums(t, factory, primeFrom, primeTo)
+	testSums(t, factory, testFrom, testTo)
 }
 
 func TestMvm4Sums(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm4.NewCPU(false, memory)
 	}
-	testSums(t, factory, primeFrom, primeTo)
+	testSums(t, factory, testFrom, testTo)
 }
 
 func TestMvm5Sums(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm5.NewCPU(false, memory)
 	}
-	testSums(t, factory, primeFrom, primeTo)
+	testSums(t, factory, testFrom, testTo)
 }
 
 func testSums(t *testing.T, factory func() virtualMachine, from, to int) {
@@ -233,7 +233,7 @@ func testJal(t *testing.T, factory func() virtualMachine) {
 }
 
 func TestBenchmarks(t *testing.T) {
-	t.SkipNow()
+	//t.SkipNow()
 	vms := map[string]func(m int) virtualMachine{
 		"mvm1": func(m int) virtualMachine {
 			return mvm1.NewCPU(false, m)
