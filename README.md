@@ -55,8 +55,8 @@ One issue with MVM-3 is when it met an unconditional branches. For example:
 
 ```asm
 main:
-  jal zero, foo # Branch to foo
-  addi t1, t0, 3 # Set $t1 to $t0 + 3
+  jal zero, foo    # Branch to foo
+  addi t1, t0, 3   # Set $t1 to $t0 + 3
 foo:
   addi t0, zero, 2 # Set $t0 to 2
   ...
