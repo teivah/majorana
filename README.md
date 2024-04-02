@@ -15,13 +15,13 @@ Here is the microarchitecture, divided into 4 classic stages:
 * Execute: execute the RISC-V instruction
 * Write: write-back the result to a register or the main memory
 
-![](res/mvm-1.png)
+![](res/majorana-mvm-1.drawio.png)
 
 ## MVM-2
 
 Compared to MVM-1, we add a cache for instructions called L1I (Level 1 Instructions) with a size of 64 KB. The caching policy is straightforward: as soon as we meet an instruction that is not present in L1I, we fetch a cache line of 64 KB instructions from the main memory, and we cache it into LI1.
 
-![](res/mvm-2.png)
+![](res/majorana-mvm-2.drawio.png)
 
 ## MVM-3
 
@@ -47,7 +47,7 @@ div t1, t0, t1
 The processor must wait for `ADDI` to be executed and to get its result written in T1 before to execute `DIV` (as div depends on T1).
 In this case, we implement what we call pipeline interclock by delaying the execution of `DIV`.
 
-![](res/mvm-3.png)
+![](res/majorana-mvm-3.drawio.png)
 
 ## MVM-4
 
@@ -66,7 +66,7 @@ In this case, the fetch unit, after fetching the first line (`jal`), was fetchin
 
 The microarchitecture of MVM-4 is very similar to MVM-3, except that the Branch Unit is now coupled with a Branch Target Buffer (BTB):
 
-![](res/mvm-4.png)
+![](res/majorana-mvm-4.drawio.png)
 
 One the fetch unit fetches a branch, it doesn't know whether it's a branch; it's the job of the decode unit. Therefore, the fetch unit can't simply say: "_I fetched a branch, I'm going to wait for the Execute Unit to tell me the next instruction to fetch_".
 
@@ -80,7 +80,19 @@ This helps in preventing a full pipeline flush. Facing an unconditional branch n
 
 ## MVM-5
 
+The next stage is to implement a so-called superscalar processor. A superscalar processor can execute multiple instructions during a clock cycle by dispatching multiple instructions to different execution units.
 
+![](res/majorana-mvm-5.drawio.png)
+
+This is one of the magical things with modern CPUs: even sequential code can be executed in parallel!
+
+The fetch unit and the decode unit are now capable to fetch/decode two instruction within a single cycle. Yet, before to dispatch the executions to the execute units, a new stage comes in: the control unit.
+
+The role of the control unit plays a pivotal role in coordinating the execution of multiple instructions simultanously. It performs depedency checking between the decoded instructions to guarantee it won't lead to any hazard.
+
+One _small_ issue: MVM-5 is slightly slower than MVM-4. How is that possible? The control unit implementation is very basic at the moment and because of that, on average the control unit dispatches less than 0.6 instruction per cycle. Therefore, a suboptimal additional coordination stage, despite two execution units, doesn't make any good.
+
+One may believe this processor is useless, but it's the starting point for a superscalar microarchitecture. Let's improve the control unit in the next MVM version.
 
 ## Benchmarks
 

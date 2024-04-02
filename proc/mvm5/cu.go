@@ -60,6 +60,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			u.outBus.Add(pending, cycle)
 			ctx.AddPendingRegisters(pending.Runner)
 			logi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "pushing runner")
+			// TODO Delete when i=1 and 0 was deleted?
 			u.pendings = slices.Delete(u.pendings, i, i+1)
 			remaining--
 			pushed++

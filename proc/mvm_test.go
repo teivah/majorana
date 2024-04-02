@@ -66,38 +66,38 @@ func TestMvm1Prime(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm1.NewCPU(false, memory)
 	}
-	testPrime(t, factory, testFrom, testTo)
+	testPrime(t, factory, testFrom, testTo, false)
 }
 
 func TestMvm2Prime(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm2.NewCPU(false, memory)
 	}
-	testPrime(t, factory, testFrom, testTo)
+	testPrime(t, factory, testFrom, testTo, false)
 }
 
 func TestMvm3Prime(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm3.NewCPU(false, memory)
 	}
-	testPrime(t, factory, testFrom, testTo)
+	testPrime(t, factory, testFrom, testTo, false)
 }
 
 func TestMvm4Prime(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm4.NewCPU(false, memory)
 	}
-	testPrime(t, factory, testFrom, testTo)
+	testPrime(t, factory, testFrom, testTo, false)
 }
 
 func TestMvm5Prime(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvm5.NewCPU(false, memory)
 	}
-	testPrime(t, factory, testFrom, testTo)
+	testPrime(t, factory, testFrom, testTo, false)
 }
 
-func testPrime(t *testing.T, factory func() virtualMachine, from, to int) {
+func testPrime(t *testing.T, factory func() virtualMachine, from, to int, stats bool) {
 	cache := make(map[int]bool, to-from+1)
 	for i := from; i < to; i++ {
 		cache[i] = isPrime(i)
@@ -109,7 +109,7 @@ func testPrime(t *testing.T, factory func() virtualMachine, from, to int) {
 			instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), i)
 			app, err := risc.Parse(instructions)
 			require.NoError(t, err)
-			_, err = vm.Run(app)
+			cycle, err := vm.Run(app)
 			require.NoError(t, err)
 
 			want := cache[i]
@@ -117,6 +117,13 @@ func testPrime(t *testing.T, factory func() virtualMachine, from, to int) {
 				assert.Equal(t, int8(1), vm.Context().Memory[4])
 			} else {
 				assert.Equal(t, int8(0), vm.Context().Memory[4])
+			}
+
+			if stats {
+				t.Logf("Cycle: %d", cycle)
+				for k, v := range vm.Stats() {
+					t.Log(k, v)
+				}
 			}
 		})
 	}
