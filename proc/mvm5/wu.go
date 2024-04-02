@@ -23,9 +23,6 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 			u.pendingMemoryWrite = false
 			ctx.WriteMemory(u.memoryWrite.Execution)
 			ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
-			if u.memoryWrite.InstructionType.IsBranch() {
-				ctx.DeletePendingBranch()
-			}
 			logi(ctx, "WU", u.memoryWrite.InstructionType, -1, "write to memory")
 		}
 		return
@@ -38,9 +35,6 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 	if execution.Execution.RegisterChange {
 		ctx.WriteRegister(execution.Execution)
 		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
-		if execution.InstructionType.IsBranch() {
-			ctx.DeletePendingBranch()
-		}
 		logi(ctx, "WU", execution.InstructionType, -1, "write to register")
 	} else if execution.Execution.MemoryChange {
 		u.pendingMemoryWrite = true
@@ -48,9 +42,6 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 		u.memoryWrite = execution
 	} else {
 		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
-		if execution.InstructionType.IsBranch() {
-			ctx.DeletePendingBranch()
-		}
 		logi(ctx, "WU", execution.InstructionType, -1, "cleaning")
 	}
 }

@@ -59,9 +59,6 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		if !hazard {
 			u.outBus.Add(pending, cycle)
 			ctx.AddPendingRegisters(pending.Runner)
-			if pending.Runner.InstructionType().IsBranch() {
-				ctx.SetPendingBranch()
-			}
 			logi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "pushing runner")
 			u.pendings = slices.Delete(u.pendings, i, i+1)
 			remaining--
@@ -88,9 +85,6 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		if !hazard {
 			u.outBus.Add(runner, cycle)
 			ctx.AddPendingRegisters(runner.Runner)
-			if runner.Runner.InstructionType().IsBranch() {
-				ctx.SetPendingBranch()
-			}
 			logi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
 			remaining--
 			pushed++

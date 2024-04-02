@@ -11,7 +11,6 @@ type Context struct {
 	Registers             map[RegisterType]int32
 	PendingWriteRegisters map[RegisterType]int
 	PendingReadRegisters  map[RegisterType]int
-	PendingBranch         bool
 	Memory                []int8
 	Debug                 bool
 }
@@ -27,7 +26,6 @@ func NewContext(debug bool, memoryBytes int) *Context {
 }
 
 func (ctx *Context) Flush() {
-	ctx.PendingBranch = false
 	ctx.PendingWriteRegisters = make(map[RegisterType]int)
 	ctx.PendingReadRegisters = make(map[RegisterType]int)
 }
@@ -40,18 +38,6 @@ func (ctx *Context) WriteMemory(exe Execution) {
 	for k, v := range exe.MemoryChanges {
 		ctx.Memory[k] = v
 	}
-}
-
-func (ctx *Context) SetPendingBranch() {
-	ctx.PendingBranch = true
-}
-
-func (ctx *Context) DeletePendingBranch() {
-	ctx.PendingBranch = false
-}
-
-func (ctx *Context) IsControlHazard() bool {
-	return ctx.PendingBranch
 }
 
 func (ctx *Context) AddPendingRegisters(runner InstructionRunner) {
