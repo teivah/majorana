@@ -120,21 +120,12 @@ func (ctx *Context) IsWriteDataHazard(registers []RegisterType) bool {
 }
 
 func (ctx *Context) IsDataHazard(runner InstructionRunner) (bool, string) {
-	// TODO write write?
 	for _, register := range runner.ReadRegisters() {
 		if register == Zero {
 			continue
 		}
 		if v, exists := ctx.PendingWriteRegisters[register]; exists && v > 0 {
 			return true, fmt.Sprintf("Read hazard on %s", register)
-		}
-	}
-	for _, register := range runner.WriteRegisters() {
-		if register == Zero {
-			continue
-		}
-		if v, exists := ctx.PendingReadRegisters[register]; exists && v > 0 {
-			return true, fmt.Sprintf("Write hazard on %s", register)
 		}
 	}
 	return false, ""

@@ -92,4 +92,4 @@ Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency
 |  MVM-2   |  281762 nanoseconds, 4008.6 slower | 97301 nanoseconds, 74.8 slower |
 |  MVM-3   |  140904 nanoseconds, 2004.6 slower | 78099 nanoseconds, 60.1 slower |
 |  MVM-4   |  125257 nanoseconds, 1782.0 slower | 76819 nanoseconds, 59.1 slower |
-|  MVM-5   |  140927 nanoseconds, 2004.9 slower | 81961 nanoseconds, 63.0 slower |
+|  MVM-5   |  140926 nanoseconds, 2004.9 slower | 81961 nanoseconds, 63.0 slower |
