@@ -1,12 +1,12 @@
 # Majorana
 
-[Majorana](https://en.wikipedia.org/wiki/Ettore_Majorana) is a RISC-V virtual machine written in Go.
+[Majorana](https://en.wikipedia.org/wiki/Ettore_Majorana) is a RISC-V virtual processor written in Go.
 
-## Majorana Virtual Machine (MVM)
+## Majorana Virtual Processor (MVP)
 
-### MVM-1
+### MVP-1
 
-MVM-1 is the first version of the RISC-V virtual machine.
+MVP-1 is the first version of the RISC-V virtual machine.
 It does not implement any of the known CPU optimizations, such as pipelining, out-of-order execution, multiple execution units, etc.
 
 Here is the microarchitecture, divided into 4 classic stages:
@@ -17,15 +17,15 @@ Here is the microarchitecture, divided into 4 classic stages:
 
 ![](res/majorana-mvm-1.drawio.png)
 
-## MVM-2
+## MVP-2
 
-Compared to MVM-1, we add a cache for instructions called L1I (Level 1 Instructions) with a size of 64 KB. The caching policy is straightforward: as soon as we meet an instruction that is not present in L1I, we fetch a cache line of 64 KB instructions from the main memory, and we cache it into LI1.
+Compared to MVP-1, we add a cache for instructions called L1I (Level 1 Instructions) with a size of 64 KB. The caching policy is straightforward: as soon as we meet an instruction that is not present in L1I, we fetch a cache line of 64 KB instructions from the main memory, and we cache it into LI1.
 
 ![](res/majorana-mvm-2.drawio.png)
 
-## MVM-3
+## MVP-3
 
-MVM-3 keeps the same microarchitecture as MVM-2 with 4 stages and L1I. Yet, this version implements [pipelining](https://en.wikipedia.org/wiki/Instruction_pipelining).
+MVP-3 keeps the same microarchitecture as MVP-2 with 4 stages and L1I. Yet, this version implements [pipelining](https://en.wikipedia.org/wiki/Instruction_pipelining).
 
 In a nutshell, pipelining allows keeping every stage as busy as possible. For example, as soon as the fetch unit has fetched an instruction, it will not wait for the instruction to be decoded, executed and written. It will fetch another instruction straight away during the next cycle(s).
 
@@ -49,9 +49,9 @@ In this case, we implement what we call pipeline interclock by delaying the exec
 
 ![](res/majorana-mvm-3.drawio.png)
 
-## MVM-4
+## MVP-4
 
-One issue with MVM-3 is when it met an unconditional branches. For example:
+One issue with MVP-3 is when it met an unconditional branches. For example:
 
 ```asm
 main:
@@ -64,7 +64,7 @@ foo:
 
 In this case, the fetch unit, after fetching the first line (`jal`), was fetching the second line (first `addi`), which ended up being a problem because the execution is branching to line 3 (second `addi`). It was resolved by flushing the whole pipeline, which is very costly.
 
-The microarchitecture of MVM-4 is very similar to MVM-3, except that the branch unit is now coupled with a Branch Target Buffer (BTB):
+The microarchitecture of MVP-4 is very similar to MVP-3, except that the branch unit is now coupled with a Branch Target Buffer (BTB):
 
 ![](res/majorana-mvm-4.drawio.png)
 
@@ -78,7 +78,7 @@ The workflow is now the following:
 
 This helps in preventing a full pipeline flush. Facing an unconditional branch now takes only a few cycles to be resolved.
 
-## MVM-5
+## MVP-5
 
 The next stage is to implement a so-called superscalar processor. A superscalar processor can execute multiple instructions during a clock cycle by dispatching multiple instructions to different execution units. This is one of the magical things with modern CPUs: even sequential code can be executed in parallel!
 
@@ -86,24 +86,24 @@ The fetch unit and the decode unit are now capable to fetch/decode two instructi
 
 ![](res/majorana-mvm-5.drawio.png)
 
-The control unit plays a pivotal role in coordinating the execution of multiple instructions simultaneously. It performs depedency checking between the decoded instructions to guarantee it won't lead to any hazard.
+The control unit plays a pivotal role in coordinating the execution of multiple instructions simultaneously. It performs dependency checking between the decoded instructions to guarantee it won't lead to any hazard.
 
-One _small_ issue: MVM-5 is slightly slower than MVM-4. How is that possible? The control unit implementation is very basic at the moment and because of that, on average the control unit dispatches less than 0.6 instruction per cycle. Therefore, a suboptimal additional coordination stage, despite two execution units, doesn't make any good.
+One _small_ issue: MVP-5 is slightly slower than MVP-4. How is that possible? The control unit implementation is very basic at the moment and because of that, on average the control unit dispatches less than 0.6 instruction per cycle. Therefore, a suboptimal additional coordination stage, despite two execution units, doesn't make any good.
 
-One may believe this processor is useless, but it's the starting point for a superscalar microarchitecture. Let's improve the control unit in the next MVM version.
+One may believe this processor is useless, but it's the starting point for a superscalar microarchitecture. Let's improve the control unit in the next MVP version.
 
 ## Benchmarks
 
 All the benchmarks are executed at a fixed CPU clock frequency of 3.2 GHz.
 
-Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency). This benchmark was on a different microarchitecture, different ISA, etc. is hardly comparable with the MVM benchmarks. Yet, it gives us a reference to show how good (or bad :) the MVM implementations are.
+Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency). This benchmark was on a different microarchitecture, different ISA, etc. is hardly comparable with the MVP benchmarks. Yet, it gives us a reference to show how good (or bad :) the MVP implementations are.
 
 
 | Machine  |            Prime number             | Sum of array |
 |:--------:|:-----------------------------------:|:------------:|
 | Apple M1 |              70.29 ns               |   1300 ns    |
-|  MVM-1   | 4115671 nanoseconds, 58552.7 slower | 536402 nanoseconds, 412.6 slower |
-|  MVM-2   |  281728 nanoseconds, 4008.1 slower  | 97301 nanoseconds, 74.8 slower |
-|  MVM-3   |  140872 nanoseconds, 2004.2 slower  | 78099 nanoseconds, 60.1 slower |
-|  MVM-4   |  125224 nanoseconds, 1781.5 slower  | 76819 nanoseconds, 59.1 slower |
-|  MVM-5   | 125225 nanoseconds, 1781.6 slower   | 81961 nanoseconds, 63.0 slower |
+|  MVP-1   | 4115671 nanoseconds, 58552.7 slower | 536402 nanoseconds, 412.6 slower |
+|  MVP-2   |  281728 nanoseconds, 4008.1 slower  | 97301 nanoseconds, 74.8 slower |
+|  MVP-3   |  140872 nanoseconds, 2004.2 slower  | 78099 nanoseconds, 60.1 slower |
+|  MVP-4   |  125224 nanoseconds, 1781.5 slower  | 76819 nanoseconds, 59.1 slower |
+|  MVP-5   | 125225 nanoseconds, 1781.6 slower   | 81961 nanoseconds, 63.0 slower |

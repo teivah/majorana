@@ -8,13 +8,15 @@ import (
 )
 
 func TestQueue(t *testing.T) {
-	q := comp.NewQueue[int]()
+	q := comp.NewQueue[int](5)
 	q.Push(1)
 	q.Push(2)
 	q.Push(3)
 	q.Push(4)
+	assert.False(t, q.IsFull())
 	q.Push(5)
 	assert.Equal(t, 5, q.Length())
+	assert.True(t, q.IsFull())
 
 	var got []int
 	for elem := range q.Iterator() {
