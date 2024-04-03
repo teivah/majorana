@@ -11,11 +11,11 @@ type executeUnit struct {
 	remainingCycles int
 	runner          risc.InstructionRunnerPc
 	bu              *btbBranchUnit
-	inBus           *comp.BufferedBus[risc.InstructionRunnerPc]
+	inBus           *comp.BufferedBus[*risc.InstructionRunnerPc]
 	outBus          *comp.BufferedBus[risc.ExecutionContext]
 }
 
-func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext]) *executeUnit {
+func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext]) *executeUnit {
 	return &executeUnit{bu: bu, inBus: inBus, outBus: outBus}
 }
 
@@ -25,7 +25,7 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 		if !exists {
 			return false, 0, false, nil
 		}
-		u.runner = runner
+		u.runner = *runner
 		u.remainingCycles = runner.Runner.InstructionType().Cycles()
 		u.pending = true
 	}
@@ -42,6 +42,22 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 	}
 
 	runner := u.runner
+
+	if runner.Receiver != nil {
+		var value int32
+		select {
+		case v := <-runner.Receiver:
+			value = v
+		default:
+			// Not yet ready
+			u.pending = true
+			u.remainingCycles = 1
+			return false, 0, false, nil
+		}
+
+		runner.Runner.Forward(risc.Forward{Value: value, Register: runner.ForwardRegister})
+	}
+
 	// Create the branch unit assertions
 	u.bu.assert(runner)
 
@@ -65,16 +81,22 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 	}, cycle)
 	u.pending = false
 
-	if runner.Runner.InstructionType().IsUnconditionalBranch() {
-		log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
-			"notify jump address resolved from %d to %d", u.runner.Pc/4, execution.NextPc/4)
-		u.bu.notifyJumpAddressResolved(u.runner.Pc, execution.NextPc)
-	}
-
-	if execution.PcChange && u.bu.shouldFlushPipeline(execution.NextPc) {
-		log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
-			"should be a flush")
-		return true, execution.NextPc, false, nil
+	if runner.Forwarder == nil {
+		if runner.Runner.InstructionType().IsUnconditionalBranch() {
+			log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
+				"notify jump address resolved from %d to %d", u.runner.Pc/4, execution.NextPc/4)
+			u.bu.notifyJumpAddressResolved(u.runner.Pc, execution.NextPc)
+		}
+		if execution.PcChange && u.bu.shouldFlushPipeline(execution.NextPc) {
+			log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
+				"should be a flush")
+			return true, execution.NextPc, false, nil
+		}
+	} else {
+		runner.Forwarder <- execution.RegisterValue
+		if runner.Runner.InstructionType().IsBranch() {
+			panic("shouldn't be a branch")
+		}
 	}
 
 	return false, 0, false, nil

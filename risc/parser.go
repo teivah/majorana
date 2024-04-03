@@ -52,7 +52,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, add{
+			instructions = append(instructions, &add{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
@@ -73,7 +73,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, and{
+			instructions = append(instructions, &and{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
@@ -94,7 +94,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, addi{
+			instructions = append(instructions, &addi{
 				imm: int32(imm),
 				rd:  rd,
 				rs:  rs,
@@ -115,7 +115,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, andi{
+			instructions = append(instructions, &andi{
 				imm: int32(imm),
 				rd:  rd,
 				rs:  rs,
@@ -132,7 +132,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, auipc{
+			instructions = append(instructions, &auipc{
 				rd:  rd,
 				imm: int32(imm),
 			})
@@ -149,7 +149,7 @@ func Parse(s string) (Application, error) {
 				return Application{}, err
 			}
 			label := strings.TrimSpace(elements[2])
-			instructions = append(instructions, beq{
+			instructions = append(instructions, &beq{
 				rs1:   rd,
 				rs2:   rs,
 				label: label,
@@ -167,7 +167,7 @@ func Parse(s string) (Application, error) {
 				return Application{}, err
 			}
 			label := strings.TrimSpace(elements[2])
-			instructions = append(instructions, bge{
+			instructions = append(instructions, &bge{
 				rs1:   rs1,
 				rs2:   rs2,
 				label: label,
@@ -185,7 +185,7 @@ func Parse(s string) (Application, error) {
 				return Application{}, err
 			}
 			label := strings.TrimSpace(elements[2])
-			instructions = append(instructions, bgeu{
+			instructions = append(instructions, &bgeu{
 				rs1:   rs1,
 				rs2:   rs2,
 				label: label,
@@ -203,7 +203,7 @@ func Parse(s string) (Application, error) {
 				return Application{}, err
 			}
 			label := strings.TrimSpace(elements[2])
-			instructions = append(instructions, blt{
+			instructions = append(instructions, &blt{
 				rs1:   rs1,
 				rs2:   rs2,
 				label: label,
@@ -221,7 +221,7 @@ func Parse(s string) (Application, error) {
 				return Application{}, err
 			}
 			label := strings.TrimSpace(elements[2])
-			instructions = append(instructions, bltu{
+			instructions = append(instructions, &bltu{
 				rs1:   rs1,
 				rs2:   rs2,
 				label: label,
@@ -239,7 +239,7 @@ func Parse(s string) (Application, error) {
 				return Application{}, err
 			}
 			label := strings.TrimSpace(elements[2])
-			instructions = append(instructions, bne{
+			instructions = append(instructions, &bne{
 				rs1:   rs1,
 				rs2:   rs2,
 				label: label,
@@ -260,7 +260,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, div{
+			instructions = append(instructions, &div{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
@@ -274,7 +274,7 @@ func Parse(s string) (Application, error) {
 				return Application{}, err
 			}
 			label := strings.TrimSpace(elements[1])
-			instructions = append(instructions, jal{
+			instructions = append(instructions, &jal{
 				label: label,
 				rd:    rd,
 			})
@@ -294,7 +294,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, jalr{
+			instructions = append(instructions, &jalr{
 				rd:  rd,
 				rs:  rs,
 				imm: int32(imm),
@@ -311,7 +311,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, lui{
+			instructions = append(instructions, &lui{
 				rd:  rd,
 				imm: int32(imm),
 			})
@@ -331,7 +331,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, lb{
+			instructions = append(instructions, &lb{
 				rs2:    rs2,
 				offset: int32(offset),
 				rs1:    rs1,
@@ -352,7 +352,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, lh{
+			instructions = append(instructions, &lh{
 				rs2:    rs2,
 				offset: int32(offset),
 				rs1:    rs1,
@@ -369,7 +369,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, li{
+			instructions = append(instructions, &li{
 				rd:  rd,
 				imm: int32(imm),
 			})
@@ -392,13 +392,13 @@ func Parse(s string) (Application, error) {
 				return Application{}, err
 			}
 			rs, err := parseRegister(strings.TrimSpace(matches[2]))
-			instructions = append(instructions, lw{
+			instructions = append(instructions, &lw{
 				rd:     rd,
 				offset: int32(offset),
 				rs:     rs,
 			})
 		case "nop":
-			instructions = append(instructions, nop{})
+			instructions = append(instructions, &nop{})
 		case "mul":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
 				return Application{}, err
@@ -415,7 +415,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, mul{
+			instructions = append(instructions, &mul{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
@@ -432,7 +432,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, mv{
+			instructions = append(instructions, &mv{
 				rd: rd,
 				rs: rs,
 			})
@@ -452,7 +452,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, or{
+			instructions = append(instructions, &or{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
@@ -473,7 +473,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, ori{
+			instructions = append(instructions, &ori{
 				imm: int32(imm),
 				rd:  rd,
 				rs:  rs,
@@ -494,13 +494,13 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, rem{
+			instructions = append(instructions, &rem{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
 			})
 		case "ret":
-			instructions = append(instructions, ret{})
+			instructions = append(instructions, &ret{})
 		case "sb":
 			if err := validateArgsInterval(2, 3, elements, remainingLine); err != nil {
 				return Application{}, err
@@ -514,7 +514,7 @@ func Parse(s string) (Application, error) {
 				if err != nil {
 					return Application{}, err
 				}
-				instructions = append(instructions, sb{
+				instructions = append(instructions, &sb{
 					rs2:    rs2,
 					offset: offset,
 					rs1:    rs1,
@@ -532,7 +532,7 @@ func Parse(s string) (Application, error) {
 				if err != nil {
 					return Application{}, err
 				}
-				instructions = append(instructions, sb{
+				instructions = append(instructions, &sb{
 					rs2:    rs2,
 					offset: int32(offset),
 					rs1:    rs1,
@@ -554,7 +554,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, sh{
+			instructions = append(instructions, &sh{
 				rs2:    rs2,
 				offset: int32(offset),
 				rs1:    rs1,
@@ -576,7 +576,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, sll{
+			instructions = append(instructions, &sll{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
@@ -598,7 +598,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, slli{
+			instructions = append(instructions, &slli{
 				rd:  rd,
 				rs:  rs,
 				imm: int32(imm),
@@ -620,7 +620,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, slt{
+			instructions = append(instructions, &slt{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
@@ -642,7 +642,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, sltu{
+			instructions = append(instructions, &sltu{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
@@ -663,7 +663,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, slti{
+			instructions = append(instructions, &slti{
 				rd:  rd,
 				rs:  rs,
 				imm: int32(imm),
@@ -684,7 +684,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, sra{
+			instructions = append(instructions, &sra{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
@@ -705,7 +705,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, srai{
+			instructions = append(instructions, &srai{
 				rd:  rd,
 				rs:  rs,
 				imm: int32(imm),
@@ -726,7 +726,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, srl{
+			instructions = append(instructions, &srl{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
@@ -747,7 +747,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, srli{
+			instructions = append(instructions, &srli{
 				rd:  rd,
 				rs:  rs,
 				imm: int32(imm),
@@ -768,7 +768,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, sub{
+			instructions = append(instructions, &sub{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
@@ -789,7 +789,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, sw{
+			instructions = append(instructions, &sw{
 				rs2:    rs2,
 				offset: int32(offset),
 				rs1:    rs1,
@@ -810,7 +810,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, xor{
+			instructions = append(instructions, &xor{
 				rd:  rd,
 				rs1: rs1,
 				rs2: rs2,
@@ -832,7 +832,7 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-			instructions = append(instructions, xori{
+			instructions = append(instructions, &xori{
 				imm: int32(imm),
 				rd:  rd,
 				rs:  rs,

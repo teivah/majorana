@@ -5,6 +5,22 @@ import "fmt"
 type InstructionRunnerPc struct {
 	Runner InstructionRunner
 	Pc     int32
+
+	Forwarder       chan<- int32
+	Receiver        <-chan int32
+	ForwardRegister RegisterType
+}
+
+type Forward struct {
+	Register RegisterType
+	Value    int32
+}
+
+func read(ctx *Context, forward Forward, reg RegisterType) int32 {
+	if reg == forward.Register {
+		return forward.Value
+	}
+	return ctx.Registers[reg]
 }
 
 type InstructionRunner interface {
@@ -12,16 +28,20 @@ type InstructionRunner interface {
 	InstructionType() InstructionType
 	ReadRegisters() []RegisterType
 	WriteRegisters() []RegisterType
+	Forward(forward Forward)
 }
 
 type add struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
 }
 
-func (a add) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(a.rd, ctx.Registers[a.rs1]+ctx.Registers[a.rs2])
+func (op *add) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	register, value := IsRegisterChange(op.rd, rs1+rs2)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -29,26 +49,32 @@ func (a add) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (a add) InstructionType() InstructionType {
+func (op *add) InstructionType() InstructionType {
 	return Add
 }
 
-func (a add) ReadRegisters() []RegisterType {
-	return []RegisterType{a.rs1, a.rs2}
+func (op *add) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (a add) WriteRegisters() []RegisterType {
-	return []RegisterType{a.rd}
+func (op *add) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *add) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type addi struct {
-	imm int32
-	rd  RegisterType
-	rs  RegisterType
+	imm     int32
+	rd      RegisterType
+	rs      RegisterType
+	forward Forward
 }
 
-func (a addi) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(a.rd, ctx.Registers[a.rs]+a.imm)
+func (op *addi) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs := read(ctx, op.forward, op.rs)
+	register, value := IsRegisterChange(op.rd, rs+op.imm)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -56,26 +82,33 @@ func (a addi) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error)
 	}, nil
 }
 
-func (a addi) InstructionType() InstructionType {
+func (op *addi) InstructionType() InstructionType {
 	return Addi
 }
 
-func (a addi) ReadRegisters() []RegisterType {
-	return []RegisterType{a.rs}
+func (op *addi) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs}
 }
 
-func (a addi) WriteRegisters() []RegisterType {
-	return []RegisterType{a.rd}
+func (op *addi) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *addi) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type and struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
 }
 
-func (a and) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(a.rd, ctx.Registers[a.rs1]&ctx.Registers[a.rs2])
+func (op *and) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	register, value := IsRegisterChange(op.rd, rs1&rs2)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -83,26 +116,32 @@ func (a and) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (a and) InstructionType() InstructionType {
+func (op *and) InstructionType() InstructionType {
 	return And
 }
 
-func (a and) ReadRegisters() []RegisterType {
-	return []RegisterType{a.rs1, a.rs2}
+func (op *and) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (a and) WriteRegisters() []RegisterType {
-	return []RegisterType{a.rd}
+func (op *and) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *and) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type andi struct {
-	imm int32
-	rd  RegisterType
-	rs  RegisterType
+	imm     int32
+	rd      RegisterType
+	rs      RegisterType
+	forward Forward
 }
 
-func (a andi) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(a.rd, ctx.Registers[a.rs]&a.imm)
+func (op *andi) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs := read(ctx, op.forward, op.rs)
+	register, value := IsRegisterChange(op.rd, rs&op.imm)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -110,16 +149,20 @@ func (a andi) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error)
 	}, nil
 }
 
-func (a andi) InstructionType() InstructionType {
+func (op *andi) InstructionType() InstructionType {
 	return Andi
 }
 
-func (a andi) ReadRegisters() []RegisterType {
-	return []RegisterType{a.rs}
+func (op *andi) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs}
 }
 
-func (a andi) WriteRegisters() []RegisterType {
-	return []RegisterType{a.rd}
+func (op *andi) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *andi) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type auipc struct {
@@ -127,8 +170,8 @@ type auipc struct {
 	imm int32
 }
 
-func (a auipc) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(a.rd, pc+(a.imm<<12))
+func (op *auipc) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	register, value := IsRegisterChange(op.rd, pc+(op.imm<<12))
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -136,29 +179,35 @@ func (a auipc) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error
 	}, nil
 }
 
-func (a auipc) InstructionType() InstructionType {
+func (op *auipc) InstructionType() InstructionType {
 	return Auipc
 }
 
-func (a auipc) ReadRegisters() []RegisterType {
+func (op *auipc) ReadRegisters() []RegisterType {
 	return nil
 }
 
-func (a auipc) WriteRegisters() []RegisterType {
-	return []RegisterType{a.rd}
+func (op *auipc) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *auipc) Forward(forward Forward) {
 }
 
 type beq struct {
-	rs1   RegisterType
-	rs2   RegisterType
-	label string
+	rs1     RegisterType
+	rs2     RegisterType
+	label   string
+	forward Forward
 }
 
-func (b beq) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
-	if ctx.Registers[b.rs1] == ctx.Registers[b.rs2] {
-		addr, ok := labels[b.label]
+func (op *beq) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	if rs1 == rs2 {
+		addr, ok := labels[op.label]
 		if !ok {
-			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
+			return Execution{}, fmt.Errorf("label %s does not exist", op.label)
 		}
 		return Execution{
 			NextPc:   addr,
@@ -168,29 +217,36 @@ func (b beq) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, er
 	return Execution{}, nil
 }
 
-func (b beq) InstructionType() InstructionType {
+func (op *beq) InstructionType() InstructionType {
 	return Beq
 }
 
-func (b beq) ReadRegisters() []RegisterType {
-	return []RegisterType{b.rs1, b.rs2}
+func (op *beq) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (b beq) WriteRegisters() []RegisterType {
+func (op *beq) WriteRegisters() []RegisterType {
 	return nil
 }
 
-type bge struct {
-	rs1   RegisterType
-	rs2   RegisterType
-	label string
+func (op *beq) Forward(forward Forward) {
+	op.forward = forward
 }
 
-func (b bge) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
-	if ctx.Registers[b.rs1] >= ctx.Registers[b.rs2] {
-		addr, ok := labels[b.label]
+type bge struct {
+	rs1     RegisterType
+	rs2     RegisterType
+	label   string
+	forward Forward
+}
+
+func (op *bge) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	if rs1 >= rs2 {
+		addr, ok := labels[op.label]
 		if !ok {
-			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
+			return Execution{}, fmt.Errorf("label %s does not exist", op.label)
 		}
 		if ctx.Debug {
 			fmt.Printf("\t\tRun: bge true %d\n", addr/4)
@@ -206,29 +262,36 @@ func (b bge) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, er
 	return Execution{}, nil
 }
 
-func (b bge) InstructionType() InstructionType {
+func (op *bge) InstructionType() InstructionType {
 	return Bge
 }
 
-func (b bge) ReadRegisters() []RegisterType {
-	return []RegisterType{b.rs1, b.rs2}
+func (op *bge) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (b bge) WriteRegisters() []RegisterType {
+func (op *bge) WriteRegisters() []RegisterType {
 	return nil
+}
+
+func (op *bge) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type bgeu struct {
-	rs1   RegisterType
-	rs2   RegisterType
-	label string
+	rs1     RegisterType
+	rs2     RegisterType
+	label   string
+	forward Forward
 }
 
-func (b bgeu) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
-	if ctx.Registers[b.rs1] >= ctx.Registers[b.rs2] {
-		addr, ok := labels[b.label]
+func (op *bgeu) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	if rs1 >= rs2 {
+		addr, ok := labels[op.label]
 		if !ok {
-			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
+			return Execution{}, fmt.Errorf("label %s does not exist", op.label)
 		}
 		return Execution{
 			NextPc:   addr,
@@ -238,29 +301,36 @@ func (b bgeu) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, e
 	return Execution{}, nil
 }
 
-func (b bgeu) InstructionType() InstructionType {
+func (op *bgeu) InstructionType() InstructionType {
 	return Bgeu
 }
 
-func (b bgeu) ReadRegisters() []RegisterType {
-	return []RegisterType{b.rs1, b.rs2}
+func (op *bgeu) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (b bgeu) WriteRegisters() []RegisterType {
+func (op *bgeu) WriteRegisters() []RegisterType {
 	return nil
+}
+
+func (op *bgeu) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type blt struct {
-	rs1   RegisterType
-	rs2   RegisterType
-	label string
+	rs1     RegisterType
+	rs2     RegisterType
+	label   string
+	forward Forward
 }
 
-func (b blt) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
-	if ctx.Registers[b.rs1] < ctx.Registers[b.rs2] {
-		addr, ok := labels[b.label]
+func (op *blt) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	if rs1 < rs2 {
+		addr, ok := labels[op.label]
 		if !ok {
-			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
+			return Execution{}, fmt.Errorf("label %s does not exist", op.label)
 		}
 		return Execution{
 			NextPc:   addr,
@@ -270,29 +340,36 @@ func (b blt) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, er
 	return Execution{}, nil
 }
 
-func (b blt) InstructionType() InstructionType {
+func (op *blt) InstructionType() InstructionType {
 	return Blt
 }
 
-func (b blt) ReadRegisters() []RegisterType {
-	return []RegisterType{b.rs1, b.rs2}
+func (op *blt) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (b blt) WriteRegisters() []RegisterType {
+func (op *blt) WriteRegisters() []RegisterType {
 	return nil
+}
+
+func (op *blt) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type bltu struct {
-	rs1   RegisterType
-	rs2   RegisterType
-	label string
+	rs1     RegisterType
+	rs2     RegisterType
+	label   string
+	forward Forward
 }
 
-func (b bltu) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
-	if ctx.Registers[b.rs1] < ctx.Registers[b.rs2] {
-		addr, ok := labels[b.label]
+func (op *bltu) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	if rs1 < rs2 {
+		addr, ok := labels[op.label]
 		if !ok {
-			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
+			return Execution{}, fmt.Errorf("label %s does not exist", op.label)
 		}
 		return Execution{
 			NextPc:   addr,
@@ -302,29 +379,36 @@ func (b bltu) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, e
 	return Execution{}, nil
 }
 
-func (b bltu) InstructionType() InstructionType {
+func (op *bltu) InstructionType() InstructionType {
 	return Bltu
 }
 
-func (b bltu) ReadRegisters() []RegisterType {
-	return []RegisterType{b.rs1, b.rs2}
+func (op *bltu) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (b bltu) WriteRegisters() []RegisterType {
+func (op *bltu) WriteRegisters() []RegisterType {
 	return nil
 }
 
-type bne struct {
-	rs1   RegisterType
-	rs2   RegisterType
-	label string
+func (op *bltu) Forward(forward Forward) {
+	op.forward = forward
 }
 
-func (b bne) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
-	if ctx.Registers[b.rs1] != ctx.Registers[b.rs2] {
-		addr, ok := labels[b.label]
+type bne struct {
+	rs1     RegisterType
+	rs2     RegisterType
+	label   string
+	forward Forward
+}
+
+func (op *bne) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	if rs1 != rs2 {
+		addr, ok := labels[op.label]
 		if !ok {
-			return Execution{}, fmt.Errorf("label %s does not exist", b.label)
+			return Execution{}, fmt.Errorf("label %s does not exist", op.label)
 		}
 		return Execution{
 			NextPc:   addr,
@@ -334,29 +418,36 @@ func (b bne) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, er
 	return Execution{}, nil
 }
 
-func (b bne) InstructionType() InstructionType {
+func (op *bne) InstructionType() InstructionType {
 	return Bne
 }
 
-func (b bne) ReadRegisters() []RegisterType {
-	return []RegisterType{b.rs1, b.rs2}
+func (op *bne) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (b bne) WriteRegisters() []RegisterType {
+func (op *bne) WriteRegisters() []RegisterType {
 	return nil
 }
 
-type div struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+func (op *bne) Forward(forward Forward) {
+	op.forward = forward
 }
 
-func (d div) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	if ctx.Registers[d.rs2] == 0 {
+type div struct {
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
+}
+
+func (op *div) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	if rs2 == 0 {
 		return Execution{}, fmt.Errorf("division by zero")
 	}
-	register, value := IsRegisterChange(d.rd, ctx.Registers[d.rs1]/ctx.Registers[d.rs2])
+	register, value := IsRegisterChange(op.rd, rs1/rs2)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -364,31 +455,36 @@ func (d div) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (d div) InstructionType() InstructionType {
+func (op *div) InstructionType() InstructionType {
 	return Div
 }
 
-func (d div) ReadRegisters() []RegisterType {
-	return []RegisterType{d.rs1, d.rs2}
+func (op *div) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (d div) WriteRegisters() []RegisterType {
-	return []RegisterType{d.rd}
+func (op *div) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *div) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type jal struct {
-	label string
-	rd    RegisterType
+	label   string
+	rd      RegisterType
+	forward Forward
 }
 
-func (j jal) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
-	addr, ok := labels[j.label]
+func (op *jal) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
+	addr, ok := labels[op.label]
 	if !ok {
-		return Execution{}, fmt.Errorf("label %s does not exist", j.label)
+		return Execution{}, fmt.Errorf("label %s does not exist", op.label)
 	}
 	// TODO Shouldn't be a direct write
 	ctx.Registers[Ra] = pc
-	register, value := IsRegisterChange(j.rd, pc+4)
+	register, value := IsRegisterChange(op.rd, pc+4)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -398,45 +494,55 @@ func (j jal) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, er
 	}, nil
 }
 
-func (j jal) InstructionType() InstructionType {
+func (op *jal) InstructionType() InstructionType {
 	return Jal
 }
 
-func (j jal) ReadRegisters() []RegisterType {
+func (op *jal) ReadRegisters() []RegisterType {
 	return nil
 }
 
-func (j jal) WriteRegisters() []RegisterType {
-	return []RegisterType{j.rd}
+func (op *jal) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *jal) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type jalr struct {
-	rd  RegisterType
-	rs  RegisterType
-	imm int32
+	rd      RegisterType
+	rs      RegisterType
+	imm     int32
+	forward Forward
 }
 
-func (j jalr) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(j.rd, pc+4)
+func (op *jalr) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs := read(ctx, op.forward, op.rs)
+	register, value := IsRegisterChange(op.rd, pc+4)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
 		RegisterValue:  value,
-		NextPc:         ctx.Registers[j.rs] + j.imm,
+		NextPc:         rs + op.imm,
 		PcChange:       true,
 	}, nil
 }
 
-func (j jalr) InstructionType() InstructionType {
+func (op *jalr) InstructionType() InstructionType {
 	return Jalr
 }
 
-func (j jalr) ReadRegisters() []RegisterType {
-	return []RegisterType{j.rs}
+func (op *jalr) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs}
 }
 
-func (j jalr) WriteRegisters() []RegisterType {
-	return []RegisterType{j.rd}
+func (op *jalr) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *jalr) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type lui struct {
@@ -444,8 +550,8 @@ type lui struct {
 	imm int32
 }
 
-func (l lui) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(l.rd, l.imm<<12)
+func (op *lui) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	register, value := IsRegisterChange(op.rd, op.imm<<12)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -453,29 +559,34 @@ func (l lui) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (l lui) InstructionType() InstructionType {
+func (op *lui) InstructionType() InstructionType {
 	return Lui
 }
 
-func (l lui) ReadRegisters() []RegisterType {
+func (op *lui) ReadRegisters() []RegisterType {
 	return nil
 }
 
-func (l lui) WriteRegisters() []RegisterType {
-	return []RegisterType{l.rd}
+func (op *lui) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *lui) Forward(forward Forward) {
 }
 
 type lb struct {
-	rs2    RegisterType
-	offset int32
-	rs1    RegisterType
+	rs2     RegisterType
+	offset  int32
+	rs1     RegisterType
+	forward Forward
 }
 
-func (l lb) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	idx := ctx.Registers[l.rs1] + l.offset
+func (op *lb) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	idx := rs1 + op.offset
 	n := ctx.Memory[idx]
 
-	register, value := IsRegisterChange(l.rs2, int32(n))
+	register, value := IsRegisterChange(op.rs2, int32(n))
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -483,32 +594,38 @@ func (l lb) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	}, nil
 }
 
-func (l lb) InstructionType() InstructionType {
+func (op *lb) InstructionType() InstructionType {
 	return Lb
 }
 
-func (l lb) ReadRegisters() []RegisterType {
-	return []RegisterType{l.rs1, l.rs2}
+func (op *lb) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (l lb) WriteRegisters() []RegisterType {
+func (op *lb) WriteRegisters() []RegisterType {
 	return nil
 }
 
-type lh struct {
-	rs2    RegisterType
-	offset int32
-	rs1    RegisterType
+func (op *lb) Forward(forward Forward) {
+	op.forward = forward
 }
 
-func (l lh) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	idx := ctx.Registers[l.rs1] + l.offset
+type lh struct {
+	rs2     RegisterType
+	offset  int32
+	rs1     RegisterType
+	forward Forward
+}
+
+func (op *lh) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	idx := rs1 + op.offset
 	i1 := ctx.Memory[idx]
 	idx++
 	i2 := ctx.Memory[idx]
 
 	n := i32FromBytes(i1, i2, 0, 0)
-	register, value := IsRegisterChange(l.rs2, n)
+	register, value := IsRegisterChange(op.rs2, n)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -516,16 +633,20 @@ func (l lh) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	}, nil
 }
 
-func (l lh) InstructionType() InstructionType {
+func (op *lh) InstructionType() InstructionType {
 	return Lh
 }
 
-func (l lh) ReadRegisters() []RegisterType {
-	return []RegisterType{l.rs1, l.rs2}
+func (op *lh) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (l lh) WriteRegisters() []RegisterType {
+func (op *lh) WriteRegisters() []RegisterType {
 	return nil
+}
+
+func (op *lh) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type li struct {
@@ -533,8 +654,8 @@ type li struct {
 	imm int32
 }
 
-func (l li) Run(ctx *Context, _ map[string]int32, _ int32) (Execution, error) {
-	register, value := IsRegisterChange(l.rd, l.imm)
+func (op *li) Run(ctx *Context, _ map[string]int32, _ int32) (Execution, error) {
+	register, value := IsRegisterChange(op.rd, op.imm)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -542,26 +663,31 @@ func (l li) Run(ctx *Context, _ map[string]int32, _ int32) (Execution, error) {
 	}, nil
 }
 
-func (l li) InstructionType() InstructionType {
+func (op *li) InstructionType() InstructionType {
 	return Li
 }
 
-func (l li) ReadRegisters() []RegisterType {
+func (op *li) ReadRegisters() []RegisterType {
 	return nil
 }
 
-func (l li) WriteRegisters() []RegisterType {
-	return []RegisterType{l.rd}
+func (op *li) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *li) Forward(forward Forward) {
 }
 
 type lw struct {
-	rd     RegisterType
-	offset int32
-	rs     RegisterType
+	rd      RegisterType
+	offset  int32
+	rs      RegisterType
+	forward Forward
 }
 
-func (l lw) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	idx := ctx.Registers[l.rs] + l.offset
+func (op *lw) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs := read(ctx, op.forward, op.rs)
+	idx := rs + op.offset
 	i1 := ctx.Memory[idx]
 	idx++
 	i2 := ctx.Memory[idx]
@@ -571,7 +697,7 @@ func (l lw) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	i4 := ctx.Memory[idx]
 
 	n := i32FromBytes(i1, i2, i3, i4)
-	register, value := IsRegisterChange(l.rd, n)
+	register, value := IsRegisterChange(op.rd, n)
 	if ctx.Debug {
 		fmt.Printf("\t\tRun: Lw %s %d\n", register, value)
 	}
@@ -582,44 +708,54 @@ func (l lw) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	}, nil
 }
 
-func (l lw) InstructionType() InstructionType {
+func (op *lw) InstructionType() InstructionType {
 	return Lw
 }
 
-func (l lw) ReadRegisters() []RegisterType {
-	return []RegisterType{l.rs}
+func (op *lw) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs}
 }
 
-func (l lw) WriteRegisters() []RegisterType {
-	return []RegisterType{l.rd}
+func (op *lw) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *lw) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type nop struct{}
 
-func (n nop) Run(_ *Context, _ map[string]int32, pc int32) (Execution, error) {
+func (op *nop) Run(_ *Context, _ map[string]int32, pc int32) (Execution, error) {
 	return Execution{}, nil
 }
 
-func (n nop) InstructionType() InstructionType {
+func (op *nop) InstructionType() InstructionType {
 	return Nop
 }
 
-func (n nop) ReadRegisters() []RegisterType {
+func (op *nop) ReadRegisters() []RegisterType {
 	return nil
 }
 
-func (n nop) WriteRegisters() []RegisterType {
+func (op *nop) WriteRegisters() []RegisterType {
 	return nil
+}
+
+func (op *nop) Forward(forward Forward) {
 }
 
 type mul struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
 }
 
-func (m mul) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(m.rd, ctx.Registers[m.rs1]*ctx.Registers[m.rs2])
+func (op *mul) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	register, value := IsRegisterChange(op.rd, rs1*rs2)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -627,25 +763,31 @@ func (m mul) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (m mul) InstructionType() InstructionType {
+func (op *mul) InstructionType() InstructionType {
 	return Mul
 }
 
-func (m mul) ReadRegisters() []RegisterType {
-	return []RegisterType{m.rs1, m.rs2}
+func (op *mul) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (m mul) WriteRegisters() []RegisterType {
-	return []RegisterType{m.rd}
+func (op *mul) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *mul) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type mv struct {
-	rd RegisterType
-	rs RegisterType
+	rd      RegisterType
+	rs      RegisterType
+	forward Forward
 }
 
-func (m mv) Run(ctx *Context, _ map[string]int32, _ int32) (Execution, error) {
-	register, value := IsRegisterChange(m.rd, ctx.Registers[m.rs])
+func (op *mv) Run(ctx *Context, _ map[string]int32, _ int32) (Execution, error) {
+	rs := read(ctx, op.forward, op.rs)
+	register, value := IsRegisterChange(op.rd, rs)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -653,26 +795,33 @@ func (m mv) Run(ctx *Context, _ map[string]int32, _ int32) (Execution, error) {
 	}, nil
 }
 
-func (m mv) InstructionType() InstructionType {
+func (op *mv) InstructionType() InstructionType {
 	return Mv
 }
 
-func (m mv) ReadRegisters() []RegisterType {
-	return []RegisterType{m.rs}
+func (op *mv) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs}
 }
 
-func (m mv) WriteRegisters() []RegisterType {
-	return []RegisterType{m.rd}
+func (op *mv) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *mv) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type or struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
 }
 
-func (o or) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(o.rd, ctx.Registers[o.rs1]|ctx.Registers[o.rs2])
+func (op *or) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	register, value := IsRegisterChange(op.rd, rs1|rs2)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -680,26 +829,32 @@ func (o or) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	}, nil
 }
 
-func (o or) InstructionType() InstructionType {
+func (op *or) InstructionType() InstructionType {
 	return Or
 }
 
-func (o or) ReadRegisters() []RegisterType {
-	return []RegisterType{o.rs1, o.rs2}
+func (op *or) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (o or) WriteRegisters() []RegisterType {
-	return []RegisterType{o.rd}
+func (op *or) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *or) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type ori struct {
-	imm int32
-	rd  RegisterType
-	rs  RegisterType
+	imm     int32
+	rd      RegisterType
+	rs      RegisterType
+	forward Forward
 }
 
-func (o ori) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(o.rd, ctx.Registers[o.rs]|o.imm)
+func (op *ori) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs := read(ctx, op.forward, op.rs)
+	register, value := IsRegisterChange(op.rd, rs|op.imm)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -707,29 +862,36 @@ func (o ori) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (o ori) InstructionType() InstructionType {
+func (op *ori) InstructionType() InstructionType {
 	return Ori
 }
 
-func (o ori) ReadRegisters() []RegisterType {
-	return []RegisterType{o.rs}
+func (op *ori) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs}
 }
 
-func (o ori) WriteRegisters() []RegisterType {
-	return []RegisterType{o.rd}
+func (op *ori) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *ori) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type rem struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
 }
 
-func (r rem) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+func (op *rem) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
 	if ctx.Debug {
-		fmt.Printf("\t\tRun: Rem %d %d\n", ctx.Registers[r.rs1], ctx.Registers[r.rs2])
+		fmt.Printf("\t\tRun: Rem %d %d\n", rs1, rs2)
 	}
-	register, value := IsRegisterChange(r.rd, ctx.Registers[r.rs1]%ctx.Registers[r.rs2])
+	register, value := IsRegisterChange(op.rd, rs1%rs2)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -737,72 +899,89 @@ func (r rem) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (r rem) InstructionType() InstructionType {
+func (op *rem) InstructionType() InstructionType {
 	return Rem
 }
 
-func (r rem) ReadRegisters() []RegisterType {
-	return []RegisterType{r.rs1, r.rs2}
+func (op *rem) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (r rem) WriteRegisters() []RegisterType {
-	return []RegisterType{r.rd}
+func (op *rem) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *rem) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type ret struct{}
 
-func (r ret) Run(_ *Context, _ map[string]int32, _ int32) (Execution, error) {
+func (op *ret) Run(_ *Context, _ map[string]int32, _ int32) (Execution, error) {
 	return Execution{Return: true}, nil
 }
 
-func (r ret) InstructionType() InstructionType {
+func (op *ret) InstructionType() InstructionType {
 	return Ret
 }
 
-func (r ret) ReadRegisters() []RegisterType {
+func (op *ret) ReadRegisters() []RegisterType {
 	return nil
 }
 
-func (r ret) WriteRegisters() []RegisterType {
+func (op *ret) WriteRegisters() []RegisterType {
 	return nil
+}
+
+func (op *ret) Forward(forward Forward) {
 }
 
 type sb struct {
-	rs2    RegisterType
-	offset int32
-	rs1    RegisterType
+	rs2     RegisterType
+	offset  int32
+	rs1     RegisterType
+	forward Forward
 }
 
-func (s sb) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	idx := ctx.Registers[s.rs1] + s.offset
-	n := ctx.Registers[s.rs2]
+func (op *sb) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	idx := rs1 + op.offset
+	n := rs2
 	return Execution{
 		MemoryChange:  true,
 		MemoryChanges: map[int32]int8{idx: int8(n)},
 	}, nil
 }
 
-func (s sb) InstructionType() InstructionType {
+func (op *sb) InstructionType() InstructionType {
 	return Sb
 }
 
-func (s sb) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs1, s.rs2}
+func (op *sb) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (s sb) WriteRegisters() []RegisterType {
+func (op *sb) WriteRegisters() []RegisterType {
 	return nil
 }
 
-type sh struct {
-	rs2    RegisterType
-	offset int32
-	rs1    RegisterType
+func (op *sb) Forward(forward Forward) {
+	op.forward = forward
 }
 
-func (s sh) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	idx := ctx.Registers[s.rs1] + s.offset
-	n := ctx.Registers[s.rs2]
+type sh struct {
+	rs2     RegisterType
+	offset  int32
+	rs1     RegisterType
+	forward Forward
+}
+
+func (op *sh) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	idx := rs1 + op.offset
+	n := rs2
 	bytes := BytesFromLowBits(n)
 	return Execution{
 		MemoryChange: true,
@@ -813,26 +992,33 @@ func (s sh) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	}, nil
 }
 
-func (s sh) InstructionType() InstructionType {
+func (op *sh) InstructionType() InstructionType {
 	return Sh
 }
 
-func (s sh) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs1, s.rs2}
+func (op *sh) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (s sh) WriteRegisters() []RegisterType {
+func (op *sh) WriteRegisters() []RegisterType {
 	return nil
 }
 
-type sll struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+func (op *sh) Forward(forward Forward) {
+	op.forward = forward
 }
 
-func (s sll) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs1]<<uint(ctx.Registers[s.rs2]))
+type sll struct {
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
+}
+
+func (op *sll) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	register, value := IsRegisterChange(op.rd, rs1<<uint(rs2))
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -840,26 +1026,32 @@ func (s sll) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (s sll) InstructionType() InstructionType {
+func (op *sll) InstructionType() InstructionType {
 	return Sll
 }
 
-func (s sll) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs1, s.rs2}
+func (op *sll) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (s sll) WriteRegisters() []RegisterType {
-	return []RegisterType{s.rd}
+func (op *sll) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *sll) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type slli struct {
-	rd  RegisterType
-	rs  RegisterType
-	imm int32
+	rd      RegisterType
+	rs      RegisterType
+	imm     int32
+	forward Forward
 }
 
-func (s slli) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs]<<uint(s.imm))
+func (op *slli) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs := read(ctx, op.forward, op.rs)
+	register, value := IsRegisterChange(op.rd, rs<<uint(op.imm))
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -867,31 +1059,38 @@ func (s slli) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error)
 	}, nil
 }
 
-func (s slli) InstructionType() InstructionType {
+func (op *slli) InstructionType() InstructionType {
 	return Slli
 }
 
-func (s slli) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs}
+func (op *slli) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs}
 }
 
-func (s slli) WriteRegisters() []RegisterType {
-	return []RegisterType{s.rd}
+func (op *slli) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *slli) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type slt struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
 }
 
-func (s slt) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+func (op *slt) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	var register RegisterType
 	var value int32
-	if ctx.Registers[s.rs1] < ctx.Registers[s.rs2] {
-		register, value = IsRegisterChange(s.rd, 1)
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	if rs1 < rs2 {
+		register, value = IsRegisterChange(op.rd, 1)
 	} else {
-		register, value = IsRegisterChange(s.rd, 0)
+		register, value = IsRegisterChange(op.rd, 0)
 	}
 	return Execution{
 		RegisterChange: true,
@@ -900,31 +1099,38 @@ func (s slt) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (s slt) InstructionType() InstructionType {
+func (op *slt) InstructionType() InstructionType {
 	return Slt
 }
 
-func (s slt) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs1, s.rs2}
+func (op *slt) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (s slt) WriteRegisters() []RegisterType {
-	return []RegisterType{s.rd}
+func (op *slt) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *slt) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type sltu struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
 }
 
-func (s sltu) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+func (op *sltu) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	var register RegisterType
 	var value int32
-	if ctx.Registers[s.rs1] < ctx.Registers[s.rs2] {
-		register, value = IsRegisterChange(s.rd, 1)
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	if rs1 < rs2 {
+		register, value = IsRegisterChange(op.rd, 1)
 	} else {
-		register, value = IsRegisterChange(s.rd, 0)
+		register, value = IsRegisterChange(op.rd, 0)
 	}
 	return Execution{
 		RegisterChange: true,
@@ -933,31 +1139,37 @@ func (s sltu) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error)
 	}, nil
 }
 
-func (s sltu) InstructionType() InstructionType {
+func (op *sltu) InstructionType() InstructionType {
 	return Sltu
 }
 
-func (s sltu) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs1, s.rs2}
+func (op *sltu) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (s sltu) WriteRegisters() []RegisterType {
-	return []RegisterType{s.rd}
+func (op *sltu) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *sltu) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type slti struct {
-	rd  RegisterType
-	rs  RegisterType
-	imm int32
+	rd      RegisterType
+	rs      RegisterType
+	imm     int32
+	forward Forward
 }
 
-func (s slti) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+func (op *slti) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	var register RegisterType
 	var value int32
-	if ctx.Registers[s.rs] < s.imm {
-		register, value = IsRegisterChange(s.rd, 1)
+	rs := read(ctx, op.forward, op.rs)
+	if rs < op.imm {
+		register, value = IsRegisterChange(op.rd, 1)
 	} else {
-		register, value = IsRegisterChange(s.rd, 0)
+		register, value = IsRegisterChange(op.rd, 0)
 	}
 	return Execution{
 		RegisterChange: true,
@@ -966,26 +1178,33 @@ func (s slti) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error)
 	}, nil
 }
 
-func (s slti) InstructionType() InstructionType {
+func (op *slti) InstructionType() InstructionType {
 	return Slti
 }
 
-func (s slti) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs}
+func (op *slti) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs}
 }
 
-func (s slti) WriteRegisters() []RegisterType {
-	return []RegisterType{s.rd}
+func (op *slti) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *slti) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type sra struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
 }
 
-func (s sra) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs1]>>ctx.Registers[s.rs2])
+func (op *sra) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	register, value := IsRegisterChange(op.rd, rs1>>rs2)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -993,26 +1212,32 @@ func (s sra) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (s sra) InstructionType() InstructionType {
+func (op *sra) InstructionType() InstructionType {
 	return Sra
 }
 
-func (s sra) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs1, s.rs2}
+func (op *sra) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (s sra) WriteRegisters() []RegisterType {
-	return []RegisterType{s.rd}
+func (op *sra) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *sra) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type srai struct {
-	rd  RegisterType
-	rs  RegisterType
-	imm int32
+	rd      RegisterType
+	rs      RegisterType
+	imm     int32
+	forward Forward
 }
 
-func (s srai) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs]>>s.imm)
+func (op *srai) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs := read(ctx, op.forward, op.rs)
+	register, value := IsRegisterChange(op.rd, rs>>op.imm)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -1020,26 +1245,33 @@ func (s srai) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error)
 	}, nil
 }
 
-func (s srai) InstructionType() InstructionType {
+func (op *srai) InstructionType() InstructionType {
 	return Srai
 }
 
-func (s srai) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs}
+func (op *srai) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs}
 }
 
-func (s srai) WriteRegisters() []RegisterType {
-	return []RegisterType{s.rd}
+func (op *srai) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *srai) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type srl struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
 }
 
-func (s srl) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs1]>>ctx.Registers[s.rs2])
+func (op *srl) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	register, value := IsRegisterChange(op.rd, rs1>>rs2)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -1047,26 +1279,32 @@ func (s srl) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (s srl) InstructionType() InstructionType {
+func (op *srl) InstructionType() InstructionType {
 	return Srl
 }
 
-func (s srl) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs1, s.rs2}
+func (op *srl) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (s srl) WriteRegisters() []RegisterType {
-	return []RegisterType{s.rd}
+func (op *srl) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *srl) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type srli struct {
-	rd  RegisterType
-	rs  RegisterType
-	imm int32
+	rd      RegisterType
+	rs      RegisterType
+	imm     int32
+	forward Forward
 }
 
-func (s srli) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs]>>s.imm)
+func (op *srli) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs := read(ctx, op.forward, op.rs)
+	register, value := IsRegisterChange(op.rd, rs>>op.imm)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -1074,26 +1312,33 @@ func (s srli) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error)
 	}, nil
 }
 
-func (s srli) InstructionType() InstructionType {
+func (op *srli) InstructionType() InstructionType {
 	return Srli
 }
 
-func (s srli) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs}
+func (op *srli) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs}
 }
 
-func (s srli) WriteRegisters() []RegisterType {
-	return []RegisterType{s.rd}
+func (op *srli) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *srli) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type sub struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
 }
 
-func (s sub) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(s.rd, ctx.Registers[s.rs1]-ctx.Registers[s.rs2])
+func (op *sub) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	register, value := IsRegisterChange(op.rd, rs1-rs2)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -1101,27 +1346,34 @@ func (s sub) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (s sub) InstructionType() InstructionType {
+func (op *sub) InstructionType() InstructionType {
 	return Sub
 }
 
-func (s sub) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs1, s.rs2}
+func (op *sub) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (s sub) WriteRegisters() []RegisterType {
-	return []RegisterType{s.rd}
+func (op *sub) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *sub) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type sw struct {
-	rs2    RegisterType
-	offset int32
-	rs1    RegisterType
+	rs2     RegisterType
+	offset  int32
+	rs1     RegisterType
+	forward Forward
 }
 
-func (s sw) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	idx := ctx.Registers[s.rs1] + s.offset
-	n := ctx.Registers[s.rs2]
+func (op *sw) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	idx := rs1 + op.offset
+	n := rs2
 	bytes := BytesFromLowBits(n)
 	if ctx.Debug {
 		fmt.Printf("\t\tRun: Sw %d to %d\n", idx, n)
@@ -1137,26 +1389,33 @@ func (s sw) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
 	}, nil
 }
 
-func (s sw) InstructionType() InstructionType {
+func (op *sw) InstructionType() InstructionType {
 	return Sw
 }
 
-func (s sw) ReadRegisters() []RegisterType {
-	return []RegisterType{s.rs1, s.rs2}
+func (op *sw) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (s sw) WriteRegisters() []RegisterType {
+func (op *sw) WriteRegisters() []RegisterType {
 	return nil
 }
 
-type xor struct {
-	rd  RegisterType
-	rs1 RegisterType
-	rs2 RegisterType
+func (op *sw) Forward(forward Forward) {
+	op.forward = forward
 }
 
-func (x xor) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(x.rd, ctx.Registers[x.rs1]^ctx.Registers[x.rs2])
+type xor struct {
+	rd      RegisterType
+	rs1     RegisterType
+	rs2     RegisterType
+	forward Forward
+}
+
+func (op *xor) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs1 := read(ctx, op.forward, op.rs1)
+	rs2 := read(ctx, op.forward, op.rs2)
+	register, value := IsRegisterChange(op.rd, rs1^rs2)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -1164,26 +1423,32 @@ func (x xor) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) 
 	}, nil
 }
 
-func (x xor) InstructionType() InstructionType {
+func (op *xor) InstructionType() InstructionType {
 	return Xor
 }
 
-func (x xor) ReadRegisters() []RegisterType {
-	return []RegisterType{x.rs1, x.rs2}
+func (op *xor) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
 }
 
-func (x xor) WriteRegisters() []RegisterType {
-	return []RegisterType{x.rd}
+func (op *xor) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *xor) Forward(forward Forward) {
+	op.forward = forward
 }
 
 type xori struct {
-	imm int32
-	rd  RegisterType
-	rs  RegisterType
+	imm     int32
+	rd      RegisterType
+	rs      RegisterType
+	forward Forward
 }
 
-func (x xori) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	register, value := IsRegisterChange(x.rd, ctx.Registers[x.rs]^x.imm)
+func (op *xori) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
+	rs := read(ctx, op.forward, op.rs)
+	register, value := IsRegisterChange(op.rd, rs^op.imm)
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -1191,14 +1456,18 @@ func (x xori) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error)
 	}, nil
 }
 
-func (x xori) InstructionType() InstructionType {
+func (op *xori) InstructionType() InstructionType {
 	return Xori
 }
 
-func (x xori) ReadRegisters() []RegisterType {
-	return []RegisterType{x.rs}
+func (op *xori) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs}
 }
 
-func (x xori) WriteRegisters() []RegisterType {
-	return []RegisterType{x.rd}
+func (op *xori) WriteRegisters() []RegisterType {
+	return []RegisterType{op.rd}
+}
+
+func (op *xori) Forward(forward Forward) {
+	op.forward = forward
 }

@@ -19,7 +19,7 @@ type CPU struct {
 	decodeUnit   *decodeUnit
 	controlBus   *comp.BufferedBus[risc.InstructionRunnerPc]
 	controlUnit  *controlUnit
-	executeBus   *comp.BufferedBus[risc.InstructionRunnerPc]
+	executeBus   *comp.BufferedBus[*risc.InstructionRunnerPc]
 	executeUnits []*executeUnit
 	writeBus     *comp.BufferedBus[risc.ExecutionContext]
 	writeUnits   []*writeUnit
@@ -32,7 +32,7 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 	busSize := 2
 	decodeBus := comp.NewBufferedBus[int32](busSize, busSize)
 	controlBus := comp.NewBufferedBus[risc.InstructionRunnerPc](busSize, busSize)
-	executeBus := comp.NewBufferedBus[risc.InstructionRunnerPc](busSize, busSize)
+	executeBus := comp.NewBufferedBus[*risc.InstructionRunnerPc](busSize, busSize)
 	writeBus := comp.NewBufferedBus[risc.ExecutionContext](busSize, busSize)
 
 	fu := newFetchUnit(l1ICacheLineSizeInBytes, decodeBus)
@@ -142,6 +142,7 @@ func (m *CPU) Stats() map[string]any {
 		"flush":                  m.counterFlush,
 		"cu_push":                m.controlUnit.pushed.Stats(),
 		"cu_blocked":             m.controlUnit.blocked.Stats(),
+		"cu_forward":             m.controlUnit.forwarding,
 		"cu_total":               m.controlUnit.total,
 		"cu_cant_add":            m.controlUnit.cantAdd,
 		"cu_blocked_branch":      m.controlUnit.blockedBranch,

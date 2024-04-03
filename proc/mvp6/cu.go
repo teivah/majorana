@@ -1,8 +1,6 @@
 package mvp6
 
 import (
-	"fmt"
-
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/common/obs"
 	"github.com/teivah/majorana/proc/comp"
@@ -15,18 +13,19 @@ const (
 
 type controlUnit struct {
 	inBus    *comp.BufferedBus[risc.InstructionRunnerPc]
-	outBus   *comp.BufferedBus[risc.InstructionRunnerPc]
+	outBus   *comp.BufferedBus[*risc.InstructionRunnerPc]
 	pendings *comp.Queue[risc.InstructionRunnerPc]
 
 	pushed            *obs.Gauge
 	blocked           *obs.Gauge
+	forwarding        int
 	total             int
 	cantAdd           int
 	blockedBranch     int
 	blockedDataHazard int
 }
 
-func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.InstructionRunnerPc]) *controlUnit {
+func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc]) *controlUnit {
 	return &controlUnit{
 		inBus:    inBus,
 		outBus:   outBus,
@@ -55,11 +54,11 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	}
 
 	remaining := u.outBus.RemainingToAdd()
-	var pushedRunners []risc.InstructionRunner
+	var pushedRunners []*risc.InstructionRunnerPc
 
 	defer func() {
 		for _, runner := range pushedRunners {
-			ctx.AddPendingRegisters(runner)
+			ctx.AddPendingRegisters(runner.Runner)
 		}
 	}()
 
@@ -72,16 +71,22 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 
 		hazard, reason := ctx.IsDataHazard(pending.Runner)
 		if !hazard {
-			hazard, reason := isHazardWithPushedRunners(pushedRunners, pending.Runner)
+			hazard, conflictRunner, register := isHazardWithPushedRunners(pushedRunners, pending.Runner)
 			if hazard {
-				log.Infoi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "new data hazard: reason=%s", reason)
-				u.blockedDataHazard++
-				return
+				ch := make(chan int32, 1)
+				conflictRunner.Forwarder = ch
+				conflictRunner.ForwardRegister = register
+				pending.Receiver = ch
+				pending.ForwardRegister = register
+				log.Infoi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "pushing forward runner")
+				u.forwarding++
+			} else {
+				log.Infoi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "pushing runner")
 			}
 
-			u.pushRunner(ctx, cycle, pending)
+			u.outBus.Add(&pending, cycle)
 			u.pendings.Remove(elem)
-			pushedRunners = append(pushedRunners, pending.Runner)
+			pushedRunners = append(pushedRunners, &pending)
 			remaining--
 			pushed++
 		} else {
@@ -104,16 +109,21 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 
 		hazard, reason := ctx.IsDataHazard(runner.Runner)
 		if !hazard {
-			hazard, reason := isHazardWithPushedRunners(pushedRunners, runner.Runner)
+			hazard, conflictRunner, register := isHazardWithPushedRunners(pushedRunners, runner.Runner)
 			if hazard {
-				u.pendings.Push(runner)
-				log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "new data hazard: reason=%s", reason)
-				u.blockedDataHazard++
-				return
+				ch := make(chan int32, 1)
+				conflictRunner.Forwarder = ch
+				conflictRunner.ForwardRegister = register
+				runner.Receiver = ch
+				runner.ForwardRegister = register
+				log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing forward runner")
+				u.forwarding++
+			} else {
+				log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
 			}
 
-			u.pushRunner(ctx, cycle, runner)
-			pushedRunners = append(pushedRunners, runner.Runner)
+			u.outBus.Add(&runner, cycle)
+			pushedRunners = append(pushedRunners, &runner)
 			remaining--
 			pushed++
 		} else {
@@ -125,14 +135,14 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	}
 }
 
-func isHazardWithPushedRunners(pushedRunners []risc.InstructionRunner, runner risc.InstructionRunner) (bool, string) {
-	pendingWriteRegisters := make(map[risc.RegisterType]int)
+func isHazardWithPushedRunners(pushedRunners []*risc.InstructionRunnerPc, runner risc.InstructionRunner) (bool, *risc.InstructionRunnerPc, risc.RegisterType) {
+	pendingWriteRegisters := make(map[risc.RegisterType]*risc.InstructionRunnerPc)
 	for _, runner := range pushedRunners {
-		for _, register := range runner.WriteRegisters() {
+		for _, register := range runner.Runner.WriteRegisters() {
 			if register == risc.Zero {
 				continue
 			}
-			pendingWriteRegisters[register]++
+			pendingWriteRegisters[register] = runner
 		}
 	}
 
@@ -140,17 +150,12 @@ func isHazardWithPushedRunners(pushedRunners []risc.InstructionRunner, runner ri
 		if register == risc.Zero {
 			continue
 		}
-		if v, exists := pendingWriteRegisters[register]; exists && v > 0 {
+		if v, exists := pendingWriteRegisters[register]; exists {
 			// An instruction needs to read from a register that was updated
-			return true, fmt.Sprintf("Read hazard on %s", register)
+			return true, v, register
 		}
 	}
-	return false, ""
-}
-
-func (u *controlUnit) pushRunner(ctx *risc.Context, cycle int, runner risc.InstructionRunnerPc) {
-	u.outBus.Add(runner, cycle)
-	log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
+	return false, nil, risc.Zero
 }
 
 func (u *controlUnit) flush() {

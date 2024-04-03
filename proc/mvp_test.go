@@ -278,6 +278,9 @@ func TestBenchmarks(t *testing.T) {
 		"mvp5": func(m int) virtualMachine {
 			return mvp5.NewCPU(false, m)
 		},
+		"mvp6": func(m int) virtualMachine {
+			return mvp5.NewCPU(false, m)
+		},
 	}
 
 	prime := map[string]int{
@@ -286,6 +289,7 @@ func TestBenchmarks(t *testing.T) {
 		"mvp3": 450790,
 		"mvp4": 400717,
 		"mvp5": 400721,
+		"mvp6": 400721,
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
@@ -305,6 +309,7 @@ func TestBenchmarks(t *testing.T) {
 		"mvp3": 249916,
 		"mvp4": 245821,
 		"mvp5": 258113,
+		"mvp6": 258113,
 	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {
