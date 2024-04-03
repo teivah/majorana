@@ -1,18 +1,20 @@
 package mvm5
 
 import (
-	"slices"
-
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/common/obs"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
 
+const (
+	pendingLength = 2
+)
+
 type controlUnit struct {
 	inBus    *comp.BufferedBus[risc.InstructionRunnerPc]
 	outBus   *comp.BufferedBus[risc.InstructionRunnerPc]
-	pendings []risc.InstructionRunnerPc
+	pendings *comp.Queue[risc.InstructionRunnerPc]
 
 	pushed            *obs.Gauge
 	blocked           *obs.Gauge
@@ -24,10 +26,11 @@ type controlUnit struct {
 
 func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.InstructionRunnerPc]) *controlUnit {
 	return &controlUnit{
-		inBus:   inBus,
-		outBus:  outBus,
-		pushed:  &obs.Gauge{},
-		blocked: &obs.Gauge{},
+		inBus:    inBus,
+		outBus:   outBus,
+		pendings: comp.NewQueue[risc.InstructionRunnerPc](pendingLength),
+		pushed:   &obs.Gauge{},
+		blocked:  &obs.Gauge{},
 	}
 }
 
@@ -50,8 +53,8 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	}
 
 	remaining := u.outBus.RemainingToAdd()
-	for i := 0; i < len(u.pendings) && remaining > 0; i++ {
-		pending := u.pendings[i]
+	for elem := range u.pendings.Iterator() {
+		pending := u.pendings.Value(elem)
 		if pushed > 0 && pending.Runner.InstructionType().IsBranch() {
 			u.blockedBranch++
 			return
@@ -62,8 +65,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			u.outBus.Add(pending, cycle)
 			ctx.AddPendingRegisters(pending.Runner)
 			log.Infoi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "pushing runner")
-			// TODO Delete when i=1 and 0 was deleted?
-			u.pendings = slices.Delete(u.pendings, i, i+1)
+			u.pendings.Remove(elem)
 			remaining--
 			pushed++
 		} else {
@@ -73,13 +75,13 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		}
 	}
 
-	for remaining > 0 {
+	for remaining > 0 && !u.pendings.IsFull() {
 		runner, exists := u.inBus.Get()
 		if !exists {
 			return
 		}
 		if pushed > 0 && runner.Runner.InstructionType().IsBranch() {
-			u.pendings = append(u.pendings, runner)
+			u.pendings.Push(runner)
 			u.blockedBranch++
 			return
 		}
@@ -92,7 +94,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			remaining--
 			pushed++
 		} else {
-			u.pendings = append(u.pendings, runner)
+			u.pendings.Push(runner)
 			log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", reason)
 			u.blockedDataHazard++
 			return
@@ -101,9 +103,9 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 }
 
 func (u *controlUnit) flush() {
-	u.pendings = nil
+	u.pendings = comp.NewQueue[risc.InstructionRunnerPc](pendingLength)
 }
 
 func (u *controlUnit) isEmpty() bool {
-	return len(u.pendings) == 0
+	return u.pendings.Length() == 0
 }
