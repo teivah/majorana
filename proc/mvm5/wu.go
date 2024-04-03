@@ -1,6 +1,7 @@
 package mvm5
 
 import (
+	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -23,7 +24,7 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 			u.pendingMemoryWrite = false
 			ctx.WriteMemory(u.memoryWrite.Execution)
 			ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
-			logi(ctx, "WU", u.memoryWrite.InstructionType, -1, "write to memory")
+			log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, -1, "write to memory")
 		}
 		return
 	}
@@ -35,14 +36,14 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 	if execution.Execution.RegisterChange {
 		ctx.WriteRegister(execution.Execution)
 		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
-		logi(ctx, "WU", execution.InstructionType, -1, "write to register")
+		log.Infoi(ctx, "WU", execution.InstructionType, -1, "write to register")
 	} else if execution.Execution.MemoryChange {
 		u.pendingMemoryWrite = true
 		u.cycles = cyclesMemoryAccess
 		u.memoryWrite = execution
 	} else {
 		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
-		logi(ctx, "WU", execution.InstructionType, -1, "cleaning")
+		log.Infoi(ctx, "WU", execution.InstructionType, -1, "cleaning")
 	}
 }
 

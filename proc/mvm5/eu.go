@@ -1,6 +1,7 @@
 package mvm5
 
 import (
+	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -36,7 +37,7 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 
 	if !u.outBus.CanAdd() {
 		u.remainingCycles = 1
-		logu(ctx, "EU", "can't add")
+		log.Infou(ctx, "EU", "can't add")
 		return false, 0, false, nil
 	}
 
@@ -44,7 +45,7 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 	// Create the branch unit assertions
 	u.bu.assert(runner)
 
-	logi(ctx, "EU", runner.Runner.InstructionType(), runner.Pc, "executing")
+	log.Infoi(ctx, "EU", runner.Runner.InstructionType(), runner.Pc, "executing")
 	execution, err := runner.Runner.Run(ctx, app.Labels, u.runner.Pc)
 	if err != nil {
 		return false, 0, false, err
@@ -65,13 +66,13 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 	u.pending = false
 
 	if runner.Runner.InstructionType().IsUnconditionalBranch() {
-		logi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
+		log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
 			"notify jump address resolved from %d to %d", u.runner.Pc/4, execution.NextPc/4)
 		u.bu.notifyJumpAddressResolved(u.runner.Pc, execution.NextPc)
 	}
 
 	if execution.PcChange && u.bu.shouldFlushPipeline(execution.NextPc) {
-		logi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
+		log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
 			"should be a flush")
 		return true, execution.NextPc, false, nil
 	}

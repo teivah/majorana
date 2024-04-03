@@ -111,6 +111,7 @@ func (ctx *Context) IsDataHazard(runner InstructionRunner) (bool, string) {
 			continue
 		}
 		if v, exists := ctx.PendingWriteRegisters[register]; exists && v > 0 {
+			// An instruction needs to read from a register that was updated
 			return true, fmt.Sprintf("Read hazard on %s", register)
 		}
 	}

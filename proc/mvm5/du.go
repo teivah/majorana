@@ -3,6 +3,7 @@ package mvm5
 import (
 	"fmt"
 
+	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -24,13 +25,13 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		return
 	}
 	if u.pendingBranchResolution {
-		logu(ctx, "DU", "blocked")
+		log.Infou(ctx, "DU", "blocked")
 		return
 	}
 
 	for {
 		if !u.outBus.CanAdd() {
-			logu(ctx, "DU", "can't add")
+			log.Infou(ctx, "DU", "can't add")
 		}
 		pc, exists := u.inBus.Get()
 		if !exists {
@@ -40,7 +41,7 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 			return
 		}
 		runner := app.Instructions[pc/4]
-		logi(ctx, "DU", runner.InstructionType(), pc/4, "decoding")
+		log.Infoi(ctx, "DU", runner.InstructionType(), pc/4, "decoding")
 		jump := false
 		if runner.InstructionType().IsUnconditionalBranch() {
 			u.pendingBranchResolution = true

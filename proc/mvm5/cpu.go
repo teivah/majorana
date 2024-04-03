@@ -1,6 +1,7 @@
 package mvm5
 
 import (
+	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -66,7 +67,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	cycle := 0
 	for {
 		cycle += 1
-		log(m.ctx, "Cycle %d", cycle)
+		log.Info(m.ctx, "Cycle %d", cycle)
 		m.decodeBus.Connect(cycle)
 		m.controlBus.Connect(cycle)
 		m.executeBus.Connect(cycle)
@@ -101,10 +102,10 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		for _, wu := range m.writeUnits {
 			wu.cycle(m.ctx)
 		}
-		log(m.ctx, "\tRegisters: %v", m.ctx.Registers)
+		log.Info(m.ctx, "\tRegisters: %v", m.ctx.Registers)
 
 		if ret {
-			log(m.ctx, "\t🛑 Return")
+			log.Info(m.ctx, "\t🛑 Return")
 			m.counterFlush++
 			cycle++
 			m.writeBus.Connect(cycle)
@@ -118,7 +119,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			return cycle, nil
 		}
 		if flush {
-			log(m.ctx, "\t️⚠️ Flush to %d", pc/4)
+			log.Info(m.ctx, "\t️⚠️ Flush to %d", pc/4)
 			m.flush(pc)
 			cycle += flushCycles
 			continue
@@ -139,8 +140,8 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 func (m *CPU) Stats() map[string]any {
 	return map[string]any{
 		"flush":                  m.counterFlush,
-		"cu_push":                m.controlUnit.pushed.stats(),
-		"cu_blocked":             m.controlUnit.blocked.stats(),
+		"cu_push":                m.controlUnit.pushed.Stats(),
+		"cu_blocked":             m.controlUnit.blocked.Stats(),
 		"cu_total":               m.controlUnit.total,
 		"cu_cant_add":            m.controlUnit.cantAdd,
 		"cu_blocked_branch":      m.controlUnit.blockedBranch,

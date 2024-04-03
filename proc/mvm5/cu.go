@@ -3,6 +3,8 @@ package mvm5
 import (
 	"slices"
 
+	"github.com/teivah/majorana/common/log"
+	"github.com/teivah/majorana/common/obs"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -12,8 +14,8 @@ type controlUnit struct {
 	outBus   *comp.BufferedBus[risc.InstructionRunnerPc]
 	pendings []risc.InstructionRunnerPc
 
-	pushed            *gauge
-	blocked           *gauge
+	pushed            *obs.Gauge
+	blocked           *obs.Gauge
 	total             int
 	cantAdd           int
 	blockedBranch     int
@@ -24,26 +26,26 @@ func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *c
 	return &controlUnit{
 		inBus:   inBus,
 		outBus:  outBus,
-		pushed:  &gauge{},
-		blocked: &gauge{},
+		pushed:  &obs.Gauge{},
+		blocked: &obs.Gauge{},
 	}
 }
 
 func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	pushed := 0
 	defer func() {
-		u.pushed.push(pushed)
+		u.pushed.Push(pushed)
 	}()
 	if u.inBus.CanGet() {
-		u.blocked.push(1)
+		u.blocked.Push(1)
 	} else {
-		u.blocked.push(0)
+		u.blocked.Push(0)
 	}
 	u.total++
 
 	if !u.outBus.CanAdd() {
 		u.cantAdd++
-		logu(ctx, "CU", "can't add")
+		log.Infou(ctx, "CU", "can't add")
 		return
 	}
 
@@ -59,13 +61,13 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		if !hazard {
 			u.outBus.Add(pending, cycle)
 			ctx.AddPendingRegisters(pending.Runner)
-			logi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "pushing runner")
+			log.Infoi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "pushing runner")
 			// TODO Delete when i=1 and 0 was deleted?
 			u.pendings = slices.Delete(u.pendings, i, i+1)
 			remaining--
 			pushed++
 		} else {
-			logi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "data hazard: reason=%s", reason)
+			log.Infoi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "data hazard: reason=%s", reason)
 			u.blockedDataHazard++
 			return
 		}
@@ -86,12 +88,12 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		if !hazard {
 			u.outBus.Add(runner, cycle)
 			ctx.AddPendingRegisters(runner.Runner)
-			logi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
+			log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
 			remaining--
 			pushed++
 		} else {
 			u.pendings = append(u.pendings, runner)
-			logi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", reason)
+			log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", reason)
 			u.blockedDataHazard++
 			return
 		}
