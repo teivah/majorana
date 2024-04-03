@@ -12,10 +12,10 @@ type executeUnit struct {
 	runner          risc.InstructionRunnerPc
 	bu              *btbBranchUnit
 	inBus           *comp.BufferedBus[risc.InstructionRunnerPc]
-	outBus          *comp.BufferedBus[comp.ExecutionContext]
+	outBus          *comp.BufferedBus[risc.ExecutionContext]
 }
 
-func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[comp.ExecutionContext]) *executeUnit {
+func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext]) *executeUnit {
 	return &executeUnit{bu: bu, inBus: inBus, outBus: outBus}
 }
 
@@ -57,7 +57,7 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 		u.runner = risc.InstructionRunnerPc{}
 	}()
 
-	u.outBus.Add(comp.ExecutionContext{
+	u.outBus.Add(risc.ExecutionContext{
 		Execution:       execution,
 		InstructionType: runner.Runner.InstructionType(),
 		WriteRegisters:  runner.Runner.WriteRegisters(),

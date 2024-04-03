@@ -18,7 +18,7 @@ func newExecuteUnit(branchUnit *simpleBranchUnit) *executeUnit {
 	return &executeUnit{branchUnit: branchUnit}
 }
 
-func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunnerPc], outBus *comp.SimpleBus[comp.ExecutionContext]) (bool, int32, bool, error) {
+func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunnerPc], outBus *comp.SimpleBus[risc.ExecutionContext]) (bool, int32, bool, error) {
 	if !eu.processing {
 		runner, exists := inBus.Get()
 		if !exists {
@@ -64,7 +64,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 		eu.runner = risc.InstructionRunnerPc{}
 	}()
 
-	outBus.Add(comp.ExecutionContext{
+	outBus.Add(risc.ExecutionContext{
 		Execution:       execution,
 		InstructionType: runner.Runner.InstructionType(),
 		WriteRegisters:  runner.Runner.WriteRegisters(),

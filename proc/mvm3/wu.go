@@ -10,7 +10,7 @@ type writeUnit struct {
 	cycles             int
 }
 
-func (wu *writeUnit) cycle(ctx *risc.Context, inBus *comp.SimpleBus[comp.ExecutionContext]) {
+func (wu *writeUnit) cycle(ctx *risc.Context, inBus *comp.SimpleBus[risc.ExecutionContext]) {
 	if wu.pendingMemoryWrite {
 		wu.cycles--
 		if wu.cycles == 0 {

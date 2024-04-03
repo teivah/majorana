@@ -21,7 +21,7 @@ type CPU struct {
 	controlUnit  *controlUnit
 	executeBus   *comp.BufferedBus[risc.InstructionRunnerPc]
 	executeUnits []*executeUnit
-	writeBus     *comp.BufferedBus[comp.ExecutionContext]
+	writeBus     *comp.BufferedBus[risc.ExecutionContext]
 	writeUnits   []*writeUnit
 	branchUnit   *btbBranchUnit
 
@@ -33,7 +33,7 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 	decodeBus := comp.NewBufferedBus[int32](busSize, busSize)
 	controlBus := comp.NewBufferedBus[risc.InstructionRunnerPc](busSize, busSize)
 	executeBus := comp.NewBufferedBus[risc.InstructionRunnerPc](busSize, busSize)
-	writeBus := comp.NewBufferedBus[comp.ExecutionContext](busSize, busSize)
+	writeBus := comp.NewBufferedBus[risc.ExecutionContext](busSize, busSize)
 
 	fu := newFetchUnit(l1ICacheLineSizeInBytes, decodeBus)
 	du := newDecodeUnit(decodeBus, controlBus)

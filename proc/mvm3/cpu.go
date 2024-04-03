@@ -20,7 +20,7 @@ type CPU struct {
 	decodeUnit  *decodeUnit
 	executeBus  *comp.SimpleBus[risc.InstructionRunnerPc]
 	executeUnit *executeUnit
-	writeBus    *comp.SimpleBus[comp.ExecutionContext]
+	writeBus    *comp.SimpleBus[risc.ExecutionContext]
 	writeUnit   *writeUnit
 	branchUnit  *simpleBranchUnit
 }
@@ -34,7 +34,7 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 		decodeUnit:  &decodeUnit{},
 		executeBus:  &comp.SimpleBus[risc.InstructionRunnerPc]{},
 		executeUnit: newExecuteUnit(bu),
-		writeBus:    &comp.SimpleBus[comp.ExecutionContext]{},
+		writeBus:    &comp.SimpleBus[risc.ExecutionContext]{},
 		writeUnit:   &writeUnit{},
 		branchUnit:  bu,
 	}

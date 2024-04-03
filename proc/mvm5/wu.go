@@ -8,12 +8,12 @@ import (
 
 type writeUnit struct {
 	pendingMemoryWrite bool
-	memoryWrite        comp.ExecutionContext
+	memoryWrite        risc.ExecutionContext
 	cycles             int
-	inBus              *comp.BufferedBus[comp.ExecutionContext]
+	inBus              *comp.BufferedBus[risc.ExecutionContext]
 }
 
-func newWriteUnit(inBus *comp.BufferedBus[comp.ExecutionContext]) *writeUnit {
+func newWriteUnit(inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
 	return &writeUnit{inBus: inBus}
 }
 

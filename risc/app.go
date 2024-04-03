@@ -2,6 +2,13 @@ package risc
 
 import "fmt"
 
+type ExecutionContext struct {
+	Execution       Execution
+	InstructionType InstructionType
+	WriteRegisters  []RegisterType
+	ReadRegisters   []RegisterType
+}
+
 type Application struct {
 	Instructions []InstructionRunner
 	Labels       map[string]int32
