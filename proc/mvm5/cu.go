@@ -62,9 +62,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 
 		hazard, reason := ctx.IsDataHazard(pending.Runner)
 		if !hazard {
-			u.outBus.Add(pending, cycle)
-			ctx.AddPendingRegisters(pending.Runner)
-			log.Infoi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "pushing runner")
+			u.pushRunner(ctx, cycle, pending)
 			u.pendings.Remove(elem)
 			remaining--
 			pushed++
@@ -88,9 +86,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 
 		hazard, reason := ctx.IsDataHazard(runner.Runner)
 		if !hazard {
-			u.outBus.Add(runner, cycle)
-			ctx.AddPendingRegisters(runner.Runner)
-			log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
+			u.pushRunner(ctx, cycle, runner)
 			remaining--
 			pushed++
 		} else {
@@ -100,6 +96,12 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			return
 		}
 	}
+}
+
+func (u *controlUnit) pushRunner(ctx *risc.Context, cycle int, runner risc.InstructionRunnerPc) {
+	u.outBus.Add(runner, cycle)
+	ctx.AddPendingRegisters(runner.Runner)
+	log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
 }
 
 func (u *controlUnit) flush() {
