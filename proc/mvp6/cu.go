@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	pendingLength = 2
+	pendingLength = 10
 )
 
 type controlUnit struct {
@@ -17,6 +17,7 @@ type controlUnit struct {
 	pendings *comp.Queue[risc.InstructionRunnerPc]
 
 	pushed            *obs.Gauge
+	pending           *obs.Gauge
 	blocked           *obs.Gauge
 	forwarding        int
 	total             int
@@ -31,6 +32,7 @@ func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *c
 		outBus:   outBus,
 		pendings: comp.NewQueue[risc.InstructionRunnerPc](pendingLength),
 		pushed:   &obs.Gauge{},
+		pending:  &obs.Gauge{},
 		blocked:  &obs.Gauge{},
 	}
 }
@@ -39,6 +41,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	pushed := 0
 	defer func() {
 		u.pushed.Push(pushed)
+		u.pending.Push(u.pendings.Length())
 	}()
 	if u.inBus.CanGet() {
 		u.blocked.Push(1)
@@ -130,7 +133,6 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			u.pendings.Push(runner)
 			log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", reason)
 			u.blockedDataHazard++
-			return
 		}
 	}
 }

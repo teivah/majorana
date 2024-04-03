@@ -141,6 +141,7 @@ func (m *CPU) Stats() map[string]any {
 	return map[string]any{
 		"flush":                  m.counterFlush,
 		"cu_push":                m.controlUnit.pushed.Stats(),
+		"cu_pending":             m.controlUnit.pending.Stats(),
 		"cu_blocked":             m.controlUnit.blocked.Stats(),
 		"cu_forward":             m.controlUnit.forwarding,
 		"cu_total":               m.controlUnit.total,
