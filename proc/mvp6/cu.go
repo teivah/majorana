@@ -18,6 +18,7 @@ type controlUnit struct {
 
 	pushed            *obs.Gauge
 	pending           *obs.Gauge
+	pendingRead       *obs.Gauge
 	blocked           *obs.Gauge
 	forwarding        int
 	total             int
@@ -28,12 +29,13 @@ type controlUnit struct {
 
 func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc]) *controlUnit {
 	return &controlUnit{
-		inBus:    inBus,
-		outBus:   outBus,
-		pendings: comp.NewQueue[risc.InstructionRunnerPc](pendingLength),
-		pushed:   &obs.Gauge{},
-		pending:  &obs.Gauge{},
-		blocked:  &obs.Gauge{},
+		inBus:       inBus,
+		outBus:      outBus,
+		pendings:    comp.NewQueue[risc.InstructionRunnerPc](pendingLength),
+		pushed:      &obs.Gauge{},
+		pending:     &obs.Gauge{},
+		pendingRead: &obs.Gauge{},
+		blocked:     &obs.Gauge{},
 	}
 }
 
@@ -43,6 +45,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		u.pushed.Push(pushed)
 		u.pending.Push(u.pendings.Length())
 	}()
+	u.pendingRead.Push(u.inBus.PendingRead())
 	if u.inBus.CanGet() {
 		u.blocked.Push(1)
 	} else {

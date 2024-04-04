@@ -20,6 +20,7 @@ func newWriteUnit(inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
 func (u *writeUnit) cycle(ctx *risc.Context) {
 	if u.pendingMemoryWrite {
 		u.cycles--
+		log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, -1, "pending memory write")
 		if u.cycles == 0 {
 			u.pendingMemoryWrite = false
 			ctx.WriteMemory(u.memoryWrite.Execution)
@@ -41,6 +42,7 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 		u.pendingMemoryWrite = true
 		u.cycles = cyclesMemoryAccess
 		u.memoryWrite = execution
+		log.Infoi(ctx, "WU", execution.InstructionType, -1, "pending memory write")
 	} else {
 		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
 		log.Infoi(ctx, "WU", execution.InstructionType, -1, "cleaning")

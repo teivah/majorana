@@ -117,12 +117,14 @@ const (
 	Andi
 	Auipc
 	Beq
+	Beqz
 	Bge
 	Bgeu
 	Blt
 	Bltu
 	Bne
 	Div
+	J
 	Jal
 	Jalr
 	Lui
@@ -168,6 +170,8 @@ func (ins InstructionType) String() string {
 		return "Auipc"
 	case Beq:
 		return "Beq"
+	case Beqz:
+		return "Beqz"
 	case Bge:
 		return "Bge"
 	case Bgeu:
@@ -180,6 +184,8 @@ func (ins InstructionType) String() string {
 		return "Bne"
 	case Div:
 		return "Div"
+	case J:
+		return "J"
 	case Jal:
 		return "Jal"
 	case Jalr:
@@ -257,6 +263,8 @@ func (ins InstructionType) Cycles() int {
 		return 1
 	case Beq:
 		return 1
+	case Beqz:
+		return 1
 	case Bge:
 		return 1
 	case Bgeu:
@@ -268,6 +276,8 @@ func (ins InstructionType) Cycles() int {
 	case Bne:
 		return 1
 	case Div:
+		return 1
+	case J:
 		return 1
 	case Jal:
 		return 1
@@ -345,7 +355,7 @@ func (ins InstructionType) IsWriteBack() bool {
 
 func (ins InstructionType) IsUnconditionalBranch() bool {
 	switch ins {
-	case Jal, Jalr:
+	case J, Jal, Jalr:
 		return true
 	}
 	return false

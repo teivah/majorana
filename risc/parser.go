@@ -154,6 +154,19 @@ func Parse(s string) (Application, error) {
 				rs2:   rs,
 				label: label,
 			})
+		case "beqz":
+			if err := validateArgs(2, elements, remainingLine); err != nil {
+				return Application{}, err
+			}
+			rs, err := parseRegister(strings.TrimSpace(elements[0]))
+			if err != nil {
+				return Application{}, err
+			}
+			label := strings.TrimSpace(elements[1])
+			instructions = append(instructions, &beqz{
+				rs:    rs,
+				label: label,
+			})
 		case "bge":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
 				return Application{}, err
@@ -265,6 +278,14 @@ func Parse(s string) (Application, error) {
 				rs1: rs1,
 				rs2: rs2,
 			})
+		case "j":
+			if err := validateArgs(1, elements, remainingLine); err != nil {
+				return Application{}, err
+			}
+			label := strings.TrimSpace(elements[0])
+			instructions = append(instructions, &j{
+				label: label,
+			})
 		case "jal":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
 				return Application{}, err
@@ -332,9 +353,9 @@ func Parse(s string) (Application, error) {
 				return Application{}, err
 			}
 			instructions = append(instructions, &lb{
-				rs2:    rs2,
+				rd:     rs2,
 				offset: int32(offset),
-				rs1:    rs1,
+				rs:     rs1,
 			})
 		case "lh":
 			if err := validateArgs(3, elements, remainingLine); err != nil {

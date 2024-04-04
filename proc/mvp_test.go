@@ -21,6 +21,7 @@ const (
 	memory           = benchSums * 4
 	benchPrimeNumber = 100151
 	benchSums        = 4096
+	benchStringCopy  = 10 * 1024 // 10 KB
 	testFrom         = 2
 	testTo           = 200
 )
@@ -215,6 +216,63 @@ func testSums(t *testing.T, factory func() virtualMachine, from, to int, stats b
 	}
 }
 
+func strncpy(dst, src []byte, n int) {
+	var i int
+	for i = 0; i < n && i < len(src); i++ {
+		dst[i] = src[i]
+	}
+	for ; i < n; i++ {
+		dst[i] = 0
+	}
+}
+
+func TestMvp1StringCopy(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvp1.NewCPU(false, testTo*2)
+	}
+	testStringCopy(t, factory, testTo)
+}
+
+func TestMvp2StringCopy(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvp2.NewCPU(false, testTo*2)
+	}
+	testStringCopy(t, factory, testTo)
+}
+
+func TestMvp5StringCopy(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvp5.NewCPU(false, testTo*2)
+	}
+	testStringCopy(t, factory, testTo)
+}
+
+func TestMvp6StringCopy(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvp6.NewCPU(false, testTo*2)
+	}
+	testStringCopy(t, factory, testTo)
+}
+
+func testStringCopy(t *testing.T, factory func() virtualMachine, length int) {
+	vm := factory()
+	for i := 0; i < length; i++ {
+		vm.Context().Memory[i] = '1'
+	}
+	vm.Context().Registers[risc.A1] = int32(0)
+	vm.Context().Registers[risc.A0] = int32(length)
+	vm.Context().Registers[risc.A2] = int32(length)
+
+	instructions := test.ReadFile(t, "../res/string-copy.asm")
+	app, err := risc.Parse(instructions)
+	require.NoError(t, err)
+	_, err = vm.Run(app)
+	require.NoError(t, err)
+	for _, v := range vm.Context().Memory {
+		assert.Equal(t, int8('1'), v)
+	}
+}
+
 //func TestMvp1Jal(t *testing.T) {
 //	factory := func() virtualMachine {
 //		return mvp1.NewCPU(false, memory)
@@ -249,17 +307,17 @@ func testSums(t *testing.T, factory func() virtualMachine, from, to int, stats b
 //	}
 //	testJal(t, factory)
 //}
-
-func testJal(t *testing.T, factory func() virtualMachine) {
-	vm := factory()
-	_, err := execute(t, vm, `start:
-	jal zero, func
-	addi t1, t0, 3
-	func:
-	addi t0, zero, 2`)
-	require.NoError(t, err)
-	assert.Equal(t, int32(5), vm.Context().Registers[risc.T1])
-}
+//
+//func testJal(t *testing.T, factory func() virtualMachine) {
+//	vm := factory()
+//	_, err := execute(t, vm, `start:
+//	jal zero, func
+//	addi t1, t0, 3
+//	func:
+//	addi t0, zero, 2`)
+//	require.NoError(t, err)
+//	assert.Equal(t, int32(5), vm.Context().Registers[risc.T1])
+//}
 
 func TestBenchmarks(t *testing.T) {
 	vms := map[string]func(m int) virtualMachine{
@@ -279,7 +337,7 @@ func TestBenchmarks(t *testing.T) {
 			return mvp5.NewCPU(false, m)
 		},
 		"mvp6": func(m int) virtualMachine {
-			return mvp5.NewCPU(false, m)
+			return mvp6.NewCPU(false, m)
 		},
 	}
 
@@ -289,7 +347,7 @@ func TestBenchmarks(t *testing.T) {
 		"mvp3": 450790,
 		"mvp4": 400717,
 		"mvp5": 400721,
-		"mvp6": 400721,
+		"mvp6": 400716,
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
@@ -309,7 +367,7 @@ func TestBenchmarks(t *testing.T) {
 		"mvp3": 249916,
 		"mvp4": 245821,
 		"mvp5": 258113,
-		"mvp6": 258113,
+		"mvp6": 245825,
 	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {
@@ -329,6 +387,46 @@ func TestBenchmarks(t *testing.T) {
 				require.NoError(t, err)
 				assert.Equal(t, sums[name], cycles)
 				sumStats(t, cycles)
+			})
+		}
+	})
+
+	cpy := map[string]int{
+		"mvp1": 5314769,
+		"mvp2": 1310783,
+		"mvp3": 249916,
+		"mvp4": 245821,
+		"mvp5": 655466,
+		"mvp6": 634986,
+	}
+	t.Run("String copy", func(t *testing.T) {
+		for name, factory := range vms {
+			t.Run(name, func(t *testing.T) {
+				switch name {
+				case "mvp3", "mvp4":
+					t.SkipNow()
+				}
+
+				length := benchStringCopy
+				vm := factory(2 * length)
+				for i := 0; i < length; i++ {
+					vm.Context().Memory[i] = '1'
+				}
+				vm.Context().Registers[risc.A1] = int32(0)
+				vm.Context().Registers[risc.A0] = int32(length)
+				vm.Context().Registers[risc.A2] = int32(length)
+
+				instructions := test.ReadFile(t, "../res/string-copy.asm")
+				app, err := risc.Parse(instructions)
+				require.NoError(t, err)
+				cycles, err := vm.Run(app)
+				require.NoError(t, err)
+				for _, v := range vm.Context().Memory {
+					assert.Equal(t, int8('1'), v)
+				}
+				require.NoError(t, err)
+				assert.Equal(t, cpy[name], cycles)
+				sumStringCopy(t, cycles)
 			})
 		}
 	})

@@ -233,6 +233,43 @@ func (op *beq) Forward(forward Forward) {
 	op.forward = forward
 }
 
+type beqz struct {
+	rs      RegisterType
+	label   string
+	forward Forward
+}
+
+func (op *beqz) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
+	rs := read(ctx, op.forward, op.rs)
+	if rs == 0 {
+		addr, ok := labels[op.label]
+		if !ok {
+			return Execution{}, fmt.Errorf("label %s does not exist", op.label)
+		}
+		return Execution{
+			NextPc:   addr,
+			PcChange: true,
+		}, nil
+	}
+	return Execution{}, nil
+}
+
+func (op *beqz) InstructionType() InstructionType {
+	return Beqz
+}
+
+func (op *beqz) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs, op.rs}
+}
+
+func (op *beqz) WriteRegisters() []RegisterType {
+	return nil
+}
+
+func (op *beqz) Forward(forward Forward) {
+	op.forward = forward
+}
+
 type bge struct {
 	rs1     RegisterType
 	rs2     RegisterType
@@ -471,6 +508,36 @@ func (op *div) Forward(forward Forward) {
 	op.forward = forward
 }
 
+type j struct {
+	label string
+}
+
+func (op *j) Run(ctx *Context, labels map[string]int32, pc int32) (Execution, error) {
+	addr, ok := labels[op.label]
+	if !ok {
+		return Execution{}, fmt.Errorf("label %s does not exist", op.label)
+	}
+	return Execution{
+		NextPc:   addr,
+		PcChange: true,
+	}, nil
+}
+
+func (op *j) InstructionType() InstructionType {
+	return J
+}
+
+func (op *j) ReadRegisters() []RegisterType {
+	return nil
+}
+
+func (op *j) WriteRegisters() []RegisterType {
+	return nil
+}
+
+func (op *j) Forward(forward Forward) {
+}
+
 type jal struct {
 	label   string
 	rd      RegisterType
@@ -575,18 +642,18 @@ func (op *lui) Forward(forward Forward) {
 }
 
 type lb struct {
-	rs2     RegisterType
+	rd      RegisterType
 	offset  int32
-	rs1     RegisterType
+	rs      RegisterType
 	forward Forward
 }
 
 func (op *lb) Run(ctx *Context, _ map[string]int32, pc int32) (Execution, error) {
-	rs1 := read(ctx, op.forward, op.rs1)
+	rs1 := read(ctx, op.forward, op.rs)
 	idx := rs1 + op.offset
 	n := ctx.Memory[idx]
 
-	register, value := IsRegisterChange(op.rs2, int32(n))
+	register, value := IsRegisterChange(op.rd, int32(n))
 	return Execution{
 		RegisterChange: true,
 		Register:       register,
@@ -599,11 +666,11 @@ func (op *lb) InstructionType() InstructionType {
 }
 
 func (op *lb) ReadRegisters() []RegisterType {
-	return []RegisterType{op.rs1, op.rs2}
+	return []RegisterType{op.rs}
 }
 
 func (op *lb) WriteRegisters() []RegisterType {
-	return nil
+	return []RegisterType{op.rd}
 }
 
 func (op *lb) Forward(forward Forward) {

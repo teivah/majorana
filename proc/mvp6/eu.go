@@ -32,6 +32,7 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 
 	u.remainingCycles--
 	if u.remainingCycles != 0 {
+		log.Infou(ctx, "EU", "pending remaining cycles %d (pc=%d, ins=%s)", u.remainingCycles, u.runner.Pc/4, u.runner.Runner.InstructionType())
 		return false, 0, false, nil
 	}
 

@@ -124,6 +124,10 @@ func (b *BufferedBus[T]) RemainingToAdd() int {
 	return b.bufferLength - len(b.buffer)
 }
 
+func (b *BufferedBus[T]) PendingRead() int {
+	return len(b.queue)
+}
+
 func (b *BufferedBus[T]) IsEmpty() bool {
 	return len(b.queue) == 0 && len(b.buffer) == 0
 }

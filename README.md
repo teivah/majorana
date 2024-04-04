@@ -99,11 +99,12 @@ All the benchmarks are executed at a fixed CPU clock frequency of 3.2 GHz.
 Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency). This benchmark was on a different microarchitecture, different ISA, etc. is hardly comparable with the MVP benchmarks. Yet, it gives us a reference to show how good (or bad :) the MVP implementations are.
 
 
-| Machine  |            Prime number             | Sum of array |
-|:--------:|:-----------------------------------:|:------------:|
-| Apple M1 |              70.29 ns               |   1300 ns    |
-|  MVP-1   | 4115671 nanoseconds, 58552.7 slower | 536402 nanoseconds, 412.6 slower |
-|  MVP-2   |  281728 nanoseconds, 4008.1 slower  | 97301 nanoseconds, 74.8 slower |
-|  MVP-3   |  140872 nanoseconds, 2004.2 slower  | 78099 nanoseconds, 60.1 slower |
-|  MVP-4   |  125224 nanoseconds, 1781.5 slower  | 76819 nanoseconds, 59.1 slower |
-|  MVP-5   | 125225 nanoseconds, 1781.6 slower   | 81961 nanoseconds, 63.0 slower |
+| Machine  |            Prime number             |           Sum of array           |            String copy            |
+|:--------:|:-----------------------------------:|:--------------------------------:|:---------------------------------:|
+| Apple M1 |              70.29 ns               |             1300 ns              |             82700 ns              |
+|  MVP-1   | 4115671 nanoseconds, 58552.7 slower | 536402 nanoseconds, 412.6 slower | 1660865 nanoseconds, 513.9 slower |
+|  MVP-2   |  281728 nanoseconds, 4008.1 slower  |  97301 nanoseconds, 74.8 slower  | 409620 nanoseconds, 126.7 slower  |
+|  MVP-3   |  140872 nanoseconds, 2004.2 slower  |  78099 nanoseconds, 60.1 slower  |                                   |
+|  MVP-4   |  125224 nanoseconds, 1781.5 slower  |  76819 nanoseconds, 59.1 slower  |                                   |
+|  MVP-5   |  125225 nanoseconds, 1781.6 slower  |  81961 nanoseconds, 63.0 slower  |  204833 nanoseconds, 63.4 slower  |
+|  MVP-6   | 125224 nanoseconds, 1781.5 slower   | 76820 nanoseconds, 59.1 slower   | 198433 nanoseconds, 61.4 slower   |
