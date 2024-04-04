@@ -100,6 +100,7 @@ func (m *CPU) flush(pc int32) {
 	m.decodeBus.Flush()
 	m.executeBus.Flush()
 	m.writeBus.Flush()
+	m.ctx.Flush()
 }
 
 func (m *CPU) isComplete() bool {

@@ -17,13 +17,13 @@ Here is the microarchitecture, divided into 4 classic stages:
 
 ![](res/majorana-mvm-1.drawio.png)
 
-## MVP-2
+### MVP-2
 
 Compared to MVP-1, we add a cache for instructions called L1I (Level 1 Instructions) with a size of 64 KB. The caching policy is straightforward: as soon as we meet an instruction that is not present in L1I, we fetch a cache line of 64 KB instructions from the main memory, and we cache it into LI1.
 
 ![](res/majorana-mvm-2.drawio.png)
 
-## MVP-3
+### MVP-3
 
 MVP-3 keeps the same microarchitecture as MVP-2 with 4 stages and L1I. Yet, this version implements [pipelining](https://en.wikipedia.org/wiki/Instruction_pipelining).
 
@@ -40,8 +40,8 @@ Pipeline flushing has a significant performance penalty as it requires discardin
 There is another problem with pipelining. We might face what we call a data hazard. For example:
 
 ```asm
-addi t1, zero, 2
-div t1, t0, t1
+addi t1, zero, 2 # Write to t1
+div t2, t0, t1   # Read from t1
 ``` 
 
 The processor must wait for `ADDI` to be executed and to get its result written in T1 before to execute `DIV` (as div depends on T1).
@@ -49,16 +49,16 @@ In this case, we implement what we call pipeline interclock by delaying the exec
 
 ![](res/majorana-mvm-3.drawio.png)
 
-## MVP-4
+### MVP-4
 
 One issue with MVP-3 is when it met an unconditional branches. For example:
 
 ```asm
 main:
   jal zero, foo    # Branch to foo
-  addi t1, t0, 3   # Set $t1 to $t0 + 3
+  addi t1, t0, 3   # Set t1 to t0 + 3
 foo:
-  addi t0, zero, 2 # Set $t0 to 2
+  addi t0, zero, 2 # Set t0 to 2
   ...
 ```
 
@@ -78,9 +78,11 @@ The workflow is now the following:
 
 This helps in preventing a full pipeline flush. Facing an unconditional branch now takes only a few cycles to be resolved.
 
-## MVP-5
+### MVP-5
 
-The next stage is to implement a so-called superscalar processor. A superscalar processor can execute multiple instructions during a clock cycle by dispatching multiple instructions to different execution units. This is one of the magical things with modern CPUs: even sequential code can be executed in parallel!
+#### MVP-5.0
+
+The next step is to implement a so-called superscalar processor. A superscalar processor can execute multiple instructions during a clock cycle by dispatching multiple instructions to different execution units. This is one of the magical things with modern CPUs: even sequential code can be executed in parallel!
 
 The fetch unit and the decode unit are now capable to fetch/decode two instruction within a single cycle. Yet, before to dispatch the executions to the execute units, a new stage comes in: the control unit.
 
@@ -88,9 +90,22 @@ The fetch unit and the decode unit are now capable to fetch/decode two instructi
 
 The control unit plays a pivotal role in coordinating the execution of multiple instructions simultaneously. It performs dependency checking between the decoded instructions to guarantee it won't lead to any hazard.
 
-One _small_ issue: MVP-5 is slightly slower than MVP-4. How is that possible? The control unit implementation is very basic at the moment and because of that, on average the control unit dispatches less than 0.6 instruction per cycle. Therefore, a suboptimal additional coordination stage, despite two execution units, doesn't make any good.
+One _small_ issue: MVP-5.0 is not always faster in all the benchmarks. Indeed, when an application is branch-heavy, it performed slightly worst that MVP-4. The main reason being that the control unit logic is very basic and because of that, on average it dispatches less than 0.6 instructions per cycle. Yet, if branches are scarce, it performs significantly better than MVP-4 (~40% in the string copy benchmark).
 
-One may believe this processor is useless, but it's the starting point for a superscalar microarchitecture. Let's improve the control unit in the next MVP version.
+#### MVP-5.1
+
+For MVP-5.1, the microarchitecture is the same as MVP-5.1. The only difference lies in the control unit, where we started to implement a new concept called forwarding. Consider a data hazard mentioned previously:
+
+```asm
+addi t1, zero, 2 # Write to t1
+div t2, t0, t1   # Read from t1
+``` 
+
+Instruction 1 writes to `T1`, while instruction 2 reads from `T2`. Therefore, instruction 2 has to wait for `ADDI` to write the result to `T1` before it gets executed, hence slowing down the execution. With forwarding, we can alleviate the effects of this problem: the result of the `ADDI` instruction is fed directly back into the ALU's input port. `DIV` doesn't have to wait for the execution of `ADDI` to be written in `T1` anymore.
+
+With branch-heavy applications, MVP-5.1 performs the same as MVP-4 (MVP-5.0 was performing worse). With non-branch-heavy applications, MVP-5.1 performs a bit better than MVP-5.0 (about 3% faster).
+
+MVP-5.1 is not a huge revolution, but it's an evolution nonetheless.
 
 ## Benchmarks
 
@@ -98,13 +113,12 @@ All the benchmarks are executed at a fixed CPU clock frequency of 3.2 GHz.
 
 Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency). This benchmark was on a different microarchitecture, different ISA, etc. is hardly comparable with the MVP benchmarks. Yet, it gives us a reference to show how good (or bad :) the MVP implementations are.
 
-
 | Machine  |            Prime number             |           Sum of array           |            String copy            |
 |:--------:|:-----------------------------------:|:--------------------------------:|:---------------------------------:|
 | Apple M1 |              70.29 ns               |             1300 ns              |             82700 ns              |
 |  MVP-1   | 4115671 nanoseconds, 58552.7 slower | 536402 nanoseconds, 412.6 slower | 1660865 nanoseconds, 513.9 slower |
 |  MVP-2   |  281728 nanoseconds, 4008.1 slower  |  97301 nanoseconds, 74.8 slower  | 409620 nanoseconds, 126.7 slower  |
-|  MVP-3   |  140872 nanoseconds, 2004.2 slower  |  78099 nanoseconds, 60.1 slower  |                                   |
-|  MVP-4   |  125224 nanoseconds, 1781.5 slower  |  76819 nanoseconds, 59.1 slower  |                                   |
-|  MVP-5   |  125225 nanoseconds, 1781.6 slower  |  81961 nanoseconds, 63.0 slower  |  204833 nanoseconds, 63.4 slower  |
-|  MVP-6   | 125224 nanoseconds, 1781.5 slower   | 76820 nanoseconds, 59.1 slower   | 198433 nanoseconds, 61.4 slower   |
+|  MVP-3   |  140872 nanoseconds, 2004.2 slower  |  78099 nanoseconds, 60.1 slower  |                N/A                |
+|  MVP-4   |  125224 nanoseconds, 1781.5 slower  |  76819 nanoseconds, 59.1 slower  | 348853 nanoseconds, 107.9 slower  |
+| MVP-5.0  |  125225 nanoseconds, 1781.6 slower  |  81961 nanoseconds, 63.0 slower  |  204833 nanoseconds, 63.4 slower  |
+| MVP-5.1  | 125224 nanoseconds, 1781.5 slower | 76820 nanoseconds, 59.1 slower | 198433 nanoseconds, 61.4 slower |

@@ -1,4 +1,4 @@
-package mvp6
+package mvp5_1
 
 import (
 	"github.com/teivah/majorana/common/log"
@@ -30,8 +30,9 @@ type CPU struct {
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
 	busSize := 2
-	decodeBus := comp.NewBufferedBus[int32](busSize, busSize)
-	controlBus := comp.NewBufferedBus[risc.InstructionRunnerPc](busSize, busSize)
+	multiplier := 1
+	decodeBus := comp.NewBufferedBus[int32](busSize*multiplier, busSize*multiplier)
+	controlBus := comp.NewBufferedBus[risc.InstructionRunnerPc](busSize*multiplier, busSize*multiplier)
 	executeBus := comp.NewBufferedBus[*risc.InstructionRunnerPc](busSize, busSize)
 	writeBus := comp.NewBufferedBus[risc.ExecutionContext](busSize, busSize)
 

@@ -11,8 +11,8 @@ import (
 	"github.com/teivah/majorana/proc/mvp2"
 	"github.com/teivah/majorana/proc/mvp3"
 	"github.com/teivah/majorana/proc/mvp4"
-	"github.com/teivah/majorana/proc/mvp5"
-	"github.com/teivah/majorana/proc/mvp6"
+	"github.com/teivah/majorana/proc/mvp5-0"
+	"github.com/teivah/majorana/proc/mvp5-1"
 	"github.com/teivah/majorana/risc"
 	"github.com/teivah/majorana/test"
 )
@@ -92,16 +92,16 @@ func TestMvp4Prime(t *testing.T) {
 	testPrime(t, factory, testFrom, testTo, false)
 }
 
-func TestMvp5Prime(t *testing.T) {
+func TestMvp5_0Prime(t *testing.T) {
 	factory := func() virtualMachine {
-		return mvp5.NewCPU(false, memory)
+		return mvp5_0.NewCPU(false, memory)
 	}
 	testPrime(t, factory, testFrom, testTo, false)
 }
 
-func TestMvp6Prime(t *testing.T) {
+func TestMvp5_1Prime(t *testing.T) {
 	factory := func() virtualMachine {
-		return mvp6.NewCPU(false, memory)
+		return mvp5_1.NewCPU(false, memory)
 	}
 	testPrime(t, factory, testFrom, testTo, false)
 }
@@ -166,16 +166,16 @@ func TestMvp4Sums(t *testing.T) {
 	testSums(t, factory, testFrom, testTo, false)
 }
 
-func TestMvp5Sums(t *testing.T) {
+func TestMvp5_0Sums(t *testing.T) {
 	factory := func() virtualMachine {
-		return mvp5.NewCPU(false, memory)
+		return mvp5_0.NewCPU(false, memory)
 	}
 	testSums(t, factory, testFrom, testTo, false)
 }
 
-func TestMvp6Sums(t *testing.T) {
+func TestMvp5_1Sums(t *testing.T) {
 	factory := func() virtualMachine {
-		return mvp6.NewCPU(false, memory)
+		return mvp5_1.NewCPU(false, memory)
 	}
 	testSums(t, factory, testFrom, testTo, false)
 }
@@ -230,31 +230,47 @@ func TestMvp1StringCopy(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvp1.NewCPU(false, testTo*2)
 	}
-	testStringCopy(t, factory, testTo)
+	testStringCopy(t, factory, testTo, true)
 }
 
 func TestMvp2StringCopy(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvp2.NewCPU(false, testTo*2)
 	}
-	testStringCopy(t, factory, testTo)
+	testStringCopy(t, factory, testTo, true)
 }
 
-func TestMvp5StringCopy(t *testing.T) {
+func TestMvp3StringCopy(t *testing.T) {
+	// FIXME
+	t.SkipNow()
 	factory := func() virtualMachine {
-		return mvp5.NewCPU(false, testTo*2)
+		return mvp3.NewCPU(true, testTo*2)
 	}
-	testStringCopy(t, factory, testTo)
+	testStringCopy(t, factory, testTo, true)
 }
 
-func TestMvp6StringCopy(t *testing.T) {
+func TestMvp4StringCopy(t *testing.T) {
 	factory := func() virtualMachine {
-		return mvp6.NewCPU(false, testTo*2)
+		return mvp4.NewCPU(false, testTo*2)
 	}
-	testStringCopy(t, factory, testTo)
+	testStringCopy(t, factory, testTo, true)
 }
 
-func testStringCopy(t *testing.T, factory func() virtualMachine, length int) {
+func TestMvp5_0StringCopy(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvp5_0.NewCPU(false, testTo*2)
+	}
+	testStringCopy(t, factory, testTo, true)
+}
+
+func TestMvp5_1StringCopy(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvp5_1.NewCPU(false, testTo*2)
+	}
+	testStringCopy(t, factory, testTo, true)
+}
+
+func testStringCopy(t *testing.T, factory func() virtualMachine, length int, stats bool) {
 	vm := factory()
 	for i := 0; i < length; i++ {
 		vm.Context().Memory[i] = '1'
@@ -266,10 +282,17 @@ func testStringCopy(t *testing.T, factory func() virtualMachine, length int) {
 	instructions := test.ReadFile(t, "../res/string-copy.asm")
 	app, err := risc.Parse(instructions)
 	require.NoError(t, err)
-	_, err = vm.Run(app)
+	cycle, err := vm.Run(app)
 	require.NoError(t, err)
 	for _, v := range vm.Context().Memory {
 		assert.Equal(t, int8('1'), v)
+	}
+
+	if stats {
+		t.Logf("Cycle: %d", cycle)
+		for k, v := range vm.Stats() {
+			t.Log(k, v)
+		}
 	}
 }
 
@@ -333,21 +356,21 @@ func TestBenchmarks(t *testing.T) {
 		"mvp4": func(m int) virtualMachine {
 			return mvp4.NewCPU(false, m)
 		},
-		"mvp5": func(m int) virtualMachine {
-			return mvp5.NewCPU(false, m)
+		"mvp5.0": func(m int) virtualMachine {
+			return mvp5_0.NewCPU(false, m)
 		},
-		"mvp6": func(m int) virtualMachine {
-			return mvp6.NewCPU(false, m)
+		"mvp5.1": func(m int) virtualMachine {
+			return mvp5_1.NewCPU(false, m)
 		},
 	}
 
 	prime := map[string]int{
-		"mvp1": 13170146,
-		"mvp2": 901529,
-		"mvp3": 450790,
-		"mvp4": 400717,
-		"mvp5": 400721,
-		"mvp6": 400716,
+		"mvp1":   13170146,
+		"mvp2":   901529,
+		"mvp3":   450790,
+		"mvp4":   400717,
+		"mvp5.0": 400721,
+		"mvp5.1": 400716,
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
@@ -362,12 +385,12 @@ func TestBenchmarks(t *testing.T) {
 	})
 
 	sums := map[string]int{
-		"mvp1": 1716487,
-		"mvp2": 311364,
-		"mvp3": 249916,
-		"mvp4": 245821,
-		"mvp5": 258113,
-		"mvp6": 245825,
+		"mvp1":   1716487,
+		"mvp2":   311364,
+		"mvp3":   249916,
+		"mvp4":   245821,
+		"mvp5.0": 258113,
+		"mvp5.1": 245825,
 	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {
@@ -392,18 +415,17 @@ func TestBenchmarks(t *testing.T) {
 	})
 
 	cpy := map[string]int{
-		"mvp1": 5314769,
-		"mvp2": 1310783,
-		"mvp3": 249916,
-		"mvp4": 245821,
-		"mvp5": 655466,
-		"mvp6": 634986,
+		"mvp1":   5314769,
+		"mvp2":   1310783,
+		"mvp4":   1116331,
+		"mvp5.0": 655466,
+		"mvp5.1": 634986,
 	}
 	t.Run("String copy", func(t *testing.T) {
 		for name, factory := range vms {
 			t.Run(name, func(t *testing.T) {
 				switch name {
-				case "mvp3", "mvp4":
+				case "mvp3":
 					t.SkipNow()
 				}
 
