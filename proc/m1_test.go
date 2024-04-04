@@ -17,19 +17,19 @@ func primeStats(t *testing.T, cycles int) {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1PrimeExecutionTime
-	t.Logf("%.0f nanoseconds, %.1f slower\n", ns, slower)
+	t.Logf("%.0f ns, %.1f slower\n", ns, slower)
 }
 
 func sumStats(t *testing.T, cycles int) {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1SumsExecutionTime
-	t.Logf("%.0f nanoseconds, %.1f slower\n", ns, slower)
+	t.Logf("%.0f ns, %.1f slower\n", ns, slower)
 }
 
 func sumStringCopy(t *testing.T, cycles int) {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1StringCopyExecutionTime
-	t.Logf("%.0f nanoseconds, %.1f slower\n", ns, slower)
+	t.Logf("%.0f ns, %.1f slower\n", ns, slower)
 }
