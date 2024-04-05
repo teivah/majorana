@@ -1,7 +1,7 @@
 package proc
 
 import (
-	"testing"
+	"fmt"
 )
 
 const (
@@ -13,23 +13,23 @@ const (
 	m1StringCopyExecutionTime = 3232.
 )
 
-func primeStats(t *testing.T, cycles int) {
+func primeStats(cycles int) string {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1PrimeExecutionTime
-	t.Logf("%.0f ns, %.1f slower\n", ns, slower)
+	return fmt.Sprintf("%.0f ns, %.1f slower", ns, slower)
 }
 
-func sumStats(t *testing.T, cycles int) {
+func sumStats(cycles int) string {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1SumsExecutionTime
-	t.Logf("%.0f ns, %.1f slower\n", ns, slower)
+	return fmt.Sprintf("%.0f ns, %.1f slower", ns, slower)
 }
 
-func sumStringCopy(t *testing.T, cycles int) {
+func sumStringCopy(cycles int) string {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1StringCopyExecutionTime
-	t.Logf("%.0f ns, %.1f slower\n", ns, slower)
+	return fmt.Sprintf("%.0f ns, %.1f slower", ns, slower)
 }

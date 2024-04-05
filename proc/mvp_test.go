@@ -2,6 +2,7 @@ package proc
 
 import (
 	"fmt"
+	"sort"
 	"strconv"
 	"testing"
 
@@ -365,34 +366,44 @@ func testStringCopy(t *testing.T, factory func() virtualMachine, length int, sta
 //}
 
 func TestBenchmarks(t *testing.T) {
+	tableRow := map[string]int{
+		"MVP-1":   0,
+		"MVP-2":   1,
+		"MVP-3":   2,
+		"MVP-4":   3,
+		"MVP-5.0": 4,
+		"MVP-5.1": 5,
+	}
+
 	vms := map[string]func(m int) virtualMachine{
-		"mvp1": func(m int) virtualMachine {
+		"MVP-1": func(m int) virtualMachine {
 			return mvp1.NewCPU(false, m)
 		},
-		"mvp2": func(m int) virtualMachine {
+		"MVP-2": func(m int) virtualMachine {
 			return mvp2.NewCPU(false, m)
 		},
-		"mvp3": func(m int) virtualMachine {
+		"MVP-3": func(m int) virtualMachine {
 			return mvp3.NewCPU(false, m)
 		},
-		"mvp4": func(m int) virtualMachine {
+		"MVP-4": func(m int) virtualMachine {
 			return mvp4.NewCPU(false, m)
 		},
-		"mvp5.0": func(m int) virtualMachine {
+		"MVP-5.0": func(m int) virtualMachine {
 			return mvp5_0.NewCPU(false, m)
 		},
-		"mvp5.1": func(m int) virtualMachine {
+		"MVP-5.1": func(m int) virtualMachine {
 			return mvp5_1.NewCPU(false, m)
 		},
 	}
 
+	primeOutput := make([]string, len(tableRow))
 	prime := map[string]int{
-		"mvp1":   13170146,
-		"mvp2":   901529,
-		"mvp3":   450790,
-		"mvp4":   400717,
-		"mvp5.0": 400721,
-		"mvp5.1": 400716,
+		"MVP-1":   13170146,
+		"MVP-2":   901529,
+		"MVP-3":   450790,
+		"MVP-4":   400717,
+		"MVP-5.0": 400721,
+		"MVP-5.1": 400716,
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
@@ -401,18 +412,19 @@ func TestBenchmarks(t *testing.T) {
 				cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var-no-memory.asm"), benchPrimeNumber))
 				require.NoError(t, err)
 				assert.Equal(t, prime[name], cycles)
-				primeStats(t, cycles)
+				primeOutput[tableRow[name]] = primeStats(cycles)
 			})
 		}
 	})
 
+	sumsOutput := make([]string, len(tableRow))
 	sums := map[string]int{
-		"mvp1":   1716487,
-		"mvp2":   311364,
-		"mvp3":   249916,
-		"mvp4":   245821,
-		"mvp5.0": 258113,
-		"mvp5.1": 245825,
+		"MVP-1":   1921287,
+		"MVP-2":   520260,
+		"MVP-3":   454716,
+		"MVP-4":   450621,
+		"MVP-5.0": 462913,
+		"MVP-5.1": 450625,
 	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {
@@ -431,23 +443,24 @@ func TestBenchmarks(t *testing.T) {
 				cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/array-sum.asm"), benchSums))
 				require.NoError(t, err)
 				assert.Equal(t, sums[name], cycles)
-				sumStats(t, cycles)
+				sumsOutput[tableRow[name]] = sumStats(cycles)
 			})
 		}
 	})
 
+	cpyOutput := make([]string, len(tableRow))
 	cpy := map[string]int{
-		"mvp1":   5314769,
-		"mvp2":   1310783,
-		"mvp4":   1116331,
-		"mvp5.0": 655466,
-		"mvp5.1": 634986,
+		"MVP-1":   5826769,
+		"MVP-2":   1833023,
+		"MVP-4":   1628381,
+		"MVP-5.0": 1167466,
+		"MVP-5.1": 1146986,
 	}
 	t.Run("String copy", func(t *testing.T) {
 		for name, factory := range vms {
 			t.Run(name, func(t *testing.T) {
 				switch name {
-				case "mvp3":
+				case "MVP-3":
 					t.SkipNow()
 				}
 
@@ -470,8 +483,23 @@ func TestBenchmarks(t *testing.T) {
 				}
 				require.NoError(t, err)
 				assert.Equal(t, cpy[name], cycles)
-				sumStringCopy(t, cycles)
+				cpyOutput[tableRow[name]] = sumStringCopy(cycles)
 			})
 		}
 	})
+
+	output := `| Machine | Prime number | Sum of array | String copy |
+|:------:|:-----:|:-----:|:-----:|
+`
+	output += fmt.Sprintf("| Apple M1 | %.1f ns | %.1f ns | %.1f ns |\n", m1PrimeExecutionTime, m1SumsExecutionTime, m1StringCopyExecutionTime)
+	var keys []string
+	for k := range tableRow {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, mvp := range keys {
+		idx := tableRow[mvp]
+		output += fmt.Sprintf("| %s | %s | %s | %s |\n", mvp, primeOutput[idx], sumsOutput[idx], cpyOutput[idx])
+	}
+	fmt.Println(output)
 }

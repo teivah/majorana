@@ -374,9 +374,9 @@ func Parse(s string) (Application, error) {
 				return Application{}, err
 			}
 			instructions = append(instructions, &lh{
-				rs2:    rs2,
+				rd:     rs2,
 				offset: int32(offset),
-				rs1:    rs1,
+				rs:     rs1,
 			})
 		case "li":
 			if err := validateArgs(2, elements, remainingLine); err != nil {

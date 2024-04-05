@@ -8,10 +8,12 @@ import (
 )
 
 type executeUnit struct {
-	branchUnit      *simpleBranchUnit
-	processing      bool
-	remainingCycles int
-	runner          risc.InstructionRunnerPc
+	branchUnit        *simpleBranchUnit
+	processing        bool
+	pendingMemoryRead bool
+	addrs             []int32
+	remainingCycles   int
+	runner            risc.InstructionRunnerPc
 }
 
 func newExecuteUnit(branchUnit *simpleBranchUnit) *executeUnit {
@@ -19,6 +21,22 @@ func newExecuteUnit(branchUnit *simpleBranchUnit) *executeUnit {
 }
 
 func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunnerPc], outBus *comp.SimpleBus[risc.ExecutionContext]) (bool, int32, bool, error) {
+	if eu.pendingMemoryRead {
+		eu.remainingCycles--
+		if eu.remainingCycles != 0 {
+			return false, 0, false, nil
+		}
+		eu.pendingMemoryRead = false
+		defer func() {
+			eu.runner = risc.InstructionRunnerPc{}
+		}()
+		var memory []int8
+		for _, addr := range eu.addrs {
+			memory = append(memory, ctx.Memory[addr])
+		}
+		return eu.run(ctx, app, outBus, memory)
+	}
+
 	if !eu.processing {
 		runner, exists := inBus.Get()
 		if !exists {
@@ -53,23 +71,36 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 	if ctx.Debug {
 		fmt.Printf("\tEU: Executing instruction %d\n", eu.runner.Pc/4)
 	}
-	execution, err := runner.Runner.Run(ctx, app.Labels, eu.runner.Pc)
+
+	addrs := runner.Runner.MemoryRead(ctx)
+	if len(addrs) != 0 {
+		eu.addrs = addrs
+		eu.pendingMemoryRead = true
+		eu.remainingCycles = cyclesMemoryAccess
+		return false, 0, false, nil
+	}
+
+	defer func() {
+		eu.runner = risc.InstructionRunnerPc{}
+	}()
+	return eu.run(ctx, app, outBus, nil)
+}
+
+func (eu *executeUnit) run(ctx *risc.Context, app risc.Application, outBus *comp.SimpleBus[risc.ExecutionContext], memory []int8) (bool, int32, bool, error) {
+	execution, err := eu.runner.Runner.Run(ctx, app.Labels, eu.runner.Pc, memory)
 	if err != nil {
 		return false, 0, false, err
 	}
 	if execution.Return {
 		return false, 0, true, err
 	}
-	defer func() {
-		eu.runner = risc.InstructionRunnerPc{}
-	}()
 
 	outBus.Add(risc.ExecutionContext{
 		Execution:       execution,
-		InstructionType: runner.Runner.InstructionType(),
-		WriteRegisters:  runner.Runner.WriteRegisters(),
+		InstructionType: eu.runner.Runner.InstructionType(),
+		WriteRegisters:  eu.runner.Runner.WriteRegisters(),
 	})
-	ctx.AddPendingWriteRegisters(runner.Runner.WriteRegisters())
+	ctx.AddPendingWriteRegisters(eu.runner.Runner.WriteRegisters())
 	eu.processing = false
 
 	if execution.PcChange && eu.branchUnit.shouldFlushPipeline(execution.NextPc) {

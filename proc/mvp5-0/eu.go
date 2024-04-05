@@ -7,12 +7,14 @@ import (
 )
 
 type executeUnit struct {
-	pending         bool
-	remainingCycles int
-	runner          risc.InstructionRunnerPc
-	bu              *btbBranchUnit
-	inBus           *comp.BufferedBus[risc.InstructionRunnerPc]
-	outBus          *comp.BufferedBus[risc.ExecutionContext]
+	pending           bool
+	remainingCycles   int
+	pendingMemoryRead bool
+	addrs             []int32
+	runner            risc.InstructionRunnerPc
+	bu                *btbBranchUnit
+	inBus             *comp.BufferedBus[risc.InstructionRunnerPc]
+	outBus            *comp.BufferedBus[risc.ExecutionContext]
 }
 
 func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext]) *executeUnit {
@@ -20,6 +22,22 @@ func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[risc.InstructionR
 }
 
 func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error) {
+	if u.pendingMemoryRead {
+		u.remainingCycles--
+		if u.remainingCycles != 0 {
+			return false, 0, false, nil
+		}
+		u.pendingMemoryRead = false
+		defer func() {
+			u.runner = risc.InstructionRunnerPc{}
+		}()
+		var memory []int8
+		for _, addr := range u.addrs {
+			memory = append(memory, ctx.Memory[addr])
+		}
+		return u.run(cycle, ctx, app, memory)
+	}
+
 	if !u.pending {
 		runner, exists := u.inBus.Get()
 		if !exists {
@@ -46,26 +64,39 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 	u.bu.assert(runner)
 
 	log.Infoi(ctx, "EU", runner.Runner.InstructionType(), runner.Pc, "executing")
-	execution, err := runner.Runner.Run(ctx, app.Labels, u.runner.Pc)
+
+	addrs := runner.Runner.MemoryRead(ctx)
+	if len(addrs) != 0 {
+		u.addrs = addrs
+		u.pendingMemoryRead = true
+		u.remainingCycles = cyclesMemoryAccess
+		return false, 0, false, nil
+	}
+
+	defer func() {
+		u.runner = risc.InstructionRunnerPc{}
+	}()
+	return u.run(cycle, ctx, app, nil)
+}
+
+func (u *executeUnit) run(cycle int, ctx *risc.Context, app risc.Application, memory []int8) (bool, int32, bool, error) {
+	execution, err := u.runner.Runner.Run(ctx, app.Labels, u.runner.Pc, memory)
 	if err != nil {
 		return false, 0, false, err
 	}
 	if execution.Return {
 		return false, 0, true, nil
 	}
-	defer func() {
-		u.runner = risc.InstructionRunnerPc{}
-	}()
 
 	u.outBus.Add(risc.ExecutionContext{
 		Execution:       execution,
-		InstructionType: runner.Runner.InstructionType(),
-		WriteRegisters:  runner.Runner.WriteRegisters(),
-		ReadRegisters:   runner.Runner.ReadRegisters(),
+		InstructionType: u.runner.Runner.InstructionType(),
+		WriteRegisters:  u.runner.Runner.WriteRegisters(),
+		ReadRegisters:   u.runner.Runner.ReadRegisters(),
 	}, cycle)
 	u.pending = false
 
-	if runner.Runner.InstructionType().IsUnconditionalBranch() {
+	if u.runner.Runner.InstructionType().IsUnconditionalBranch() {
 		log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
 			"notify jump address resolved from %d to %d", u.runner.Pc/4, execution.NextPc/4)
 		u.bu.notifyJumpAddressResolved(u.runner.Pc, execution.NextPc)

@@ -16,7 +16,7 @@ func (r *Runner) Run() error {
 	var pc int32
 	for pc/4 < int32(len(r.App.Instructions)) {
 		runner := r.App.Instructions[pc/4]
-		exe, err := runner.Run(r.Ctx, r.App.Labels, pc)
+		exe, err := runner.Run(r.Ctx, r.App.Labels, pc, nil)
 		if err != nil {
 			return err
 		}

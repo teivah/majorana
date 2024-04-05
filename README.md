@@ -113,12 +113,12 @@ All the benchmarks are executed at a fixed CPU clock frequency of 3.2 GHz.
 
 Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency). This benchmark was on a different microarchitecture, different ISA, etc. is hardly comparable with the MVP benchmarks. Yet, it gives us a reference to show how good (or bad :) the MVP implementations are.
 
-| Machine  |            Prime number             |           Sum of array           |            String copy            |
-|:--------:|:-----------------------------------:|:--------------------------------:|:---------------------------------:|
-| Apple M1 |              70.29 ns               |             1300 ns              |             82700 ns              |
-|  MVP-1   | 4115671 ns, 58552.7 slower | 536402 ns, 412.6 slower | 1660865 ns, 513.9 slower |
-|  MVP-2   |  281728 ns, 4008.1 slower  |  97301 ns, 74.8 slower  | 409620 ns, 126.7 slower  |
-|  MVP-3   |  140872 ns, 2004.2 slower  |  78099 ns, 60.1 slower  |                N/A                |
-|  MVP-4   |  125224 ns, 1781.5 slower  |  76819 ns, 59.1 slower  | 348853 ns, 107.9 slower  |
-| MVP-5.0  |  125225 ns, 1781.6 slower  |  81961 ns, 63.0 slower  |  204833 ns, 63.4 slower  |
-| MVP-5.1  | 125224 ns, 1781.5 slower | 76820 ns, 59.1 slower | 198433 ns, 61.4 slower |
+| Machine | Prime number | Sum of array | String copy |
+|:------:|:-----:|:-----:|:-----:|
+| Apple M1 | 70.3 ns | 1300.0 ns | 3232.0 ns |
+| MVP-1 | 4115671 ns, 58552.7 slower | 600402 ns, 461.8 slower | 1820865 ns, 563.4 slower |
+| MVP-2 | 281728 ns, 4008.1 slower | 162581 ns, 125.1 slower | 572820 ns, 177.2 slower |
+| MVP-3 | 140872 ns, 2004.2 slower | 142099 ns, 109.3 slower |  |
+| MVP-4 | 125224 ns, 1781.5 slower | 140819 ns, 108.3 slower | 508869 ns, 157.4 slower |
+| MVP-5.0 | 125225 ns, 1781.6 slower | 144660 ns, 111.3 slower | 364833 ns, 112.9 slower |
+| MVP-5.1 | 125224 ns, 1781.5 slower | 140820 ns, 108.3 slower | 358433 ns, 110.9 slower |
