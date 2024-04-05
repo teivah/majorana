@@ -13,6 +13,7 @@ import (
 	"github.com/teivah/majorana/proc/mvp4"
 	"github.com/teivah/majorana/proc/mvp5-0"
 	"github.com/teivah/majorana/proc/mvp5-1"
+	"github.com/teivah/majorana/proc/mvp6"
 	"github.com/teivah/majorana/risc"
 	"github.com/teivah/majorana/test"
 )
@@ -106,6 +107,13 @@ func TestMvp5_1Prime(t *testing.T) {
 	testPrime(t, factory, testFrom, testTo, false)
 }
 
+func TestMvp6Prime(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvp6.NewCPU(false, memory)
+	}
+	testPrime(t, factory, testFrom, testTo, false)
+}
+
 func testPrime(t *testing.T, factory func() virtualMachine, from, to int, stats bool) {
 	cache := make(map[int]bool, to-from+1)
 	for i := from; i < to; i++ {
@@ -176,6 +184,13 @@ func TestMvp5_0Sums(t *testing.T) {
 func TestMvp5_1Sums(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvp5_1.NewCPU(false, memory)
+	}
+	testSums(t, factory, testFrom, testTo, false)
+}
+
+func TestMvp6Sums(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvp6.NewCPU(false, memory)
 	}
 	testSums(t, factory, testFrom, testTo, false)
 }
@@ -266,6 +281,13 @@ func TestMvp5_0StringCopy(t *testing.T) {
 func TestMvp5_1StringCopy(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvp5_1.NewCPU(false, testTo*2)
+	}
+	testStringCopy(t, factory, testTo, true)
+}
+
+func TestMvp6StringCopy(t *testing.T) {
+	factory := func() virtualMachine {
+		return mvp6.NewCPU(false, testTo*2)
 	}
 	testStringCopy(t, factory, testTo, true)
 }

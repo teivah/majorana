@@ -1,0 +1,88 @@
+package mvp6
+
+import (
+	"github.com/teivah/majorana/common/log"
+	"github.com/teivah/majorana/proc/comp"
+	"github.com/teivah/majorana/risc"
+)
+
+type fetchUnit struct {
+	pc                 int32
+	l1i                *comp.LRUCache
+	remainingCycles    int
+	complete           bool
+	processing         bool
+	pendingMemoryFetch bool
+	toCleanPending     bool
+	outBus             *comp.BufferedBus[int32]
+}
+
+func newFetchUnit(outBus *comp.BufferedBus[int32]) *fetchUnit {
+	return &fetchUnit{
+		l1i:    comp.NewLRUCache(l1ICacheLineSizeInBytes, liICacheSizeInBytes),
+		outBus: outBus,
+	}
+}
+
+func (u *fetchUnit) reset(pc int32, cleanPending bool) {
+	u.complete = false
+	u.pc = pc
+	u.toCleanPending = cleanPending
+}
+
+func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
+	if u.toCleanPending {
+		// The fetch unit may have sent to the bus wrong instruction, we make sure
+		// this is not the case by cleaning it
+		log.Infou(ctx, "FU", "cleaning output bus")
+		u.outBus.Clean()
+		u.toCleanPending = false
+	}
+	if u.complete {
+		return
+	}
+
+	if u.pendingMemoryFetch {
+		u.remainingCycles--
+		if u.remainingCycles == 0 {
+			u.pendingMemoryFetch = false
+		} else {
+			return
+		}
+	}
+
+	if _, exists := u.l1i.Get(u.pc); exists {
+		u.remainingCycles = 1
+	} else {
+		u.pendingMemoryFetch = true
+		u.remainingCycles = cyclesMemoryAccess
+		// Should be done after the processing of the 50 cycles
+		u.l1i.Push(u.pc, make([]int8, l1ICacheLineSizeInBytes))
+		return
+	}
+
+	for i := 0; i < u.outBus.OutLength(); i++ {
+		if !u.outBus.CanAdd() {
+			log.Infou(ctx, "FU", "can't add")
+			return
+		}
+		u.processing = false
+		currentPc := u.pc
+		u.pc += 4
+		if u.pc/4 >= int32(len(app.Instructions)) {
+			u.complete = true
+		}
+		log.Infou(ctx, "FU", "pushing new element from pc %d", currentPc/4)
+		u.outBus.Add(currentPc, cycle)
+	}
+}
+
+func (u *fetchUnit) flush(pc int32) {
+	u.processing = false
+	u.complete = false
+	u.pc = pc
+}
+
+func (u *fetchUnit) isEmpty() bool {
+	return u.complete
+}
