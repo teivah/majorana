@@ -11,6 +11,8 @@ const (
 	flushCycles                 = 1
 	l1ICacheLineSizeInBytes int = 64
 	liICacheSizeInBytes     int = 64
+	l1DCacheLineSizeInBytes int = 64
+	liDCacheSizeInBytes     int = 64
 )
 
 type CPU struct {
@@ -37,11 +39,13 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 	executeBus := comp.NewBufferedBus[*risc.InstructionRunnerPc](busSize, busSize)
 	writeBus := comp.NewBufferedBus[risc.ExecutionContext](busSize, busSize)
 
+	ctx := risc.NewContext(debug, memoryBytes)
+	mmu := newMemoryManagementUnit(ctx)
 	fu := newFetchUnit(decodeBus)
 	du := newDecodeUnit(decodeBus, controlBus)
 	bu := newBTBBranchUnit(4, fu, du)
 	return &CPU{
-		ctx:         risc.NewContext(debug, memoryBytes),
+		ctx:         ctx,
 		fetchUnit:   fu,
 		decodeBus:   decodeBus,
 		decodeUnit:  du,
@@ -49,8 +53,8 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 		controlUnit: newControlUnit(controlBus, executeBus),
 		executeBus:  executeBus,
 		executeUnits: []*executeUnit{
-			newExecuteUnit(bu, executeBus, writeBus),
-			newExecuteUnit(bu, executeBus, writeBus),
+			newExecuteUnit(bu, executeBus, writeBus, mmu),
+			newExecuteUnit(bu, executeBus, writeBus, mmu),
 		},
 		writeBus: writeBus,
 		writeUnits: []*writeUnit{

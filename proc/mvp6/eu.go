@@ -15,10 +15,16 @@ type executeUnit struct {
 	bu                *btbBranchUnit
 	inBus             *comp.BufferedBus[*risc.InstructionRunnerPc]
 	outBus            *comp.BufferedBus[risc.ExecutionContext]
+	mmu               *memoryManagementUnit
 }
 
-func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext]) *executeUnit {
-	return &executeUnit{bu: bu, inBus: inBus, outBus: outBus}
+func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext], mmu *memoryManagementUnit) *executeUnit {
+	return &executeUnit{
+		bu:     bu,
+		inBus:  inBus,
+		outBus: outBus,
+		mmu:    mmu,
+	}
 }
 
 func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error) {
