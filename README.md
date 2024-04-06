@@ -109,10 +109,13 @@ MVP-5.1 is not a huge revolution, but it's an evolution nonetheless.
 
 #### MVP-6
 
-From MVP-6, we finally introduce a proper memory management unit (MMU).
+From MVP-6, we finally introduce a proper memory management unit (MMU). The MMU consists of an 1KB L1I (present from L1I) and a new 1KB L1D to cache data:
 
-![](res/majorana-mvp-5.drawio.png)
+![](res/majorana-mvp-6.drawio.png)
 
+When the execute unit wants to access a memory address, it requests it to the MMU that either returns the value directly from L1D or from memory. In the latter case, the MMU fetches a whole cache line of 64 bytes from memory and push that into L1D. L1D eviction policy is based on a LRU cache (Least-Recently Used).
+
+The introduction of an L1D doesn't have any impact for benchmarks not reliant on frequent memory access (obviously); however, it yields significant performance improvements for those that do (up to 70% faster).
 
 ## Benchmarks
 

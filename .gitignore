@@ -1,5 +1,6 @@
 .idea
 ettore.iml
 .$majorana.drawio.bkp
+.$majorana.drawio.dtmp
 mvp_free_test.go
 *.out
