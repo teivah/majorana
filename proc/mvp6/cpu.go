@@ -8,6 +8,7 @@ import (
 
 const (
 	cyclesMemoryAccess          = 50
+	cycleL1DAccess              = 1
 	flushCycles                 = 1
 	l1ICacheLineSizeInBytes int = 64
 	liICacheSizeInBytes     int = 64
@@ -16,17 +17,18 @@ const (
 )
 
 type CPU struct {
-	ctx          *risc.Context
-	fetchUnit    *fetchUnit
-	decodeBus    *comp.BufferedBus[int32]
-	decodeUnit   *decodeUnit
-	controlBus   *comp.BufferedBus[risc.InstructionRunnerPc]
-	controlUnit  *controlUnit
-	executeBus   *comp.BufferedBus[*risc.InstructionRunnerPc]
-	executeUnits []*executeUnit
-	writeBus     *comp.BufferedBus[risc.ExecutionContext]
-	writeUnits   []*writeUnit
-	branchUnit   *btbBranchUnit
+	ctx                  *risc.Context
+	fetchUnit            *fetchUnit
+	decodeBus            *comp.BufferedBus[int32]
+	decodeUnit           *decodeUnit
+	controlBus           *comp.BufferedBus[risc.InstructionRunnerPc]
+	controlUnit          *controlUnit
+	executeBus           *comp.BufferedBus[*risc.InstructionRunnerPc]
+	executeUnits         []*executeUnit
+	writeBus             *comp.BufferedBus[risc.ExecutionContext]
+	writeUnits           []*writeUnit
+	branchUnit           *btbBranchUnit
+	memoryManagementUnit *memoryManagementUnit
 
 	counterFlush int
 }
@@ -61,7 +63,8 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 			newWriteUnit(writeBus),
 			newWriteUnit(writeBus),
 		},
-		branchUnit: bu,
+		branchUnit:           bu,
+		memoryManagementUnit: mmu,
 	}
 }
 
@@ -70,6 +73,10 @@ func (m *CPU) Context() *risc.Context {
 }
 
 func (m *CPU) Run(app risc.Application) (int, error) {
+	defer func() {
+		log.Info(m.ctx, "CPU", m.memoryManagementUnit.l1d.String())
+	}()
+	defer m.memoryManagementUnit.flush()
 	cycle := 0
 	for {
 		cycle += 1

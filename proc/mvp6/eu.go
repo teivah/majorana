@@ -11,6 +11,7 @@ type executeUnit struct {
 	remainingCycles   int
 	pendingMemoryRead bool
 	addrs             []int32
+	memory            []int8
 	runner            risc.InstructionRunnerPc
 	bu                *btbBranchUnit
 	inBus             *comp.BufferedBus[*risc.InstructionRunnerPc]
@@ -38,8 +39,19 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 			u.runner = risc.InstructionRunnerPc{}
 		}()
 		var memory []int8
-		for _, addr := range u.addrs {
-			memory = append(memory, ctx.Memory[addr])
+		if u.memory == nil {
+			// Wasn't into L1
+			//memory = u.mmu.getFromMemory(u.addrs)
+			line := u.mmu.fetchCacheLine(u.addrs[0])
+			u.mmu.pushLineToL1D(u.addrs[0], line)
+			m, exists := u.mmu.getFromL1D(u.addrs)
+			if !exists {
+				panic("cache line doesn't exist")
+			}
+			memory = m
+		} else {
+			memory = u.memory
+			u.memory = nil
 		}
 		return u.run(cycle, ctx, app, memory)
 	}
@@ -92,7 +104,14 @@ func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) 
 	if len(addrs) != 0 {
 		u.addrs = addrs
 		u.pendingMemoryRead = true
-		u.remainingCycles = cyclesMemoryAccess
+
+		if memory, exists := u.mmu.getFromL1D(addrs); exists {
+			u.remainingCycles = cycleL1DAccess
+			u.memory = memory
+		} else {
+			u.remainingCycles = cyclesMemoryAccess
+		}
+
 		return false, 0, false, nil
 	}
 
@@ -111,13 +130,19 @@ func (u *executeUnit) run(cycle int, ctx *risc.Context, app risc.Application, me
 		return false, 0, true, nil
 	}
 
+	u.pending = false
+
+	if execution.MemoryChange && u.mmu.doesExecutionMemoryChangesExistsInL1D(execution) {
+		u.mmu.writeExecutionMemoryChangesToL1D(execution)
+		return false, 0, false, nil
+	}
+
 	u.outBus.Add(risc.ExecutionContext{
 		Execution:       execution,
 		InstructionType: u.runner.Runner.InstructionType(),
 		WriteRegisters:  u.runner.Runner.WriteRegisters(),
 		ReadRegisters:   u.runner.Runner.ReadRegisters(),
 	}, cycle)
-	u.pending = false
 
 	if u.runner.Forwarder == nil {
 		if u.runner.Runner.InstructionType().IsUnconditionalBranch() {

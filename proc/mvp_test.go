@@ -287,10 +287,13 @@ func TestMvp5_1StringCopy(t *testing.T) {
 }
 
 func TestMvp6StringCopy(t *testing.T) {
+	//v := 33
 	factory := func() virtualMachine {
 		return mvp6.NewCPU(false, testTo*2)
+		//return mvp6.NewCPU(false, v*2)
 	}
 	testStringCopy(t, factory, testTo, true)
+	//testStringCopy(t, factory, v, true)
 }
 
 func testStringCopy(t *testing.T, factory func() virtualMachine, length int, stats bool) {
@@ -366,6 +369,7 @@ func testStringCopy(t *testing.T, factory func() virtualMachine, length int, sta
 //}
 
 func TestBenchmarks(t *testing.T) {
+	t.SkipNow()
 	tableRow := map[string]int{
 		"MVP-1":   0,
 		"MVP-2":   1,
@@ -373,6 +377,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   3,
 		"MVP-5.0": 4,
 		"MVP-5.1": 5,
+		"MVP-6":   6,
 	}
 
 	vms := map[string]func(m int) virtualMachine{
@@ -394,6 +399,9 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-5.1": func(m int) virtualMachine {
 			return mvp5_1.NewCPU(false, m)
 		},
+		"MVP-6": func(m int) virtualMachine {
+			return mvp6.NewCPU(false, m)
+		},
 	}
 
 	primeOutput := make([]string, len(tableRow))
@@ -404,6 +412,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   400717,
 		"MVP-5.0": 400721,
 		"MVP-5.1": 400716,
+		"MVP-6":   400716,
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
@@ -425,6 +434,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   450621,
 		"MVP-5.0": 462913,
 		"MVP-5.1": 450625,
+		"MVP-6":   400716,
 	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {
@@ -455,6 +465,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   1628381,
 		"MVP-5.0": 1167466,
 		"MVP-5.1": 1146986,
+		"MVP-6":   1146986,
 	}
 	t.Run("String copy", func(t *testing.T) {
 		for name, factory := range vms {

@@ -11,10 +11,10 @@ func TestCache(t *testing.T) {
 	as := getAssert(t, c)
 
 	as(0, 0, false)
-	c.Push(0, []int8{0, 1})
+	c.PushLine(0, []int8{0, 1})
 	as(1, 1, true)
-	c.Push(2, []int8{2, 3})
-	c.Push(4, []int8{4, 5})
+	c.PushLine(2, []int8{2, 3})
+	c.PushLine(4, []int8{4, 5})
 	as(0, 0, true)
 	as(1, 1, true)
 	as(2, 2, true)
@@ -23,8 +23,8 @@ func TestCache(t *testing.T) {
 
 	// Should move it to first
 	as(5, 5, true)
-	c.Push(6, []int8{6, 7})
-	c.Push(8, []int8{8, 9})
+	c.PushLine(6, []int8{6, 7})
+	c.PushLine(8, []int8{8, 9})
 	as(5, 5, true)
 }
 

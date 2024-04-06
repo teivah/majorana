@@ -57,7 +57,7 @@ func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		u.pendingMemoryFetch = true
 		u.remainingCycles = cyclesMemoryAccess
 		// Should be done after the processing of the 50 cycles
-		u.l1i.Push(u.pc, make([]int8, l1ICacheLineSizeInBytes))
+		u.l1i.PushLine(u.pc, make([]int8, l1ICacheLineSizeInBytes))
 		return
 	}
 
