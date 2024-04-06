@@ -1,10 +1,14 @@
     # Init by storing value to memory
-    addi t0, zero, %d
+    lw t0, 0(zero)
+    sw t0, 0(zero)    # 1 memory[0] = t0
+
+    addi t0, zero, 0  # 2 t0 = 0
+    lw t0, 0(t0)      # 3 t0 = memory[0] // Should be = number
 
     # Compute max
-    addi t1, zero, 2
-    div t1, t0, t1
-    addi t1, t1, 1
+    addi t1, zero, 2  # 4 t1 = 2
+    div t1, t0, t1    # 5 t1 = num / t1
+    addi t1, t1, 1    # 6 t1++
 
     addi t2, zero, 2 # Counter init
 

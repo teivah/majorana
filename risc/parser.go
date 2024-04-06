@@ -2,7 +2,6 @@ package risc
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -337,46 +336,38 @@ func Parse(s string) (Application, error) {
 				imm: int32(imm),
 			})
 		case "lb":
-			if err := validateArgs(3, elements, remainingLine); err != nil {
+			if err := validateArgs(2, elements, remainingLine); err != nil {
 				return Application{}, err
 			}
-			rs2, err := parseRegister(strings.TrimSpace(elements[0]))
+			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
 				return Application{}, err
 			}
-			offset, err := strconv.ParseInt(strings.TrimSpace(elements[1]), 10, 32)
-			if err != nil {
-				return Application{}, err
-			}
-			rs1, err := parseRegister(strings.TrimSpace(elements[2]))
+			offset, rs, err := parseOffsetReg(strings.TrimSpace(elements[1]))
 			if err != nil {
 				return Application{}, err
 			}
 			instructions = append(instructions, &lb{
-				rd:     rs2,
-				offset: int32(offset),
-				rs:     rs1,
+				rd:     rd,
+				offset: offset,
+				rs:     rs,
 			})
 		case "lh":
-			if err := validateArgs(3, elements, remainingLine); err != nil {
+			if err := validateArgs(2, elements, remainingLine); err != nil {
 				return Application{}, err
 			}
-			rs2, err := parseRegister(strings.TrimSpace(elements[0]))
+			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
 				return Application{}, err
 			}
-			offset, err := strconv.ParseInt(strings.TrimSpace(elements[1]), 10, 32)
-			if err != nil {
-				return Application{}, err
-			}
-			rs1, err := parseRegister(strings.TrimSpace(elements[2]))
+			offset, rs, err := parseOffsetReg(strings.TrimSpace(elements[1]))
 			if err != nil {
 				return Application{}, err
 			}
 			instructions = append(instructions, &lh{
-				rd:     rs2,
-				offset: int32(offset),
-				rs:     rs1,
+				rd:     rd,
+				offset: offset,
+				rs:     rs,
 			})
 		case "li":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
@@ -402,20 +393,13 @@ func Parse(s string) (Application, error) {
 			if err != nil {
 				return Application{}, err
 			}
-
-			re := regexp.MustCompile(`(\d+)\((\w+)\)`)
-			matches := re.FindStringSubmatch(elements[1])
-			if len(matches) != 3 {
-				return Application{}, fmt.Errorf("invalid line")
-			}
-			offset, err := strconv.Atoi(matches[1])
+			offset, rs, err := parseOffsetReg(strings.TrimSpace(elements[1]))
 			if err != nil {
 				return Application{}, err
 			}
-			rs, err := parseRegister(strings.TrimSpace(matches[2]))
 			instructions = append(instructions, &lw{
 				rd:     rd,
-				offset: int32(offset),
+				offset: offset,
 				rs:     rs,
 			})
 		case "nop":

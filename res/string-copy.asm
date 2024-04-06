@@ -7,7 +7,7 @@ strncpy:
 1:
     bge     t0, a2, 2    # 1 break if i >= n
     add     t1, a1, t0   # 2 src + i
-    lb      t1, 0, t1    # 3 t1 = src[i]
+    lb      t1, 0(t1)    # 3 t1 = src[i]
     beqz    t1, 2        # 4 break if src[i] == '\0'
     add     t2, a0, t0   # 5 t2 = dst + i
     sb      t1, 0(t2)    # 6 dst[i] = src[i]

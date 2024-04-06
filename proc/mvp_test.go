@@ -117,10 +117,15 @@ func testPrime(t *testing.T, factory func() virtualMachine, from, to int, stats 
 	}
 
 	for i := from; i < to; i++ {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
+		t.Run(fmt.Sprintf("nominal %d", i), func(t *testing.T) {
 			vm := factory()
-			instructions := fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var.asm"), i)
+			instructions := test.ReadFile(t, "../res/prime-number-var.asm")
 			app, err := risc.Parse(instructions)
+			bytes := risc.BytesFromLowBits(int32(i))
+			vm.Context().Memory[0] = bytes[0]
+			vm.Context().Memory[1] = bytes[1]
+			vm.Context().Memory[2] = bytes[2]
+			vm.Context().Memory[3] = bytes[3]
 			require.NoError(t, err)
 			cycle, err := vm.Run(app)
 			require.NoError(t, err)
@@ -139,6 +144,35 @@ func testPrime(t *testing.T, factory func() virtualMachine, from, to int, stats 
 				}
 			}
 		})
+
+		t.Run(fmt.Sprintf("with extra memory %d", i), func(t *testing.T) {
+			vm := factory()
+			instructions := test.ReadFile(t, "../res/prime-number-var-2.asm")
+			app, err := risc.Parse(instructions)
+			bytes := risc.BytesFromLowBits(int32(i))
+			vm.Context().Memory[0] = bytes[0]
+			vm.Context().Memory[1] = bytes[1]
+			vm.Context().Memory[2] = bytes[2]
+			vm.Context().Memory[3] = bytes[3]
+			require.NoError(t, err)
+			cycle, err := vm.Run(app)
+			require.NoError(t, err)
+
+			want := cache[i]
+			if want {
+				assert.Equal(t, int8(1), vm.Context().Memory[4])
+			} else {
+				assert.Equal(t, int8(0), vm.Context().Memory[4])
+			}
+
+			if stats {
+				t.Logf("Cycle: %d", cycle)
+				for k, v := range vm.Stats() {
+					t.Log(k, v)
+				}
+			}
+		})
+
 	}
 }
 
@@ -397,20 +431,33 @@ func TestBenchmarks(t *testing.T) {
 
 	primeOutput := make([]string, len(tableRow))
 	prime := map[string]int{
-		"MVP-1":   13120071,
-		"MVP-2":   851454,
-		"MVP-3":   450790,
-		"MVP-4":   400717,
-		"MVP-5.0": 400721,
-		"MVP-5.1": 400716,
-		"MVP-6":   400719,
+		"MVP-1":   13120170,
+		"MVP-2":   851554,
+		"MVP-3":   450889,
+		"MVP-4":   400816,
+		"MVP-5.0": 400820,
+		"MVP-5.1": 400815,
+		"MVP-6":   400818,
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
 			t.Run(name, func(t *testing.T) {
 				vm := factory(5)
-				cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/prime-number-var-no-memory.asm"), benchPrimeNumber))
+				bytes := risc.BytesFromLowBits(int32(benchPrimeNumber))
+				vm.Context().Memory[0] = bytes[0]
+				vm.Context().Memory[1] = bytes[1]
+				vm.Context().Memory[2] = bytes[2]
+				vm.Context().Memory[3] = bytes[3]
+
+				cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-var.asm"))
 				require.NoError(t, err)
+
+				want := isPrime(benchPrimeNumber)
+				if want {
+					assert.Equal(t, int8(1), vm.Context().Memory[4])
+				} else {
+					assert.Equal(t, int8(0), vm.Context().Memory[4])
+				}
 				assert.Equal(t, prime[name], cycles)
 				primeOutput[tableRow[name]] = primeStats(cycles)
 			})
@@ -443,6 +490,13 @@ func TestBenchmarks(t *testing.T) {
 
 				cycles, err := execute(t, vm, fmt.Sprintf(test.ReadFile(t, "../res/array-sum.asm"), benchSums))
 				require.NoError(t, err)
+
+				s := make([]int, 0, n)
+				for i := 0; i < n; i++ {
+					s = append(s, i)
+				}
+				assert.Equal(t, int32(sumArray(s)), vm.Context().Registers[risc.A0])
+
 				assert.Equal(t, sums[name], cycles)
 				sumsOutput[tableRow[name]] = sumStats(cycles)
 			})
@@ -480,6 +534,7 @@ func TestBenchmarks(t *testing.T) {
 				require.NoError(t, err)
 				cycles, err := vm.Run(app)
 				require.NoError(t, err)
+
 				for _, v := range vm.Context().Memory {
 					assert.Equal(t, int8('1'), v)
 				}
