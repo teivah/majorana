@@ -136,9 +136,18 @@ loop:
 			break loop
 		}
 		if flush {
+			m.writeBus.Connect(cycle + 1)
+			for _, wu := range m.writeUnits {
+				for !wu.isEmpty() || !m.writeBus.IsEmpty() {
+					cycle++
+					wu.cycle(m.ctx)
+				}
+			}
+
 			log.Info(m.ctx, "\t️⚠️ Flush to %d", pc/4)
 			m.flush(pc)
 			cycle += flushCycles
+			log.Info(m.ctx, "\tRegisters: %v", m.ctx.Registers)
 			continue
 		}
 
@@ -189,13 +198,13 @@ func (m *CPU) flush(pc int32) {
 
 func (m *CPU) isEmpty() bool {
 	empty := m.fetchUnit.isEmpty() &&
-			m.decodeUnit.isEmpty() &&
-			m.controlUnit.isEmpty() &&
-			m.areWriteUnitsEmpty() &&
-			m.decodeBus.IsEmpty() &&
-			m.controlBus.IsEmpty() &&
-			m.executeBus.IsEmpty() &&
-			m.writeBus.IsEmpty()
+		m.decodeUnit.isEmpty() &&
+		m.controlUnit.isEmpty() &&
+		m.areWriteUnitsEmpty() &&
+		m.decodeBus.IsEmpty() &&
+		m.controlBus.IsEmpty() &&
+		m.executeBus.IsEmpty() &&
+		m.writeBus.IsEmpty()
 	if !empty {
 		return false
 	}

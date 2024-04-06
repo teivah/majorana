@@ -38,7 +38,7 @@ func BytesFromLowBits(n int32) [4]int8 {
 	return [4]int8{i1, i2, i3, i4}
 }
 
-func i32FromBytes(i1, i2, i3, i4 int8) int32 {
+func I32FromBytes(i1, i2, i3, i4 int8) int32 {
 	var index uint8
 	var result int32
 

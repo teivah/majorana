@@ -48,3 +48,19 @@ func BenchmarkStringCopy(b *testing.B) {
 	}
 	globalBytes = dst
 }
+
+func BenchmarkStringLength(b *testing.B) {
+	b.StopTimer()
+	// We recreate the slice to prevent CPU cache hit
+	src := make([]byte, 0, benchStringLength)
+	for i := 0; i < benchStringLength; i++ {
+		src = append(src, byte(i))
+	}
+	b.StartTimer()
+
+	var local int
+	for i := 0; i < b.N; i++ {
+		local = strlen(src)
+	}
+	globalInt = local
+}

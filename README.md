@@ -123,13 +123,13 @@ All the benchmarks are executed at a fixed CPU clock frequency of 3.2 GHz.
 
 Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency). This benchmark was on a different microarchitecture, different ISA, etc. is hardly comparable with the MVP benchmarks. Yet, it gives us a reference to show how good (or bad :) the MVP implementations are.
 
-| Machine | Prime number | Sum of array | String copy |
-|:------:|:-----:|:-----:|:-----:|
-| Apple M1 | 31703.0 ns | 1300.0 ns | 3232.0 ns |
-| MVP-1 | 4100053 ns, 129.3 slower | 600402 ns, 461.8 slower | 1820865 ns, 563.4 slower |
-| MVP-2 | 266111 ns, 8.4 slower | 162581 ns, 125.1 slower | 572820 ns, 177.2 slower |
-| MVP-3 | 140903 ns, 4.4 slower | 142099 ns, 109.3 slower |  |
-| MVP-4 | 125255 ns, 4.0 slower | 140819 ns, 108.3 slower | 508869 ns, 157.4 slower |
-| MVP-5.0 | 125256 ns, 4.0 slower | 144660 ns, 111.3 slower | 364833 ns, 112.9 slower |
-| MVP-5.1 | 125255 ns, 4.0 slower | 140820 ns, 108.3 slower | 358433 ns, 110.9 slower |
-| MVP-6 | 125256 ns, 4.0 slower | 19551 ns, 15.0 slower | 106672 ns, 33.0 slower |
+| Machine | Prime number | Sum of array | String copy | String length |
+|:------:|:-----:|:-----:|:-----:|:-----:|
+| Apple M1 | 31703.0 ns | 1300.0 ns | 3232.0 ns | 3231.0 ns |
+| MVP-1 | 4100053 ns, 129.3 slower | 600402 ns, 461.8 slower | 1820865 ns, 563.4 slower | 1158545 ns, 358.6 slower |
+| MVP-2 | 266111 ns, 8.4 slower | 162581 ns, 125.1 slower | 572820 ns, 177.2 slower | 377669 ns, 116.9 slower |
+| MVP-3 | 140903 ns, 4.4 slower | 142099 ns, 109.3 slower |  | 345650 ns, 107.0 slower |
+| MVP-4 | 125255 ns, 4.0 slower | 140819 ns, 108.3 slower | 508869 ns, 157.4 slower | 342451 ns, 106.0 slower |
+| MVP-5.0 | 125256 ns, 4.0 slower | 144660 ns, 111.3 slower | 364833 ns, 112.9 slower | 352069 ns, 109.0 slower |
+| MVP-5.1 | 125255 ns, 4.0 slower | 140820 ns, 108.3 slower | 364833 ns, 112.9 slower |  |
+| MVP-6 | 156553 ns, 4.9 slower | 16992 ns, 13.1 slower | 106682 ns, 33.0 slower | 44354 ns, 13.7 slower |

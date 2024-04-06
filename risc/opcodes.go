@@ -756,7 +756,7 @@ type lh struct {
 }
 
 func (op *lh) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	n := i32FromBytes(memory[0], memory[1], 0, 0)
+	n := I32FromBytes(memory[0], memory[1], 0, 0)
 	register, value := IsRegisterChange(op.rd, n)
 	return Execution{
 		RegisterChange: true,
@@ -828,7 +828,7 @@ type lw struct {
 }
 
 func (op *lw) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	n := i32FromBytes(memory[0], memory[1], memory[2], memory[3])
+	n := I32FromBytes(memory[0], memory[1], memory[2], memory[3])
 	register, value := IsRegisterChange(op.rd, n)
 	if ctx.Debug {
 		fmt.Printf("\t\tRun: Lw %s %d\n", register, value)

@@ -362,6 +362,14 @@ func (ins InstructionType) IsMemoryWrite() bool {
 	return false
 }
 
+func (ins InstructionType) IsMemoryRead() bool {
+	switch ins {
+	case Lb, Lw, Lh:
+		return true
+	}
+	return false
+}
+
 func (ins InstructionType) IsUnconditionalBranch() bool {
 	switch ins {
 	case J, Jal, Jalr:
@@ -372,7 +380,7 @@ func (ins InstructionType) IsUnconditionalBranch() bool {
 
 func (ins InstructionType) IsConditionalBranch() bool {
 	switch ins {
-	case Beq, Bne, Blt, Bge, Bgeu:
+	case Beq, Beqz, Bne, Blt, Bge, Bgeu:
 		return true
 	}
 	return false

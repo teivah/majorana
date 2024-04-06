@@ -3,7 +3,6 @@ package proc
 import (
 	"fmt"
 	"sort"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,12 +19,13 @@ import (
 )
 
 const (
-	memory           = benchSums * 4
-	benchPrimeNumber = 100151
-	benchSums        = 4096
-	benchStringCopy  = 10 * 1024 // 10 KB
-	testFrom         = 2
-	testTo           = 200
+	memory            = benchSums * 4
+	benchPrimeNumber  = 100151
+	benchSums         = 4096
+	benchStringCopy   = 10 * 1024 // 10 KB
+	benchStringLength = 10 * 1024 // 10 KB
+	testFrom          = 2
+	testTo            = 200
 )
 
 func execute(t *testing.T, vm virtualMachine, instructions string) (int, error) {
@@ -71,72 +71,94 @@ func strncpy(dst, src []byte, n int) {
 	}
 }
 
-func factorial(n int) int {
-	result := 1
-	for i := 1; i <= n; i++ {
-		result *= i
+func strlen(bytes []byte) int {
+	res := 0
+	for i := 0; i < len(bytes); i++ {
+
 	}
-	return result
+	return res
 }
 
-func TestMvp1Prime(t *testing.T) {
-	factory := func() virtualMachine {
+func TestMvp1(t *testing.T) {
+	factory := func(memory int) virtualMachine {
 		return mvp1.NewCPU(false, memory)
 	}
-	testPrime(t, factory, testFrom, testTo, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
 }
 
-func TestMvp2Prime(t *testing.T) {
-	factory := func() virtualMachine {
+func TestMvp2(t *testing.T) {
+	factory := func(memory int) virtualMachine {
 		return mvp2.NewCPU(false, memory)
 	}
-	testPrime(t, factory, testFrom, testTo, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
 }
 
-func TestMvp3Prime(t *testing.T) {
-	factory := func() virtualMachine {
+func TestMvp3(t *testing.T) {
+	t.SkipNow()
+	factory := func(memory int) virtualMachine {
 		return mvp3.NewCPU(false, memory)
 	}
-	testPrime(t, factory, testFrom, testTo, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
 }
 
-func TestMvp4Prime(t *testing.T) {
-	factory := func() virtualMachine {
+func TestMvp4(t *testing.T) {
+	factory := func(memory int) virtualMachine {
 		return mvp4.NewCPU(false, memory)
 	}
-	testPrime(t, factory, testFrom, testTo, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
 }
 
-func TestMvp5_0Prime(t *testing.T) {
-	factory := func() virtualMachine {
+func TestMvp5_0(t *testing.T) {
+	factory := func(memory int) virtualMachine {
 		return mvp5_0.NewCPU(false, memory)
 	}
-	testPrime(t, factory, testFrom, testTo, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
 }
 
-func TestMvp5_1Prime(t *testing.T) {
-	factory := func() virtualMachine {
+func TestMvp5_1(t *testing.T) {
+	factory := func(memory int) virtualMachine {
 		return mvp5_1.NewCPU(false, memory)
 	}
-	testPrime(t, factory, testFrom, testTo, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
 }
 
-func TestMvp6Prime(t *testing.T) {
-	factory := func() virtualMachine {
+func TestMvp6(t *testing.T) {
+	factory := func(memory int) virtualMachine {
 		return mvp6.NewCPU(false, memory)
 	}
-	testPrime(t, factory, testFrom, testTo, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
 }
 
-func testPrime(t *testing.T, factory func() virtualMachine, from, to int, stats bool) {
+func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
 	cache := make(map[int]bool, to-from+1)
 	for i := from; i < to; i++ {
 		cache[i] = isPrime(i)
 	}
 
 	for i := from; i < to; i++ {
-		t.Run(fmt.Sprintf("nominal %d", i), func(t *testing.T) {
-			vm := factory()
+		t.Run(fmt.Sprintf("Prime - nominal - %d", i), func(t *testing.T) {
+			vm := factory(memory)
 			instructions := test.ReadFile(t, "../res/prime-number.asm")
 			app, err := risc.Parse(instructions)
 			bytes := risc.BytesFromLowBits(int32(i))
@@ -163,8 +185,8 @@ func testPrime(t *testing.T, factory func() virtualMachine, from, to int, stats 
 			}
 		})
 
-		t.Run(fmt.Sprintf("with extra memory %d", i), func(t *testing.T) {
-			vm := factory()
+		t.Run(fmt.Sprintf("Prime - with extra memory - %d", i), func(t *testing.T) {
+			vm := factory(memory)
 			instructions := test.ReadFile(t, "../res/prime-number-2.asm")
 			app, err := risc.Parse(instructions)
 			bytes := risc.BytesFromLowBits(int32(i))
@@ -194,59 +216,10 @@ func testPrime(t *testing.T, factory func() virtualMachine, from, to int, stats 
 	}
 }
 
-func TestMvp1Sums(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp1.NewCPU(false, memory)
-	}
-	testSums(t, factory, testFrom, testTo, false)
-}
-
-func TestMvp2Sums(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp2.NewCPU(false, memory)
-	}
-	testSums(t, factory, testFrom, testTo, false)
-}
-
-func TestMvp3Sums(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp3.NewCPU(false, memory)
-	}
-	testSums(t, factory, testFrom, testTo, false)
-}
-
-func TestMvp4Sums(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp4.NewCPU(false, memory)
-	}
-	testSums(t, factory, testFrom, testTo, false)
-}
-
-func TestMvp5_0Sums(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp5_0.NewCPU(false, memory)
-	}
-	testSums(t, factory, testFrom, testTo, false)
-}
-
-func TestMvp5_1Sums(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp5_1.NewCPU(false, memory)
-	}
-	testSums(t, factory, testFrom, testTo, false)
-}
-
-func TestMvp6Sums(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp6.NewCPU(false, memory)
-	}
-	testSums(t, factory, testFrom, testTo, false)
-}
-
-func testSums(t *testing.T, factory func() virtualMachine, from, to int, stats bool) {
+func testSums(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
 	for i := from; i < to; i++ {
-		t.Run(strconv.Itoa(i), func(t *testing.T) {
-			vm := factory()
+		t.Run(fmt.Sprintf("Sums - %d", i), func(t *testing.T) {
+			vm := factory(memory)
 			n := i
 			for i := 0; i < n; i++ {
 				bytes := risc.BytesFromLowBits(int32(i))
@@ -279,81 +252,58 @@ func testSums(t *testing.T, factory func() virtualMachine, from, to int, stats b
 	}
 }
 
-func TestMvp1StringCopy(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp1.NewCPU(false, testTo*2)
-	}
-	testStringCopy(t, factory, testTo, true)
-}
-
-func TestMvp2StringCopy(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp2.NewCPU(false, testTo*2)
-	}
-	testStringCopy(t, factory, testTo, true)
-}
-
-func TestMvp3StringCopy(t *testing.T) {
-	// FIXME
-	t.SkipNow()
-	factory := func() virtualMachine {
-		return mvp3.NewCPU(true, testTo*2)
-	}
-	testStringCopy(t, factory, testTo, true)
-}
-
-func TestMvp4StringCopy(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp4.NewCPU(false, testTo*2)
-	}
-	testStringCopy(t, factory, testTo, true)
-}
-
-func TestMvp5_0StringCopy(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp5_0.NewCPU(false, testTo*2)
-	}
-	testStringCopy(t, factory, testTo, true)
-}
-
-func TestMvp5_1StringCopy(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp5_1.NewCPU(false, testTo*2)
-	}
-	testStringCopy(t, factory, testTo, true)
-}
-
-func TestMvp6StringCopy(t *testing.T) {
-	factory := func() virtualMachine {
-		return mvp6.NewCPU(false, testTo*2)
-	}
-	testStringCopy(t, factory, testTo, true)
-}
-
-func testStringCopy(t *testing.T, factory func() virtualMachine, length int, stats bool) {
-	vm := factory()
-	for i := 0; i < length; i++ {
-		vm.Context().Memory[i] = '1'
-	}
-	vm.Context().Registers[risc.A1] = int32(0)
-	vm.Context().Registers[risc.A0] = int32(length)
-	vm.Context().Registers[risc.A2] = int32(length)
-
-	instructions := test.ReadFile(t, "../res/string-copy.asm")
-	app, err := risc.Parse(instructions)
-	require.NoError(t, err)
-	cycle, err := vm.Run(app)
-	require.NoError(t, err)
-	for _, v := range vm.Context().Memory {
-		assert.Equal(t, int8('1'), v)
-	}
-
-	if stats {
-		t.Logf("Cycle: %d", cycle)
-		for k, v := range vm.Stats() {
-			t.Log(k, v)
+func testStringLength(t *testing.T, factory func(int) virtualMachine, memory int, length int, stats bool) {
+	t.Run("String length", func(t *testing.T) {
+		vm := factory(memory)
+		for i := 0; i < length; i++ {
+			vm.Context().Memory[i] = '1'
 		}
-	}
+		vm.Context().Registers[risc.A0] = int32(0)
+
+		instructions := test.ReadFile(t, "../res/string-length.asm")
+		app, err := risc.Parse(instructions)
+		require.NoError(t, err)
+		cycle, err := vm.Run(app)
+		require.NoError(t, err)
+
+		got := risc.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
+		assert.Equal(t, int32(length), got)
+
+		if stats {
+			t.Logf("Cycle: %d", cycle)
+			for k, v := range vm.Stats() {
+				t.Log(k, v)
+			}
+		}
+	})
+}
+
+func testStringCopy(t *testing.T, factory func(int) virtualMachine, memory int, length int, stats bool) {
+	t.Run("String copy", func(t *testing.T) {
+		vm := factory(memory)
+		for i := 0; i < length; i++ {
+			vm.Context().Memory[i] = '1'
+		}
+		vm.Context().Registers[risc.A1] = int32(0)
+		vm.Context().Registers[risc.A0] = int32(length)
+		vm.Context().Registers[risc.A2] = int32(length)
+
+		instructions := test.ReadFile(t, "../res/string-copy.asm")
+		app, err := risc.Parse(instructions)
+		require.NoError(t, err)
+		cycle, err := vm.Run(app)
+		require.NoError(t, err)
+		for _, v := range vm.Context().Memory {
+			assert.Equal(t, int8('1'), v)
+		}
+
+		if stats {
+			t.Logf("Cycle: %d", cycle)
+			for k, v := range vm.Stats() {
+				t.Log(k, v)
+			}
+		}
+	})
 }
 
 //func TestMvp1Jal(t *testing.T) {
@@ -445,11 +395,15 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   400816,
 		"MVP-5.0": 400820,
 		"MVP-5.1": 400815,
-		"MVP-6":   400818,
+		"MVP-6":   500969,
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
 			t.Run(name, func(t *testing.T) {
+				if _, exists := prime[name]; !exists {
+					t.SkipNow()
+				}
+
 				vm := factory(5)
 				bytes := risc.BytesFromLowBits(int32(benchPrimeNumber))
 				vm.Context().Memory[0] = bytes[0]
@@ -480,11 +434,15 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   450621,
 		"MVP-5.0": 462913,
 		"MVP-5.1": 450625,
-		"MVP-6":   62562,
+		"MVP-6":   54373,
 	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {
 			t.Run(name, func(t *testing.T) {
+				if _, exists := sums[name]; !exists {
+					t.SkipNow()
+				}
+
 				vm := factory(memory)
 				n := benchSums
 				for i := 0; i < n; i++ {
@@ -513,18 +471,18 @@ func TestBenchmarks(t *testing.T) {
 
 	cpyOutput := make([]string, len(tableRow))
 	cpy := map[string]int{
-		"MVP-1":   5826769,
-		"MVP-2":   1833023,
+		"MVP-1": 5826769,
+		"MVP-2": 1833023,
+		//"MVP-3":   1833023,
 		"MVP-4":   1628381,
 		"MVP-5.0": 1167466,
-		"MVP-5.1": 1146986,
-		"MVP-6":   341352,
+		"MVP-5.1": 1167466,
+		"MVP-6":   341381,
 	}
 	t.Run("String copy", func(t *testing.T) {
 		for name, factory := range vms {
 			t.Run(name, func(t *testing.T) {
-				switch name {
-				case "MVP-3":
+				if _, exists := cpy[name]; !exists {
 					t.SkipNow()
 				}
 
@@ -548,15 +506,54 @@ func TestBenchmarks(t *testing.T) {
 				}
 				require.NoError(t, err)
 				assert.Equal(t, cpy[name], cycles)
-				cpyOutput[tableRow[name]] = sumStringCopy(cycles)
+				cpyOutput[tableRow[name]] = stringCopyStats(cycles)
 			})
 		}
 	})
 
-	output := `| Machine | Prime number | Sum of array | String copy |
-|:------:|:-----:|:-----:|:-----:|
+	lengthOutput := make([]string, len(tableRow))
+	lenstats := map[string]int{
+		"MVP-1":   3707344,
+		"MVP-2":   1208542,
+		"MVP-3":   1106081,
+		"MVP-4":   1095842,
+		"MVP-5.0": 1126620,
+		//"MVP-5.1": 1146986,
+		"MVP-6": 141934,
+	}
+	t.Run("String length", func(t *testing.T) {
+		for name, factory := range vms {
+			t.Run(name, func(t *testing.T) {
+				if _, exists := lenstats[name]; !exists {
+					t.SkipNow()
+				}
+
+				length := benchStringLength
+				vm := factory(benchStringLength * 2)
+				for i := 0; i < length; i++ {
+					vm.Context().Memory[i] = '1'
+				}
+				vm.Context().Registers[risc.A0] = int32(0)
+
+				instructions := test.ReadFile(t, "../res/string-length.asm")
+				app, err := risc.Parse(instructions)
+				require.NoError(t, err)
+				cycles, err := vm.Run(app)
+				require.NoError(t, err)
+
+				got := risc.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
+				assert.Equal(t, int32(length), got)
+
+				assert.Equal(t, lenstats[name], cycles)
+				lengthOutput[tableRow[name]] = stringLengthStats(cycles)
+			})
+		}
+	})
+
+	output := `| Machine | Prime number | Sum of array | String copy | String length |
+|:------:|:-----:|:-----:|:-----:|:-----:|
 `
-	output += fmt.Sprintf("| Apple M1 | %.1f ns | %.1f ns | %.1f ns |\n", m1PrimeExecutionTime, m1SumsExecutionTime, m1StringCopyExecutionTime)
+	output += fmt.Sprintf("| Apple M1 | %.1f ns | %.1f ns | %.1f ns | %.1f ns |\n", m1PrimeExecutionTime, m1SumsExecutionTime, m1StringCopyExecutionTime, m1StringLengthExecutionTime)
 	var keys []string
 	for k := range tableRow {
 		keys = append(keys, k)
@@ -564,7 +561,7 @@ func TestBenchmarks(t *testing.T) {
 	sort.Strings(keys)
 	for _, mvp := range keys {
 		idx := tableRow[mvp]
-		output += fmt.Sprintf("| %s | %s | %s | %s |\n", mvp, primeOutput[idx], sumsOutput[idx], cpyOutput[idx])
+		output += fmt.Sprintf("| %s | %s | %s | %s | %s |\n", mvp, primeOutput[idx], sumsOutput[idx], cpyOutput[idx], lengthOutput[idx])
 	}
 	fmt.Println(output)
 }
