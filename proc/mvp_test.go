@@ -61,6 +61,24 @@ func sumArray(s []int) int {
 	return sum
 }
 
+func strncpy(dst, src []byte, n int) {
+	var i int
+	for i = 0; i < n && i < len(src); i++ {
+		dst[i] = src[i]
+	}
+	for ; i < n; i++ {
+		dst[i] = 0
+	}
+}
+
+func factorial(n int) int {
+	result := 1
+	for i := 1; i <= n; i++ {
+		result *= i
+	}
+	return result
+}
+
 func TestMvp1Prime(t *testing.T) {
 	factory := func() virtualMachine {
 		return mvp1.NewCPU(false, memory)
@@ -119,7 +137,7 @@ func testPrime(t *testing.T, factory func() virtualMachine, from, to int, stats 
 	for i := from; i < to; i++ {
 		t.Run(fmt.Sprintf("nominal %d", i), func(t *testing.T) {
 			vm := factory()
-			instructions := test.ReadFile(t, "../res/prime-number-var.asm")
+			instructions := test.ReadFile(t, "../res/prime-number.asm")
 			app, err := risc.Parse(instructions)
 			bytes := risc.BytesFromLowBits(int32(i))
 			vm.Context().Memory[0] = bytes[0]
@@ -147,7 +165,7 @@ func testPrime(t *testing.T, factory func() virtualMachine, from, to int, stats 
 
 		t.Run(fmt.Sprintf("with extra memory %d", i), func(t *testing.T) {
 			vm := factory()
-			instructions := test.ReadFile(t, "../res/prime-number-var-2.asm")
+			instructions := test.ReadFile(t, "../res/prime-number-2.asm")
 			app, err := risc.Parse(instructions)
 			bytes := risc.BytesFromLowBits(int32(i))
 			vm.Context().Memory[0] = bytes[0]
@@ -258,16 +276,6 @@ func testSums(t *testing.T, factory func() virtualMachine, from, to int, stats b
 				}
 			}
 		})
-	}
-}
-
-func strncpy(dst, src []byte, n int) {
-	var i int
-	for i = 0; i < n && i < len(src); i++ {
-		dst[i] = src[i]
-	}
-	for ; i < n; i++ {
-		dst[i] = 0
 	}
 }
 
@@ -449,7 +457,7 @@ func TestBenchmarks(t *testing.T) {
 				vm.Context().Memory[2] = bytes[2]
 				vm.Context().Memory[3] = bytes[3]
 
-				cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number-var.asm"))
+				cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number.asm"))
 				require.NoError(t, err)
 
 				want := isPrime(benchPrimeNumber)

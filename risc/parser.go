@@ -37,19 +37,19 @@ func Parse(s string) (Application, error) {
 		switch strings.ToLower(line[:firstWhitespace]) {
 		case "add":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &add{
 				rd:  rd,
@@ -58,19 +58,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "and":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &and{
 				rd:  rd,
@@ -79,19 +79,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "addi":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			imm, err := strconv.ParseInt(strings.TrimSpace(elements[2]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &addi{
 				imm: int32(imm),
@@ -100,19 +100,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "andi":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			imm, err := strconv.ParseInt(strings.TrimSpace(elements[2]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &andi{
 				imm: int32(imm),
@@ -121,15 +121,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "auipc":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			imm, err := strconv.ParseInt(strings.TrimSpace(elements[1]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &auipc{
 				rd:  rd,
@@ -137,15 +137,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "beq":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			label := strings.TrimSpace(elements[2])
 			instructions = append(instructions, &beq{
@@ -155,11 +155,11 @@ func Parse(s string) (Application, error) {
 			})
 		case "beqz":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			label := strings.TrimSpace(elements[1])
 			instructions = append(instructions, &beqz{
@@ -168,15 +168,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "bge":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			label := strings.TrimSpace(elements[2])
 			instructions = append(instructions, &bge{
@@ -186,15 +186,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "bgeu":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			label := strings.TrimSpace(elements[2])
 			instructions = append(instructions, &bgeu{
@@ -204,15 +204,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "blt":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			label := strings.TrimSpace(elements[2])
 			instructions = append(instructions, &blt{
@@ -222,15 +222,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "bltu":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			label := strings.TrimSpace(elements[2])
 			instructions = append(instructions, &bltu{
@@ -240,15 +240,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "bne":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			label := strings.TrimSpace(elements[2])
 			instructions = append(instructions, &bne{
@@ -258,19 +258,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "div":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &div{
 				rd:  rd,
@@ -279,7 +279,7 @@ func Parse(s string) (Application, error) {
 			})
 		case "j":
 			if err := validateArgs(1, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			label := strings.TrimSpace(elements[0])
 			instructions = append(instructions, &j{
@@ -287,11 +287,11 @@ func Parse(s string) (Application, error) {
 			})
 		case "jal":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			label := strings.TrimSpace(elements[1])
 			instructions = append(instructions, &jal{
@@ -300,19 +300,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "jalr":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			imm, err := strconv.ParseInt(strings.TrimSpace(elements[2]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &jalr{
 				rd:  rd,
@@ -321,15 +321,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "lui":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			imm, err := strconv.ParseInt(strings.TrimSpace(elements[1]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &lui{
 				rd:  rd,
@@ -337,15 +337,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "lb":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			offset, rs, err := parseOffsetReg(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &lb{
 				rd:     rd,
@@ -354,15 +354,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "lh":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			offset, rs, err := parseOffsetReg(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &lh{
 				rd:     rd,
@@ -371,15 +371,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "li":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			imm, err := strconv.ParseInt(strings.TrimSpace(elements[1]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &li{
 				rd:  rd,
@@ -387,15 +387,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "lw":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			offset, rs, err := parseOffsetReg(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &lw{
 				rd:     rd,
@@ -406,19 +406,19 @@ func Parse(s string) (Application, error) {
 			instructions = append(instructions, &nop{})
 		case "mul":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &mul{
 				rd:  rd,
@@ -427,15 +427,15 @@ func Parse(s string) (Application, error) {
 			})
 		case "mv":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &mv{
 				rd: rd,
@@ -443,19 +443,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "or":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &or{
 				rd:  rd,
@@ -464,19 +464,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "ori":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			imm, err := strconv.ParseInt(strings.TrimSpace(elements[2]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &ori{
 				imm: int32(imm),
@@ -485,19 +485,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "rem":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &rem{
 				rd:  rd,
@@ -508,15 +508,15 @@ func Parse(s string) (Application, error) {
 			instructions = append(instructions, &ret{})
 		case "sb":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			offset, rs1, err := parseOffsetReg(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &sb{
 				rs2:    rs2,
@@ -525,19 +525,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "sh":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			offset, err := strconv.ParseInt(strings.TrimSpace(elements[1]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &sh{
 				rs2:    rs2,
@@ -547,19 +547,19 @@ func Parse(s string) (Application, error) {
 
 		case "sll":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &sll{
 				rd:  rd,
@@ -569,19 +569,19 @@ func Parse(s string) (Application, error) {
 
 		case "slli":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			imm, err := strconv.ParseInt(strings.TrimSpace(elements[2]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &slli{
 				rd:  rd,
@@ -591,19 +591,19 @@ func Parse(s string) (Application, error) {
 
 		case "slt":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &slt{
 				rd:  rd,
@@ -613,19 +613,19 @@ func Parse(s string) (Application, error) {
 
 		case "sltu":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &sltu{
 				rd:  rd,
@@ -634,19 +634,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "slti":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			imm, err := strconv.ParseInt(strings.TrimSpace(elements[2]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &slti{
 				rd:  rd,
@@ -655,19 +655,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "sra":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &sra{
 				rd:  rd,
@@ -676,19 +676,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "srai":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			imm, err := strconv.ParseInt(strings.TrimSpace(elements[2]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &srai{
 				rd:  rd,
@@ -697,19 +697,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "srl":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &srl{
 				rd:  rd,
@@ -718,19 +718,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "srli":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			imm, err := strconv.ParseInt(strings.TrimSpace(elements[2]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &srli{
 				rd:  rd,
@@ -739,19 +739,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "sub":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &sub{
 				rd:  rd,
@@ -761,15 +761,15 @@ func Parse(s string) (Application, error) {
 
 		case "sw":
 			if err := validateArgs(2, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			offset, rs1, err := parseOffsetReg(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &sw{
 				rs2:    rs2,
@@ -778,19 +778,19 @@ func Parse(s string) (Application, error) {
 			})
 		case "xor":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs1, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[2]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &xor{
 				rd:  rd,
@@ -800,19 +800,19 @@ func Parse(s string) (Application, error) {
 
 		case "xori":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rd, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			rs, err := parseRegister(strings.TrimSpace(elements[1]))
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			imm, err := strconv.ParseInt(strings.TrimSpace(elements[2]), 10, 32)
 			if err != nil {
-				return Application{}, err
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &xori{
 				imm: int32(imm),
