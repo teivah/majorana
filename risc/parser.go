@@ -523,42 +523,22 @@ func Parse(s string) (Application, error) {
 		case "ret":
 			instructions = append(instructions, &ret{})
 		case "sb":
-			if err := validateArgsInterval(2, 3, elements, remainingLine); err != nil {
+			if err := validateArgs(2, elements, remainingLine); err != nil {
 				return Application{}, err
 			}
-			if len(elements) == 2 {
-				rs2, err := parseRegister(strings.TrimSpace(elements[0]))
-				if err != nil {
-					return Application{}, err
-				}
-				offset, rs1, err := parseOffsetReg(strings.TrimSpace(elements[1]))
-				if err != nil {
-					return Application{}, err
-				}
-				instructions = append(instructions, &sb{
-					rs2:    rs2,
-					offset: offset,
-					rs1:    rs1,
-				})
-			} else {
-				rs2, err := parseRegister(strings.TrimSpace(elements[0]))
-				if err != nil {
-					return Application{}, err
-				}
-				offset, err := strconv.ParseInt(strings.TrimSpace(elements[1]), 10, 32)
-				if err != nil {
-					return Application{}, err
-				}
-				rs1, err := parseRegister(strings.TrimSpace(elements[2]))
-				if err != nil {
-					return Application{}, err
-				}
-				instructions = append(instructions, &sb{
-					rs2:    rs2,
-					offset: int32(offset),
-					rs1:    rs1,
-				})
+			rs2, err := parseRegister(strings.TrimSpace(elements[0]))
+			if err != nil {
+				return Application{}, err
 			}
+			offset, rs1, err := parseOffsetReg(strings.TrimSpace(elements[1]))
+			if err != nil {
+				return Application{}, err
+			}
+			instructions = append(instructions, &sb{
+				rs2:    rs2,
+				offset: offset,
+				rs1:    rs1,
+			})
 		case "sh":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
 				return Application{}, err
@@ -794,25 +774,22 @@ func Parse(s string) (Application, error) {
 				rs1: rs1,
 				rs2: rs2,
 			})
+
 		case "sw":
-			if err := validateArgs(3, elements, remainingLine); err != nil {
+			if err := validateArgs(2, elements, remainingLine); err != nil {
 				return Application{}, err
 			}
 			rs2, err := parseRegister(strings.TrimSpace(elements[0]))
 			if err != nil {
 				return Application{}, err
 			}
-			offset, err := strconv.ParseInt(strings.TrimSpace(elements[1]), 10, 32)
-			if err != nil {
-				return Application{}, err
-			}
-			rs1, err := parseRegister(strings.TrimSpace(elements[2]))
+			offset, rs1, err := parseOffsetReg(strings.TrimSpace(elements[1]))
 			if err != nil {
 				return Application{}, err
 			}
 			instructions = append(instructions, &sw{
 				rs2:    rs2,
-				offset: int32(offset),
+				offset: offset,
 				rs1:    rs1,
 			})
 		case "xor":

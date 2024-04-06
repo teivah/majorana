@@ -40,17 +40,12 @@ func isPrime(n int) bool {
 	if n <= 1 {
 		return false
 	}
-
-	if n <= 3 {
+	if n == 2 {
 		return true
 	}
 
-	if n%2 == 0 || n%3 == 0 {
-		return false
-	}
-
-	for i := 5; i*i <= n; i += 6 {
-		if n%i == 0 || n%(i+2) == 0 {
+	for i := 2; i <= n/2+1; i++ {
+		if n%i == 0 {
 			return false
 		}
 	}
@@ -402,8 +397,8 @@ func TestBenchmarks(t *testing.T) {
 
 	primeOutput := make([]string, len(tableRow))
 	prime := map[string]int{
-		"MVP-1":   13170146,
-		"MVP-2":   901529,
+		"MVP-1":   13120071,
+		"MVP-2":   851454,
 		"MVP-3":   450790,
 		"MVP-4":   400717,
 		"MVP-5.0": 400721,

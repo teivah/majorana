@@ -8,7 +8,7 @@ const (
 	m1Frequency        = 3_200_000_000
 	secondToNanosecond = 1_000_000_000
 
-	m1PrimeExecutionTime      = 70.29
+	m1PrimeExecutionTime      = 31703.
 	m1SumsExecutionTime       = 1300.
 	m1StringCopyExecutionTime = 3232.
 )

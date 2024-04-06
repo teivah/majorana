@@ -1,6 +1,6 @@
     # Init by storing value to memory
     addi t0, zero, %d # 0 t0 = number
-    sw t0, 0, zero    # 1 memory[0] = t0
+    sw t0, 0(zero)    # 1 memory[0] = t0
 
     addi t0, zero, 0  # 2 t0 = 0
     lw t0, 0(t0)      # 3 t0 = memory[0] // Should be = number
@@ -29,6 +29,6 @@ false:
 
 end:
     addi t1, zero, 4 # 17
-    sb t0, 0, t1 # Stores t0 into memory t1 + 0 = 4 + 0
+    sb t0, 0(t1) # Stores t0 into memory t1 + 0 = 4 + 0
     addi a0, t1, 0
     addi ra, zero, 0
