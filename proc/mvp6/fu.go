@@ -11,6 +11,7 @@ type fetchUnit struct {
 	l1i            *comp.LRUCache
 	toCleanPending bool
 	outBus         *comp.BufferedBus[int32]
+	complete       bool
 	// Pending
 	coroutine       func(cycle int, app risc.Application, ctx *risc.Context)
 	remainingCycles int
@@ -63,6 +64,7 @@ func (u *fetchUnit) coFetch(cycle int, app risc.Application, ctx *risc.Context) 
 		u.pc += 4
 		if u.pc/4 >= int32(len(app.Instructions)) {
 			u.coroutine = func(cycle int, app risc.Application, ctx *risc.Context) {}
+			u.complete = true
 		}
 		log.Infou(ctx, "FU", "pushing new element from pc %d", currentPc/4)
 		u.outBus.Add(currentPc, cycle)
@@ -77,9 +79,10 @@ func (u *fetchUnit) reset(pc int32, cleanPending bool) {
 
 func (u *fetchUnit) flush(pc int32) {
 	u.coroutine = nil
+	u.complete = false
 	u.pc = pc
 }
 
 func (u *fetchUnit) isEmpty() bool {
-	return u.coroutine != nil
+	return u.complete
 }
