@@ -1,4 +1,3 @@
 - In the case of inner function calls, push $ra to a RAM stack
-- Stats
-- j instruction
 - Test jal
+- Multiple L1i, L1 is a multiplier of the cache line

@@ -76,8 +76,8 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	defer func() {
 		log.Infou(m.ctx, "L1d", m.memoryManagementUnit.l1d.String())
 	}()
-	defer m.memoryManagementUnit.flush()
 	cycle := 0
+loop:
 	for {
 		cycle += 1
 		log.Info(m.ctx, "Cycle %d", cycle)
@@ -129,7 +129,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 				cycle++
 				m.writeBus.Connect(cycle)
 			}
-			return cycle, nil
+			break loop
 		}
 		if flush {
 			log.Info(m.ctx, "\t️⚠️ Flush to %d", pc/4)
@@ -147,6 +147,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			break
 		}
 	}
+	cycle += m.memoryManagementUnit.flush()
 	return cycle, nil
 }
 

@@ -430,7 +430,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   450621,
 		"MVP-5.0": 462913,
 		"MVP-5.1": 450625,
-		"MVP-6":   61762,
+		"MVP-6":   61812,
 	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {
@@ -461,7 +461,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   1628381,
 		"MVP-5.0": 1167466,
 		"MVP-5.1": 1146986,
-		"MVP-6":   340552,
+		"MVP-6":   340602,
 	}
 	t.Run("String copy", func(t *testing.T) {
 		for name, factory := range vms {

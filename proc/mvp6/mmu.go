@@ -103,11 +103,13 @@ func (u *memoryManagementUnit) writeToMemory(addr int32, data []int8) {
 	}
 }
 
-func (u *memoryManagementUnit) flush() {
-	// TODO Additional cycles
+func (u *memoryManagementUnit) flush() int {
+	additionalCycles := 0
 	for _, line := range u.l1d.Lines() {
+		additionalCycles += cyclesMemoryAccess
 		for i := 0; i < l1DCacheLineSizeInBytes; i++ {
 			u.writeToMemory(line.Boundary[0], line.Data)
 		}
 	}
+	return additionalCycles
 }
