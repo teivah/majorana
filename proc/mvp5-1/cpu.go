@@ -120,9 +120,18 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			return cycle, nil
 		}
 		if flush {
+			m.writeBus.Connect(cycle + 1)
+			for _, wu := range m.writeUnits {
+				for !wu.isEmpty() || !m.writeBus.IsEmpty() {
+					cycle++
+					wu.cycle(m.ctx)
+				}
+			}
+
 			log.Info(m.ctx, "\t️⚠️ Flush to %d", pc/4)
 			m.flush(pc)
 			cycle += flushCycles
+			log.Info(m.ctx, "\tRegisters: %v", m.ctx.Registers)
 			continue
 		}
 

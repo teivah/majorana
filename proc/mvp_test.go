@@ -353,6 +353,43 @@ func testStringCopy(t *testing.T, factory func(int) virtualMachine, memory int, 
 //}
 
 func TestBenchmarks(t *testing.T) {
+	primeExpected := map[string]int{
+		"MVP-1":   13120170,
+		"MVP-2":   851554,
+		"MVP-3":   450889,
+		"MVP-4":   400816,
+		"MVP-5.0": 400820,
+		"MVP-5.1": 500966,
+		"MVP-6":   500969,
+	}
+	sumsExpected := map[string]int{
+		"MVP-1":   1921287,
+		"MVP-2":   520260,
+		"MVP-3":   454716,
+		"MVP-4":   450621,
+		"MVP-5.0": 462913,
+		"MVP-5.1": 442436,
+		"MVP-6":   54373,
+	}
+	copyExpected := map[string]int{
+		"MVP-1": 5826769,
+		"MVP-2": 1833023,
+		//"MVP-3":   1833023,
+		"MVP-4":   1628381,
+		"MVP-5.0": 1167466,
+		"MVP-5.1": 1157286,
+		"MVP-6":   341381,
+	}
+	lengthExpected := map[string]int{
+		"MVP-1":   3707344,
+		"MVP-2":   1208542,
+		"MVP-3":   1106081,
+		"MVP-4":   1095842,
+		"MVP-5.0": 1126620,
+		"MVP-5.1": 1136859,
+		"MVP-6":   141934,
+	}
+
 	tableRow := map[string]int{
 		"MVP-1":   0,
 		"MVP-2":   1,
@@ -388,19 +425,10 @@ func TestBenchmarks(t *testing.T) {
 	}
 
 	primeOutput := make([]string, len(tableRow))
-	prime := map[string]int{
-		"MVP-1":   13120170,
-		"MVP-2":   851554,
-		"MVP-3":   450889,
-		"MVP-4":   400816,
-		"MVP-5.0": 400820,
-		"MVP-5.1": 400815,
-		"MVP-6":   500969,
-	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
 			t.Run(name, func(t *testing.T) {
-				if _, exists := prime[name]; !exists {
+				if _, exists := primeExpected[name]; !exists {
 					t.SkipNow()
 				}
 
@@ -420,26 +448,17 @@ func TestBenchmarks(t *testing.T) {
 				} else {
 					assert.Equal(t, int8(0), vm.Context().Memory[4])
 				}
-				assert.Equal(t, prime[name], cycles)
+				assert.Equal(t, primeExpected[name], cycles)
 				primeOutput[tableRow[name]] = primeStats(cycles)
 			})
 		}
 	})
 
 	sumsOutput := make([]string, len(tableRow))
-	sums := map[string]int{
-		"MVP-1":   1921287,
-		"MVP-2":   520260,
-		"MVP-3":   454716,
-		"MVP-4":   450621,
-		"MVP-5.0": 462913,
-		"MVP-5.1": 450625,
-		"MVP-6":   54373,
-	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {
 			t.Run(name, func(t *testing.T) {
-				if _, exists := sums[name]; !exists {
+				if _, exists := sumsExpected[name]; !exists {
 					t.SkipNow()
 				}
 
@@ -463,26 +482,17 @@ func TestBenchmarks(t *testing.T) {
 				}
 				assert.Equal(t, int32(sumArray(s)), vm.Context().Registers[risc.A0])
 
-				assert.Equal(t, sums[name], cycles)
+				assert.Equal(t, sumsExpected[name], cycles)
 				sumsOutput[tableRow[name]] = sumStats(cycles)
 			})
 		}
 	})
 
 	cpyOutput := make([]string, len(tableRow))
-	cpy := map[string]int{
-		"MVP-1": 5826769,
-		"MVP-2": 1833023,
-		//"MVP-3":   1833023,
-		"MVP-4":   1628381,
-		"MVP-5.0": 1167466,
-		"MVP-5.1": 1167466,
-		"MVP-6":   341381,
-	}
 	t.Run("String copy", func(t *testing.T) {
 		for name, factory := range vms {
 			t.Run(name, func(t *testing.T) {
-				if _, exists := cpy[name]; !exists {
+				if _, exists := copyExpected[name]; !exists {
 					t.SkipNow()
 				}
 
@@ -505,26 +515,17 @@ func TestBenchmarks(t *testing.T) {
 					assert.Equal(t, int8('1'), v)
 				}
 				require.NoError(t, err)
-				assert.Equal(t, cpy[name], cycles)
+				assert.Equal(t, copyExpected[name], cycles)
 				cpyOutput[tableRow[name]] = stringCopyStats(cycles)
 			})
 		}
 	})
 
 	lengthOutput := make([]string, len(tableRow))
-	lenstats := map[string]int{
-		"MVP-1":   3707344,
-		"MVP-2":   1208542,
-		"MVP-3":   1106081,
-		"MVP-4":   1095842,
-		"MVP-5.0": 1126620,
-		//"MVP-5.1": 1146986,
-		"MVP-6": 141934,
-	}
 	t.Run("String length", func(t *testing.T) {
 		for name, factory := range vms {
 			t.Run(name, func(t *testing.T) {
-				if _, exists := lenstats[name]; !exists {
+				if _, exists := lengthExpected[name]; !exists {
 					t.SkipNow()
 				}
 
@@ -544,7 +545,7 @@ func TestBenchmarks(t *testing.T) {
 				got := risc.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
 				assert.Equal(t, int32(length), got)
 
-				assert.Equal(t, lenstats[name], cycles)
+				assert.Equal(t, lengthExpected[name], cycles)
 				lengthOutput[tableRow[name]] = stringLengthStats(cycles)
 			})
 		}

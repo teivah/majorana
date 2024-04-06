@@ -131,5 +131,5 @@ Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency
 | MVP-3 | 140903 ns, 4.4 slower | 142099 ns, 109.3 slower |  | 345650 ns, 107.0 slower |
 | MVP-4 | 125255 ns, 4.0 slower | 140819 ns, 108.3 slower | 508869 ns, 157.4 slower | 342451 ns, 106.0 slower |
 | MVP-5.0 | 125256 ns, 4.0 slower | 144660 ns, 111.3 slower | 364833 ns, 112.9 slower | 352069 ns, 109.0 slower |
-| MVP-5.1 | 125255 ns, 4.0 slower | 140820 ns, 108.3 slower | 364833 ns, 112.9 slower |  |
+| MVP-5.1 | 156552 ns, 4.9 slower | 138261 ns, 106.4 slower | 361652 ns, 111.9 slower | 355268 ns, 110.0 slower |
 | MVP-6 | 156553 ns, 4.9 slower | 16992 ns, 13.1 slower | 106682 ns, 33.0 slower | 44354 ns, 13.7 slower |

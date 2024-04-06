@@ -62,6 +62,8 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 			return
 		}
 		runner := app.Instructions[pc/4]
+		// Clear forward
+		runner.Forward(risc.Forward{})
 		log.Infoi(ctx, "DU", runner.InstructionType(), pc, "decoding")
 		jump := false
 		if runner.InstructionType().IsUnconditionalBranch() {
