@@ -13,10 +13,9 @@ type executeUnit struct {
 	mmu    *memoryManagementUnit
 
 	// Pending
-	remainingCycles int
-	coroutine       func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error)
-	memory          []int8
-	runner          risc.InstructionRunnerPc
+	coroutine func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error)
+	memory    []int8
+	runner    risc.InstructionRunnerPc
 }
 
 func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext], mmu *memoryManagementUnit) *executeUnit {
@@ -72,21 +71,21 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 			u.memory = memory
 			// As the coroutine is executed the next cycle, if a L1D access takes
 			// one cycle, we should be good to go during the next cycle
-			u.remainingCycles = cycleL1DAccess - 1
+			remainingCycles := cycleL1DAccess - 1
 			u.coroutine = func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error) {
-				if u.remainingCycles > 0 {
-					u.remainingCycles--
+				if remainingCycles > 0 {
+					remainingCycles--
 					return false, 0, false, nil
 				}
 				return u.coRun(cycle, ctx, app)
 			}
 			return false, 0, false, nil
 		} else {
-			u.remainingCycles = cyclesMemoryAccess - 1
+			remainingCycles := cyclesMemoryAccess - 1
 
 			u.coroutine = func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error) {
-				if u.remainingCycles > 0 {
-					u.remainingCycles--
+				if remainingCycles > 0 {
+					remainingCycles--
 					return false, 0, false, nil
 				}
 				line := u.mmu.fetchCacheLine(addrs[0])
@@ -149,7 +148,6 @@ func (u *executeUnit) coRun(cycle int, ctx *risc.Context, app risc.Application) 
 
 func (u *executeUnit) flush() {
 	u.coroutine = nil
-	u.remainingCycles = 0
 }
 
 func (u *executeUnit) isEmpty() bool {
