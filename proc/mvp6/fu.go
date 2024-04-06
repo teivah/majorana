@@ -57,7 +57,7 @@ func (u *fetchUnit) coFetch(cycle int, app risc.Application, ctx *risc.Context) 
 					return
 				}
 				u.coroutine = nil
-				u.mmu.pushLineToL1I(u.pc, make([]int8, l1ICacheLineSizeInBytes))
+				u.mmu.pushLineToL1I(u.pc, make([]int8, l1ICacheLineSize))
 
 				currentPc := u.pc
 				u.pc += 4

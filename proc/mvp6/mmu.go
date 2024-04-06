@@ -16,8 +16,8 @@ type memoryManagementUnit struct {
 func newMemoryManagementUnit(ctx *risc.Context) *memoryManagementUnit {
 	return &memoryManagementUnit{
 		ctx: ctx,
-		l1i: comp.NewLRUCache(l1ICacheLineSizeInBytes, liICacheSizeInBytes),
-		l1d: comp.NewLRUCache(l1DCacheLineSizeInBytes, liDCacheSizeInBytes),
+		l1i: comp.NewLRUCache(l1ICacheLineSize, liICacheSize),
+		l1d: comp.NewLRUCache(l1DCacheLineSize, liDCacheSize),
 	}
 }
 
@@ -89,8 +89,8 @@ func (u *memoryManagementUnit) getFromMemory(addrs []int32) []int8 {
 }
 
 func (u *memoryManagementUnit) fetchCacheLine(addr int32) []int8 {
-	memory := make([]int8, 0, l1DCacheLineSizeInBytes)
-	for i := 0; i < l1DCacheLineSizeInBytes; i++ {
+	memory := make([]int8, 0, l1DCacheLineSize)
+	for i := 0; i < l1DCacheLineSize; i++ {
 		if int(addr)+i >= len(u.ctx.Memory) {
 			memory = append(memory, 0)
 		} else {
@@ -125,7 +125,7 @@ func (u *memoryManagementUnit) flush() int {
 	additionalCycles := 0
 	for _, line := range u.l1d.Lines() {
 		additionalCycles += cyclesMemoryAccess
-		for i := 0; i < l1DCacheLineSizeInBytes; i++ {
+		for i := 0; i < l1DCacheLineSize; i++ {
 			u.writeToMemory(line.Boundary[0], line.Data)
 		}
 	}

@@ -7,13 +7,17 @@ import (
 )
 
 const (
-	cyclesMemoryAccess          = 50
-	cycleL1DAccess              = 1
-	flushCycles                 = 1
-	l1ICacheLineSizeInBytes int = 64
-	liICacheSizeInBytes     int = 64
-	l1DCacheLineSizeInBytes int = 64
-	liDCacheSizeInBytes     int = 64
+	bytes     = 1
+	kilobytes = 1024
+
+	cyclesMemoryAccess = 50
+	cycleL1DAccess     = 1
+	flushCycles        = 1
+
+	l1ICacheLineSize = 64 * bytes
+	liICacheSize     = 1 * kilobytes
+	l1DCacheLineSize = 64 * bytes
+	liDCacheSize     = 1 * kilobytes
 )
 
 type CPU struct {
@@ -185,13 +189,13 @@ func (m *CPU) flush(pc int32) {
 
 func (m *CPU) isEmpty() bool {
 	empty := m.fetchUnit.isEmpty() &&
-		m.decodeUnit.isEmpty() &&
-		m.controlUnit.isEmpty() &&
-		m.areWriteUnitsEmpty() &&
-		m.decodeBus.IsEmpty() &&
-		m.controlBus.IsEmpty() &&
-		m.executeBus.IsEmpty() &&
-		m.writeBus.IsEmpty()
+			m.decodeUnit.isEmpty() &&
+			m.controlUnit.isEmpty() &&
+			m.areWriteUnitsEmpty() &&
+			m.decodeBus.IsEmpty() &&
+			m.controlBus.IsEmpty() &&
+			m.executeBus.IsEmpty() &&
+			m.writeBus.IsEmpty()
 	if !empty {
 		return false
 	}

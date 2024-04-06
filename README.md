@@ -2,7 +2,7 @@
 
 [Majorana](https://en.wikipedia.org/wiki/Ettore_Majorana) is a RISC-V virtual processor written in Go.
 
-## Majorana Virtual Processor (MVP)
+## Majorana Virtual Processors (MVP)
 
 ### MVP-1
 
@@ -15,13 +15,13 @@ Here is the microarchitecture, divided into 4 classic stages:
 * Execute: execute the RISC-V instruction
 * Write: write-back the result to a register or the main memory
 
-![](res/majorana-mvm-1.drawio.png)
+![](res/majorana-mvp-1.drawio.png)
 
 ### MVP-2
 
 Compared to MVP-1, we add a cache for instructions called L1I (Level 1 Instructions) with a size of 64 KB. The caching policy is straightforward: as soon as we meet an instruction that is not present in L1I, we fetch a cache line of 64 KB instructions from the main memory, and we cache it into LI1.
 
-![](res/majorana-mvm-2.drawio.png)
+![](res/majorana-mvp-2.drawio.png)
 
 ### MVP-3
 
@@ -47,7 +47,7 @@ div t2, t0, t1   # Read from t1
 The processor must wait for `ADDI` to be executed and to get its result written in T1 before to execute `DIV` (as div depends on T1).
 In this case, we implement what we call pipeline interclock by delaying the execution of `DIV`.
 
-![](res/majorana-mvm-3.drawio.png)
+![](res/majorana-mvp-3.drawio.png)
 
 ### MVP-4
 
@@ -66,7 +66,7 @@ In this case, the fetch unit, after fetching the first line (`jal`), was fetchin
 
 The microarchitecture of MVP-4 is very similar to MVP-3, except that the branch unit is now coupled with a Branch Target Buffer (BTB):
 
-![](res/majorana-mvm-4.drawio.png)
+![](res/majorana-mvp-4.drawio.png)
 
 One the fetch unit fetches a branch, it doesn't know whether it's a branch; it's the job of the decode unit. Therefore, the fetch unit can't simply say: "_I fetched a branch, I'm going to wait for the execute unit to tell me the next instruction to fetch_".
 
@@ -86,7 +86,7 @@ The next step is to implement a so-called superscalar processor. A superscalar p
 
 The fetch unit and the decode unit are now capable to fetch/decode two instruction within a single cycle. Yet, before to dispatch the executions to the execute units, a new stage comes in: the control unit.
 
-![](res/majorana-mvm-5.drawio.png)
+![](res/majorana-mvp-5.drawio.png)
 
 The control unit plays a pivotal role in coordinating the execution of multiple instructions simultaneously. It performs dependency checking between the decoded instructions to guarantee it won't lead to any hazard.
 
@@ -107,6 +107,13 @@ With branch-heavy applications, MVP-5.1 performs the same as MVP-4 (MVP-5.0 was 
 
 MVP-5.1 is not a huge revolution, but it's an evolution nonetheless.
 
+#### MVP-6
+
+From MVP-6, we finally introduce a proper memory management unit (MMU).
+
+![](res/majorana-mvp-5.drawio.png)
+
+
 ## Benchmarks
 
 All the benchmarks are executed at a fixed CPU clock frequency of 3.2 GHz.
@@ -122,4 +129,4 @@ Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency
 | MVP-4 | 125224 ns, 1781.5 slower | 140819 ns, 108.3 slower | 508869 ns, 157.4 slower |
 | MVP-5.0 | 125225 ns, 1781.6 slower | 144660 ns, 111.3 slower | 364833 ns, 112.9 slower |
 | MVP-5.1 | 125224 ns, 1781.5 slower | 140820 ns, 108.3 slower | 358433 ns, 110.9 slower |
-| MVP-6 | 125225 ns, 1781.5 slower | 19316 ns, 14.9 slower | 106438 ns, 32.9 slower |
+| MVP-6 | 125225 ns, 1781.5 slower | 19551 ns, 15.0 slower | 106672 ns, 33.0 slower |
