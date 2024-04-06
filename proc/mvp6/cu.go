@@ -61,7 +61,6 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 
 	remaining := u.outBus.RemainingToAdd()
 	var pushedRunners []*risc.InstructionRunnerPc
-	// TODO Explain
 	skippedRegisterReadForMemoryWrite := make(map[risc.RegisterType]bool)
 
 	defer func() {
@@ -190,6 +189,13 @@ func isHazardWithPushedRunners(pushedRunners []*risc.InstructionRunnerPc, runner
 	return false, nil, risc.Zero
 }
 
+// Prevent such memory hazards:
+//
+// sw t0, 0, zero    # memory[0] = t0
+// addi t0, zero, 42 # t0 = 42
+//
+// If sw is skipped because of a memory hazard, and that addi is executed first,
+// memory[0] will be equal to the wrong value.
 func isMemoryHazard(skippedRegisterReadForMemoryWrite map[risc.RegisterType]bool, runner risc.InstructionRunner) (bool, risc.RegisterType) {
 	for _, register := range runner.WriteRegisters() {
 		if register == risc.Zero {
