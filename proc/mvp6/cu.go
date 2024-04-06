@@ -82,7 +82,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			if hazard, register := isMemoryHazard(skippedRegisterReadForMemoryWrite, pending.Runner); hazard {
 				log.Infoi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "memory hazard on register %s", register)
 				u.blockedDataHazard++
-				// TODO Return?
+				// TODO Why?
 				return
 			}
 
@@ -132,15 +132,8 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			if hazard, register := isMemoryHazard(skippedRegisterReadForMemoryWrite, runner.Runner); hazard {
 				log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "memory hazard on register %s", register)
 				u.blockedDataHazard++
-
 				u.pendings.Push(runner)
-				if runner.Runner.InstructionType().IsMemoryWrite() {
-					for _, register := range runner.Runner.ReadRegisters() {
-						skippedRegisterReadForMemoryWrite[register] = true
-					}
-				}
-
-				// TODO Return?
+				// TODO Why?
 				return
 			}
 
