@@ -7,16 +7,16 @@ import (
 )
 
 type executeUnit struct {
-	pending           bool
-	remainingCycles   int
-	pendingMemoryRead bool
-	addrs             []int32
-	memory            []int8
-	runner            risc.InstructionRunnerPc
-	bu                *btbBranchUnit
-	inBus             *comp.BufferedBus[*risc.InstructionRunnerPc]
-	outBus            *comp.BufferedBus[risc.ExecutionContext]
-	mmu               *memoryManagementUnit
+	remainingCycles int
+	bu              *btbBranchUnit
+	inBus           *comp.BufferedBus[*risc.InstructionRunnerPc]
+	outBus          *comp.BufferedBus[risc.ExecutionContext]
+	mmu             *memoryManagementUnit
+
+	// Pending values
+	coroutine func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error)
+	memory    []int8
+	runner    risc.InstructionRunnerPc
 }
 
 func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext], mmu *memoryManagementUnit) *executeUnit {
@@ -29,108 +29,90 @@ func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.Instruction
 }
 
 func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error) {
-	if u.pendingMemoryRead {
-		u.remainingCycles--
-		if u.remainingCycles != 0 {
-			return false, 0, false, nil
-		}
-		u.pendingMemoryRead = false
-		defer func() {
-			u.runner = risc.InstructionRunnerPc{}
-		}()
-		var memory []int8
-		if u.memory == nil {
-			// Wasn't into L1
-			//memory = u.mmu.getFromMemory(u.addrs)
-			line := u.mmu.fetchCacheLine(u.addrs[0])
-			u.mmu.pushLineToL1D(u.addrs[0], line)
-			m, exists := u.mmu.getFromL1D(u.addrs)
-			if !exists {
-				panic("cache line doesn't exist")
-			}
-			memory = m
-		} else {
-			memory = u.memory
-			u.memory = nil
-		}
-		return u.run(cycle, ctx, app, memory)
+	if u.coroutine != nil {
+		return u.coroutine(cycle, ctx, app)
 	}
 
-	if !u.pending {
-		runner, exists := u.inBus.Get()
-		if !exists {
-			return false, 0, false, nil
-		}
-		u.runner = *runner
-		u.remainingCycles = runner.Runner.InstructionType().Cycles()
-		u.pending = true
-	}
-
-	u.remainingCycles--
-	if u.remainingCycles != 0 {
-		log.Infou(ctx, "EU", "pending remaining cycles %d (pc=%d, ins=%s)", u.remainingCycles, u.runner.Pc/4, u.runner.Runner.InstructionType())
+	runner, exists := u.inBus.Get()
+	if !exists {
 		return false, 0, false, nil
 	}
+	u.runner = *runner
+	u.coroutine = u.coPrepareRun
+	return u.coPrepareRun(cycle, ctx, app)
+}
 
+func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error) {
 	if !u.outBus.CanAdd() {
-		u.remainingCycles = 1
 		log.Infou(ctx, "EU", "can't add")
 		return false, 0, false, nil
 	}
 
-	runner := u.runner
-
-	if runner.Receiver != nil {
+	if u.runner.Receiver != nil {
 		var value int32
 		select {
-		case v := <-runner.Receiver:
+		case v := <-u.runner.Receiver:
 			value = v
 		default:
 			// Not yet ready
-			u.pending = true
-			u.remainingCycles = 1
 			return false, 0, false, nil
 		}
 
-		runner.Runner.Forward(risc.Forward{Value: value, Register: runner.ForwardRegister})
+		u.runner.Runner.Forward(risc.Forward{Value: value, Register: u.runner.ForwardRegister})
 	}
 
 	// Create the branch unit assertions
-	u.bu.assert(runner)
+	u.bu.assert(u.runner)
 
-	log.Infoi(ctx, "EU", runner.Runner.InstructionType(), runner.Pc, "executing")
+	log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "executing")
 
-	addrs := runner.Runner.MemoryRead(ctx)
+	addrs := u.runner.Runner.MemoryRead(ctx)
 	if len(addrs) != 0 {
-		u.addrs = addrs
-		u.pendingMemoryRead = true
-
 		if memory, exists := u.mmu.getFromL1D(addrs); exists {
-			u.remainingCycles = cycleL1DAccess
 			u.memory = memory
+			// As the coroutine is executed the next cycle, if a L1D access takes
+			// one cycle, we should be good to go during the next cycle
+			u.remainingCycles = cycleL1DAccess - 1
+			u.coroutine = func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error) {
+				if u.remainingCycles > 0 {
+					u.remainingCycles--
+					return false, 0, false, nil
+				}
+				return u.coRun(cycle, ctx, app)
+			}
+			return false, 0, false, nil
 		} else {
-			u.remainingCycles = cyclesMemoryAccess
+			u.remainingCycles = cyclesMemoryAccess - 1
+
+			u.coroutine = func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error) {
+				if u.remainingCycles > 0 {
+					u.remainingCycles--
+					return false, 0, false, nil
+				}
+				line := u.mmu.fetchCacheLine(addrs[0])
+				u.mmu.pushLineToL1D(addrs[0], line)
+				m, exists := u.mmu.getFromL1D(addrs)
+				if !exists {
+					panic("cache line doesn't exist")
+				}
+				u.memory = m
+				return u.coRun(cycle, ctx, app)
+			}
+			return false, 0, false, nil
 		}
-
-		return false, 0, false, nil
 	}
-
-	defer func() {
-		u.runner = risc.InstructionRunnerPc{}
-	}()
-	return u.run(cycle, ctx, app, nil)
+	return u.coRun(cycle, ctx, app)
 }
 
-func (u *executeUnit) run(cycle int, ctx *risc.Context, app risc.Application, memory []int8) (bool, int32, bool, error) {
-	execution, err := u.runner.Runner.Run(ctx, app.Labels, u.runner.Pc, memory)
+func (u *executeUnit) coRun(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error) {
+	u.coroutine = nil
+	execution, err := u.runner.Runner.Run(ctx, app.Labels, u.runner.Pc, u.memory)
 	if err != nil {
 		return false, 0, false, err
 	}
 	if execution.Return {
 		return false, 0, true, nil
 	}
-
-	u.pending = false
 
 	if execution.MemoryChange && u.mmu.doesExecutionMemoryChangesExistsInL1D(execution) {
 		u.mmu.writeExecutionMemoryChangesToL1D(execution)
@@ -166,10 +148,10 @@ func (u *executeUnit) run(cycle int, ctx *risc.Context, app risc.Application, me
 }
 
 func (u *executeUnit) flush() {
-	u.pending = false
+	u.coroutine = nil
 	u.remainingCycles = 0
 }
 
 func (u *executeUnit) isEmpty() bool {
-	return !u.pending
+	return u.coroutine == nil
 }

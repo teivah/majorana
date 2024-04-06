@@ -83,7 +83,6 @@ func (u *memoryManagementUnit) fetchCacheLine(addr int32) []int8 {
 }
 
 func (u *memoryManagementUnit) pushLineToL1D(addr int32, line []int8) {
-	// TODO
 	evicted := u.l1d.PushLine(addr, line)
 	if len(evicted) == 0 {
 		return

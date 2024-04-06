@@ -287,13 +287,10 @@ func TestMvp5_1StringCopy(t *testing.T) {
 }
 
 func TestMvp6StringCopy(t *testing.T) {
-	//v := 33
 	factory := func() virtualMachine {
 		return mvp6.NewCPU(false, testTo*2)
-		//return mvp6.NewCPU(false, v*2)
 	}
 	testStringCopy(t, factory, testTo, true)
-	//testStringCopy(t, factory, v, true)
 }
 
 func testStringCopy(t *testing.T, factory func() virtualMachine, length int, stats bool) {
