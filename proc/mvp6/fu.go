@@ -7,14 +7,13 @@ import (
 )
 
 type fetchUnit struct {
-	pc                 int32
-	l1i                *comp.LRUCache
-	remainingCycles    int
-	complete           bool
-	processing         bool
-	pendingMemoryFetch bool
-	toCleanPending     bool
-	outBus             *comp.BufferedBus[int32]
+	pc             int32
+	l1i            *comp.LRUCache
+	toCleanPending bool
+	outBus         *comp.BufferedBus[int32]
+	// Pending
+	coroutine       func(cycle int, app risc.Application, ctx *risc.Context)
+	remainingCycles int
 }
 
 func newFetchUnit(outBus *comp.BufferedBus[int32]) *fetchUnit {
@@ -22,12 +21,6 @@ func newFetchUnit(outBus *comp.BufferedBus[int32]) *fetchUnit {
 		l1i:    comp.NewLRUCache(l1ICacheLineSizeInBytes, liICacheSizeInBytes),
 		outBus: outBus,
 	}
-}
-
-func (u *fetchUnit) reset(pc int32, cleanPending bool) {
-	u.complete = false
-	u.pc = pc
-	u.toCleanPending = cleanPending
 }
 
 func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
@@ -38,51 +31,55 @@ func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		u.outBus.Clean()
 		u.toCleanPending = false
 	}
-	if u.complete {
+	if u.coroutine != nil {
+		u.coroutine(cycle, app, ctx)
 		return
 	}
 
-	if u.pendingMemoryFetch {
-		u.remainingCycles--
-		if u.remainingCycles == 0 {
-			u.pendingMemoryFetch = false
-		} else {
+	// TODO In the loop
+	if _, exists := u.l1i.Get(u.pc); !exists {
+		u.remainingCycles = cyclesMemoryAccess - 1
+		u.coroutine = func(cycle int, app risc.Application, ctx *risc.Context) {
+			if u.remainingCycles != 0 {
+				u.remainingCycles--
+				return
+			}
+			u.l1i.PushLine(u.pc, make([]int8, l1ICacheLineSizeInBytes))
+			u.coFetch(cycle, app, ctx)
 			return
 		}
 	}
+	u.coFetch(cycle, app, ctx)
+}
 
-	if _, exists := u.l1i.Get(u.pc); exists {
-		u.remainingCycles = 1
-	} else {
-		u.pendingMemoryFetch = true
-		u.remainingCycles = cyclesMemoryAccess
-		// Should be done after the processing of the 50 cycles
-		u.l1i.PushLine(u.pc, make([]int8, l1ICacheLineSizeInBytes))
-		return
-	}
-
+func (u *fetchUnit) coFetch(cycle int, app risc.Application, ctx *risc.Context) {
+	u.coroutine = nil
 	for i := 0; i < u.outBus.OutLength(); i++ {
 		if !u.outBus.CanAdd() {
 			log.Infou(ctx, "FU", "can't add")
 			return
 		}
-		u.processing = false
 		currentPc := u.pc
 		u.pc += 4
 		if u.pc/4 >= int32(len(app.Instructions)) {
-			u.complete = true
+			u.coroutine = func(cycle int, app risc.Application, ctx *risc.Context) {}
 		}
 		log.Infou(ctx, "FU", "pushing new element from pc %d", currentPc/4)
 		u.outBus.Add(currentPc, cycle)
 	}
 }
 
+func (u *fetchUnit) reset(pc int32, cleanPending bool) {
+	u.coroutine = nil
+	u.pc = pc
+	u.toCleanPending = cleanPending
+}
+
 func (u *fetchUnit) flush(pc int32) {
-	u.processing = false
-	u.complete = false
+	u.coroutine = nil
 	u.pc = pc
 }
 
 func (u *fetchUnit) isEmpty() bool {
-	return u.complete
+	return u.coroutine != nil
 }
