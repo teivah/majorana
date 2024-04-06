@@ -366,7 +366,7 @@ func testStringCopy(t *testing.T, factory func() virtualMachine, length int, sta
 //}
 
 func TestBenchmarks(t *testing.T) {
-	t.SkipNow()
+	//t.SkipNow()
 	tableRow := map[string]int{
 		"MVP-1":   0,
 		"MVP-2":   1,
@@ -409,7 +409,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   400717,
 		"MVP-5.0": 400721,
 		"MVP-5.1": 400716,
-		"MVP-6":   400716,
+		"MVP-6":   400814,
 	}
 	t.Run("Prime", func(t *testing.T) {
 		for name, factory := range vms {
@@ -431,7 +431,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   450621,
 		"MVP-5.0": 462913,
 		"MVP-5.1": 450625,
-		"MVP-6":   400716,
+		"MVP-6":   61761,
 	}
 	t.Run("Sum", func(t *testing.T) {
 		for name, factory := range vms {
@@ -462,7 +462,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   1628381,
 		"MVP-5.0": 1167466,
 		"MVP-5.1": 1146986,
-		"MVP-6":   1146986,
+		"MVP-6":   335432,
 	}
 	t.Run("String copy", func(t *testing.T) {
 		for name, factory := range vms {

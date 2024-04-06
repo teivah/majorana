@@ -7,10 +7,12 @@ import (
 )
 
 type writeUnit struct {
-	pendingMemoryWrite bool
-	memoryWrite        risc.ExecutionContext
-	cycles             int
-	inBus              *comp.BufferedBus[risc.ExecutionContext]
+	memoryWrite risc.ExecutionContext
+	inBus       *comp.BufferedBus[risc.ExecutionContext]
+
+	// Pending
+	remainingCycle int
+	coroutine      func(ctx *risc.Context)
 }
 
 func newWriteUnit(inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
@@ -18,15 +20,8 @@ func newWriteUnit(inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
 }
 
 func (u *writeUnit) cycle(ctx *risc.Context) {
-	if u.pendingMemoryWrite {
-		u.cycles--
-		log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, -1, "pending memory write")
-		if u.cycles == 0 {
-			u.pendingMemoryWrite = false
-			ctx.WriteMemory(u.memoryWrite.Execution)
-			ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
-			log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, -1, "write to memory")
-		}
+	if u.coroutine != nil {
+		u.coroutine(ctx)
 		return
 	}
 
@@ -39,16 +34,31 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
 		log.Infoi(ctx, "WU", execution.InstructionType, -1, "write to register")
 	} else if execution.Execution.MemoryChange {
-		u.pendingMemoryWrite = true
-		u.cycles = cyclesMemoryAccess
-		u.memoryWrite = execution
+		u.remainingCycle = cyclesMemoryAccess
 		log.Infoi(ctx, "WU", execution.InstructionType, -1, "pending memory write")
+
+		u.coroutine = func(ctx *risc.Context) {
+			u.remainingCycle--
+			log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, -1, "pending memory write")
+			if u.remainingCycle == 0 {
+				u.coroutine = nil
+				ctx.WriteMemory(u.memoryWrite.Execution)
+				ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
+				log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, -1, "write to memory")
+			}
+			return
+		}
+
+		u.memoryWrite = execution
 	} else {
 		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
 		log.Infoi(ctx, "WU", execution.InstructionType, -1, "cleaning")
 	}
 }
 
+func (u *writeUnit) coMemoryWrite(ctx *risc.Context) {
+}
+
 func (u *writeUnit) isEmpty() bool {
-	return !u.pendingMemoryWrite
+	return u.coroutine == nil
 }

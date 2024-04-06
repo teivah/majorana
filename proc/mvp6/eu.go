@@ -7,16 +7,16 @@ import (
 )
 
 type executeUnit struct {
-	remainingCycles int
-	bu              *btbBranchUnit
-	inBus           *comp.BufferedBus[*risc.InstructionRunnerPc]
-	outBus          *comp.BufferedBus[risc.ExecutionContext]
-	mmu             *memoryManagementUnit
+	bu     *btbBranchUnit
+	inBus  *comp.BufferedBus[*risc.InstructionRunnerPc]
+	outBus *comp.BufferedBus[risc.ExecutionContext]
+	mmu    *memoryManagementUnit
 
-	// Pending values
-	coroutine func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error)
-	memory    []int8
-	runner    risc.InstructionRunnerPc
+	// Pending
+	remainingCycles int
+	coroutine       func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, bool, error)
+	memory          []int8
+	runner          risc.InstructionRunnerPc
 }
 
 func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext], mmu *memoryManagementUnit) *executeUnit {
