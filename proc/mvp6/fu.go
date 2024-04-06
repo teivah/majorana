@@ -8,18 +8,18 @@ import (
 
 type fetchUnit struct {
 	pc             int32
-	l1i            *comp.LRUCache
 	toCleanPending bool
 	outBus         *comp.BufferedBus[int32]
 	complete       bool
+	mmu            *memoryManagementUnit
 	// Pending
 	coroutine       func(cycle int, app risc.Application, ctx *risc.Context)
 	remainingCycles int
 }
 
-func newFetchUnit(outBus *comp.BufferedBus[int32]) *fetchUnit {
+func newFetchUnit(mmu *memoryManagementUnit, outBus *comp.BufferedBus[int32]) *fetchUnit {
 	return &fetchUnit{
-		l1i:    comp.NewLRUCache(l1ICacheLineSizeInBytes, liICacheSizeInBytes),
+		mmu:    mmu,
 		outBus: outBus,
 	}
 }
@@ -48,7 +48,7 @@ func (u *fetchUnit) coFetch(cycle int, app risc.Application, ctx *risc.Context) 
 			return
 		}
 
-		if _, exists := u.l1i.Get(u.pc); !exists {
+		if _, exists := u.mmu.getFromL1I([]int32{u.pc}); !exists {
 			u.remainingCycles = cyclesMemoryAccess - 1
 			u.coroutine = func(cycle int, app risc.Application, ctx *risc.Context) {
 				if u.remainingCycles != 0 {
@@ -57,7 +57,7 @@ func (u *fetchUnit) coFetch(cycle int, app risc.Application, ctx *risc.Context) 
 					return
 				}
 				u.coroutine = nil
-				u.l1i.PushLine(u.pc, make([]int8, l1ICacheLineSizeInBytes))
+				u.mmu.pushLineToL1I(u.pc, make([]int8, l1ICacheLineSizeInBytes))
 
 				currentPc := u.pc
 				u.pc += 4

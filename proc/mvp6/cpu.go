@@ -43,7 +43,7 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 
 	ctx := risc.NewContext(debug, memoryBytes)
 	mmu := newMemoryManagementUnit(ctx)
-	fu := newFetchUnit(decodeBus)
+	fu := newFetchUnit(mmu, decodeBus)
 	du := newDecodeUnit(decodeBus, controlBus)
 	bu := newBTBBranchUnit(4, fu, du)
 	return &CPU{

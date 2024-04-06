@@ -9,14 +9,32 @@ import (
 
 type memoryManagementUnit struct {
 	ctx *risc.Context
+	l1i *comp.LRUCache
 	l1d *comp.LRUCache
 }
 
 func newMemoryManagementUnit(ctx *risc.Context) *memoryManagementUnit {
 	return &memoryManagementUnit{
 		ctx: ctx,
+		l1i: comp.NewLRUCache(l1ICacheLineSizeInBytes, liICacheSizeInBytes),
 		l1d: comp.NewLRUCache(l1DCacheLineSizeInBytes, liDCacheSizeInBytes),
 	}
+}
+
+func (u *memoryManagementUnit) getFromL1I(addrs []int32) ([]int8, bool) {
+	memory := make([]int8, 0, len(addrs))
+	for _, addr := range addrs {
+		v, exists := u.l1i.Get(addr)
+		if !exists {
+			return nil, false
+		}
+		memory = append(memory, v)
+	}
+	return memory, true
+}
+
+func (u *memoryManagementUnit) pushLineToL1I(addr int32, line []int8) {
+	u.l1i.PushLine(addr, line)
 }
 
 func (u *memoryManagementUnit) getFromL1D(addrs []int32) ([]int8, bool) {
