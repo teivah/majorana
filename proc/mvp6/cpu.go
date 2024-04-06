@@ -74,7 +74,7 @@ func (m *CPU) Context() *risc.Context {
 
 func (m *CPU) Run(app risc.Application) (int, error) {
 	defer func() {
-		log.Info(m.ctx, "CPU", m.memoryManagementUnit.l1d.String())
+		log.Infou(m.ctx, "L1d", m.memoryManagementUnit.l1d.String())
 	}()
 	defer m.memoryManagementUnit.flush()
 	cycle := 0

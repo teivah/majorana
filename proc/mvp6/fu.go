@@ -37,19 +37,6 @@ func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		return
 	}
 
-	// TODO In the loop
-	if _, exists := u.l1i.Get(u.pc); !exists {
-		u.remainingCycles = cyclesMemoryAccess - 1
-		u.coroutine = func(cycle int, app risc.Application, ctx *risc.Context) {
-			if u.remainingCycles != 0 {
-				u.remainingCycles--
-				return
-			}
-			u.l1i.PushLine(u.pc, make([]int8, l1ICacheLineSizeInBytes))
-			u.coFetch(cycle, app, ctx)
-			return
-		}
-	}
 	u.coFetch(cycle, app, ctx)
 }
 
@@ -60,6 +47,30 @@ func (u *fetchUnit) coFetch(cycle int, app risc.Application, ctx *risc.Context) 
 			log.Infou(ctx, "FU", "can't add")
 			return
 		}
+
+		if _, exists := u.l1i.Get(u.pc); !exists {
+			u.remainingCycles = cyclesMemoryAccess - 1
+			u.coroutine = func(cycle int, app risc.Application, ctx *risc.Context) {
+				if u.remainingCycles != 0 {
+					log.Infou(ctx, "FU", "pending memory access")
+					u.remainingCycles--
+					return
+				}
+				u.coroutine = nil
+				u.l1i.PushLine(u.pc, make([]int8, l1ICacheLineSizeInBytes))
+
+				currentPc := u.pc
+				u.pc += 4
+				if u.pc/4 >= int32(len(app.Instructions)) {
+					u.coroutine = func(cycle int, app risc.Application, ctx *risc.Context) {}
+					u.complete = true
+				}
+				log.Infou(ctx, "FU", "pushing new element from pc %d", currentPc/4)
+				u.outBus.Add(currentPc, cycle)
+			}
+			return
+		}
+
 		currentPc := u.pc
 		u.pc += 4
 		if u.pc/4 >= int32(len(app.Instructions)) {

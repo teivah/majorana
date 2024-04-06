@@ -61,6 +61,8 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 
 	remaining := u.outBus.RemainingToAdd()
 	var pushedRunners []*risc.InstructionRunnerPc
+	// TODO Explain
+	skippedRegisterReadForMemoryWrite := make(map[risc.RegisterType]bool)
 
 	defer func() {
 		for _, runner := range pushedRunners {
@@ -77,6 +79,13 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 
 		hazard, reason := ctx.IsDataHazard(pending.Runner)
 		if !hazard {
+			if hazard, register := isMemoryHazard(skippedRegisterReadForMemoryWrite, pending.Runner); hazard {
+				log.Infoi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "memory hazard on register %s", register)
+				u.blockedDataHazard++
+				// TODO Return?
+				return
+			}
+
 			hazard, conflictRunner, register := isHazardWithPushedRunners(pushedRunners, pending.Runner)
 			if hazard {
 				ch := make(chan int32, 1)
@@ -97,6 +106,11 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			pushed++
 		} else {
 			log.Infoi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "data hazard: reason=%s", reason)
+			if pending.Runner.InstructionType().IsMemoryWrite() {
+				for _, register := range pending.Runner.ReadRegisters() {
+					skippedRegisterReadForMemoryWrite[register] = true
+				}
+			}
 			u.blockedDataHazard++
 			return
 		}
@@ -115,6 +129,21 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 
 		hazard, reason := ctx.IsDataHazard(runner.Runner)
 		if !hazard {
+			if hazard, register := isMemoryHazard(skippedRegisterReadForMemoryWrite, runner.Runner); hazard {
+				log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "memory hazard on register %s", register)
+				u.blockedDataHazard++
+
+				u.pendings.Push(runner)
+				if runner.Runner.InstructionType().IsMemoryWrite() {
+					for _, register := range runner.Runner.ReadRegisters() {
+						skippedRegisterReadForMemoryWrite[register] = true
+					}
+				}
+
+				// TODO Return?
+				return
+			}
+
 			hazard, conflictRunner, register := isHazardWithPushedRunners(pushedRunners, runner.Runner)
 			if hazard {
 				ch := make(chan int32, 1)
@@ -134,6 +163,11 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			pushed++
 		} else {
 			u.pendings.Push(runner)
+			if runner.Runner.InstructionType().IsMemoryWrite() {
+				for _, register := range runner.Runner.ReadRegisters() {
+					skippedRegisterReadForMemoryWrite[register] = true
+				}
+			}
 			log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", reason)
 			u.blockedDataHazard++
 		}
@@ -161,6 +195,18 @@ func isHazardWithPushedRunners(pushedRunners []*risc.InstructionRunnerPc, runner
 		}
 	}
 	return false, nil, risc.Zero
+}
+
+func isMemoryHazard(skippedRegisterReadForMemoryWrite map[risc.RegisterType]bool, runner risc.InstructionRunner) (bool, risc.RegisterType) {
+	for _, register := range runner.WriteRegisters() {
+		if register == risc.Zero {
+			continue
+		}
+		if skippedRegisterReadForMemoryWrite[register] {
+			return true, register
+		}
+	}
+	return false, risc.Zero
 }
 
 func (u *controlUnit) flush() {
