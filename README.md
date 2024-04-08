@@ -25,9 +25,17 @@ Compared to MVP-1, we add a cache for instructions called L1I (Level 1 Instructi
 
 ### MVP-3
 
-TODO L1D
+From MVP-3, we introduce a proper memory management unit (MMU). The MMU consists of an 1KB L1I (present from L1I) and a new 1KB L1D to cache data:
 
-MVP-3 keeps the same microarchitecture as MVP-2 with 4 stages and L1I. Yet, this version implements [pipelining](https://en.wikipedia.org/wiki/Instruction_pipelining).
+![](res/majorana-mvp-3.drawio.png)
+
+When the execute unit wants to access a memory address, it requests it to the MMU that either returns the value directly from L1D or from memory. In the latter case, the MMU fetches a whole cache line of 64 bytes from memory and push that into L1D. L1D eviction policy is based on a LRU cache (Least-Recently Used).
+
+The introduction of an L1D doesn't have any impact for benchmarks not reliant on frequent memory access (obviously); however, it yields significant performance improvements for those that do (up to 40% faster).
+
+### MVP-4
+
+MVP-4 keeps the same microarchitecture as MVP-4 with 4 stages and an MMU. Yet, this version implements [pipelining](https://en.wikipedia.org/wiki/Instruction_pipelining).
 
 In a nutshell, pipelining allows keeping every stage as busy as possible. For example, as soon as the fetch unit has fetched an instruction, it will not wait for the instruction to be decoded, executed and written. It will fetch another instruction straight away during the next cycle(s).
 
@@ -49,11 +57,9 @@ div t2, t0, t1   # Read from t1
 The processor must wait for `ADDI` to be executed and to get its result written in T1 before to execute `DIV` (as div depends on T1).
 In this case, we implement what we call pipeline interclock by delaying the execution of `DIV`.
 
-![](res/majorana-mvp-3.drawio.png)
+![](res/majorana-mvp-4.drawio.png)
 
-### MVP-4
-
-TODO Pipeline
+### MVP-5
 
 One issue with MVP-3 is when it met an unconditional branches. For example:
 
@@ -70,7 +76,7 @@ In this case, the fetch unit, after fetching the first line (`jal`), was fetchin
 
 The microarchitecture of MVP-4 is very similar to MVP-3, except that the branch unit is now coupled with a Branch Target Buffer (BTB):
 
-![](res/majorana-mvp-4.drawio.png)
+![](res/majorana-mvp-5.drawio.png)
 
 One the fetch unit fetches a branch, it doesn't know whether it's a branch; it's the job of the decode unit. Therefore, the fetch unit can't simply say: "_I fetched a branch, I'm going to wait for the execute unit to tell me the next instruction to fetch_".
 
@@ -82,23 +88,21 @@ The workflow is now the following:
 
 This helps in preventing a full pipeline flush. Facing an unconditional branch now takes only a few cycles to be resolved.
 
-### MVP-5
+### MVP-6
 
-#### MVP-5.0
+#### MVP-6.0
 
 The next step is to implement a so-called superscalar processor. A superscalar processor can execute multiple instructions during a clock cycle by dispatching multiple instructions to different execution units. This is one of the magical things with modern CPUs: even sequential code can be executed in parallel!
 
 The fetch unit and the decode unit are now capable to fetch/decode two instruction within a single cycle. Yet, before to dispatch the executions to the execute units, a new stage comes in: the control unit.
 
-![](res/majorana-mvp-5.drawio.png)
+![](res/majorana-mvp-6.drawio.png)
 
 The control unit plays a pivotal role in coordinating the execution of multiple instructions simultaneously. It performs dependency checking between the decoded instructions to guarantee it won't lead to any hazard.
 
 One _small_ issue: MVP-5.0 is not always faster in all the benchmarks. Indeed, when an application is branch-heavy, it performed slightly worst that MVP-4. The main reason being that the control unit logic is very basic and because of that, on average it dispatches less than 0.6 instructions per cycle. Yet, if branches are scarce, it performs significantly better than MVP-4 (~40% in the string copy benchmark).
 
-#### MVP-5.1
-
-
+#### MVP-6.1
 
 For MVP-5.1, the microarchitecture is the same as MVP-5.1. The only difference lies in the control unit, where we started to implement a new concept called forwarding. Consider a data hazard mentioned previously:
 
@@ -109,27 +113,11 @@ div t2, t0, t1   # Read from t1
 
 Instruction 1 writes to `T1`, while instruction 2 reads from `T2`. Therefore, instruction 2 has to wait for `ADDI` to write the result to `T1` before it gets executed, hence slowing down the execution. With forwarding, we can alleviate the effects of this problem: the result of the `ADDI` instruction is fed directly back into the ALU's input port. `DIV` doesn't have to wait for the execution of `ADDI` to be written in `T1` anymore.
 
+// TODO
+
 With branch-heavy applications, MVP-5.1 performs the same as MVP-4 (MVP-5.0 was performing worse). With non-branch-heavy applications, MVP-5.1 performs a bit better than MVP-5.0 (about 3% faster).
 
 MVP-5.1 is not a huge revolution, but it's an evolution nonetheless.
-
-#### MVP-6
-
-From MVP-6, we finally introduce a proper memory management unit (MMU). The MMU consists of an 1KB L1I (present from L1I) and a new 1KB L1D to cache data:
-
-![](res/majorana-mvp-6.drawio.png)
-
-When the execute unit wants to access a memory address, it requests it to the MMU that either returns the value directly from L1D or from memory. In the latter case, the MMU fetches a whole cache line of 64 bytes from memory and push that into L1D. L1D eviction policy is based on a LRU cache (Least-Recently Used).
-
-The introduction of an L1D doesn't have any impact for benchmarks not reliant on frequent memory access (obviously); however, it yields significant performance improvements for those that do (up to 70% faster).
-
-MVP1: classic
-MVP2: l1i
-MVP3: lid
-MVP4: pipeline
-MVP5: btb
-MVP6.0: superscalar
-MVP6.1: forwarding
 
 ## Benchmarks
 
