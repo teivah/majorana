@@ -1,4 +1,4 @@
-package mvp4
+package mvp5
 
 import (
 	"fmt"
@@ -8,18 +8,21 @@ import (
 )
 
 type executeUnit struct {
-	branchUnit        *simpleBranchUnit
 	processing        bool
+	remainingCycles   int
 	pendingMemoryRead bool
 	addrs             []int32
 	memory            []int8
-	remainingCycles   int
 	runner            risc.InstructionRunnerPc
+	bu                *btbBranchUnit
 	mmu               *memoryManagementUnit
 }
 
-func newExecuteUnit(branchUnit *simpleBranchUnit, mmu *memoryManagementUnit) *executeUnit {
-	return &executeUnit{branchUnit: branchUnit, mmu: mmu}
+func newExecuteUnit(bu *btbBranchUnit, mmu *memoryManagementUnit) *executeUnit {
+	return &executeUnit{
+		bu:  bu,
+		mmu: mmu,
+	}
 }
 
 func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunnerPc], outBus *comp.SimpleBus[risc.ExecutionContext]) (bool, int32, bool, error) {
@@ -70,7 +73,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 
 	runner := eu.runner
 	// Create the branch unit assertions
-	eu.branchUnit.assert(runner)
+	eu.bu.assert(runner)
 
 	// To avoid writeback hazard, if the pipeline contains read registers not
 	// written yet, we wait for it
@@ -109,7 +112,7 @@ func (eu *executeUnit) run(ctx *risc.Context, app risc.Application, outBus *comp
 		return false, 0, false, err
 	}
 	if execution.Return {
-		return false, 0, true, err
+		return false, 0, true, nil
 	}
 
 	eu.processing = false
@@ -124,12 +127,22 @@ func (eu *executeUnit) run(ctx *risc.Context, app risc.Application, outBus *comp
 		WriteRegisters:  eu.runner.Runner.WriteRegisters(),
 	})
 	ctx.AddPendingWriteRegisters(eu.runner.Runner.WriteRegisters())
+	eu.processing = false
 
-	if execution.PcChange && eu.branchUnit.shouldFlushPipeline(execution.NextPc) {
+	if eu.runner.Runner.InstructionType().IsUnconditionalBranch() {
+		eu.bu.notifyJumpAddressResolved(eu.runner.Pc, execution.NextPc)
+	}
+
+	if execution.PcChange && eu.bu.shouldFlushPipeline(execution.NextPc) {
 		return true, execution.NextPc, false, nil
 	}
 
 	return false, 0, false, nil
+}
+
+func (eu *executeUnit) flush() {
+	eu.processing = false
+	eu.remainingCycles = 0
 }
 
 func (eu *executeUnit) isEmpty() bool {

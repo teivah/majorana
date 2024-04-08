@@ -1,4 +1,4 @@
-package mvp4
+package mvp5
 
 import (
 	"fmt"
@@ -27,19 +27,23 @@ type CPU struct {
 	executeUnit          *executeUnit
 	writeBus             *comp.SimpleBus[risc.ExecutionContext]
 	writeUnit            *writeUnit
-	branchUnit           *simpleBranchUnit
+	branchUnit           *btbBranchUnit
 	memoryManagementUnit *memoryManagementUnit
+
+	counterFlush int
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
-	bu := &simpleBranchUnit{}
 	ctx := risc.NewContext(debug, memoryBytes)
 	mmu := newMemoryManagementUnit(ctx)
+	fu := newFetchUnit(mmu, cyclesMemoryAccess)
+	du := &decodeUnit{}
+	bu := newBTBBranchUnit(4, fu, du)
 	return &CPU{
 		ctx:                  ctx,
-		fetchUnit:            newFetchUnit(mmu, cyclesMemoryAccess),
+		fetchUnit:            fu,
 		decodeBus:            &comp.SimpleBus[int32]{},
-		decodeUnit:           &decodeUnit{},
+		decodeUnit:           du,
 		executeBus:           &comp.SimpleBus[risc.InstructionRunnerPc]{},
 		executeUnit:          newExecuteUnit(bu, mmu),
 		writeBus:             &comp.SimpleBus[risc.ExecutionContext]{},
@@ -65,9 +69,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.fetchUnit.cycle(app, m.ctx, m.decodeBus)
 
 		// Decode
-		m.decodeUnit.cycle(app, m.decodeBus, m.executeBus)
-
-		// Create branch unit assertions
+		m.decodeUnit.cycle(app, m.ctx, m.decodeBus, m.executeBus)
 
 		// Execute
 		flush, pc, ret, err := m.executeUnit.cycle(m.ctx, app, m.executeBus, m.writeBus)
@@ -77,16 +79,23 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 		// Write back
 		m.writeUnit.cycle(m.ctx, m.writeBus)
+		if m.ctx.Debug {
+			fmt.Printf("\tRegisters: %v\n", m.ctx.Registers)
+		}
 
 		if ret {
 			break
 		}
 		if flush {
+			if m.ctx.Debug {
+				fmt.Printf("\tFlush to %d\n", pc/4)
+			}
 			for !m.writeUnit.isEmpty() || !m.writeBus.IsEmpty() {
 				cycle++
 				m.writeUnit.cycle(m.ctx, m.writeBus)
 			}
 			m.flush(pc)
+			m.counterFlush++
 			continue
 		}
 
@@ -104,12 +113,15 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 }
 
 func (m *CPU) Stats() map[string]any {
-	return nil
+	return map[string]any{
+		"flush": m.counterFlush,
+	}
 }
 
 func (m *CPU) flush(pc int32) {
 	m.fetchUnit.flush(pc)
 	m.decodeUnit.flush()
+	m.executeUnit.flush()
 	m.decodeBus.Flush()
 	m.executeBus.Flush()
 	m.writeBus.Flush()

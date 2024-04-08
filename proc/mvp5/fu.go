@@ -1,4 +1,4 @@
-package mvp4
+package mvp5
 
 import (
 	"fmt"
@@ -14,6 +14,7 @@ type fetchUnit struct {
 	complete           bool
 	processing         bool
 	cyclesMemoryAccess int
+	toCleanPending     bool
 }
 
 func newFetchUnit(mmu *memoryManagementUnit, cyclesMemoryAccess int) *fetchUnit {
@@ -23,12 +24,22 @@ func newFetchUnit(mmu *memoryManagementUnit, cyclesMemoryAccess int) *fetchUnit 
 	}
 }
 
-func (fu *fetchUnit) reset(pc int32) {
+func (fu *fetchUnit) reset(pc int32, cleanPending bool) {
 	fu.complete = false
 	fu.pc = pc
+	fu.toCleanPending = cleanPending
 }
 
 func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp.SimpleBus[int32]) {
+	if fu.toCleanPending {
+		// The fetch unit may have sent to the bus wrong instruction, we make sure
+		// this is not the case by cleaning it
+		if ctx.Debug {
+			fmt.Printf("\tFU: Cleaning output bus\n")
+		}
+		outBus.Clean()
+		fu.toCleanPending = false
+	}
 	if fu.complete {
 		return
 	}

@@ -3,6 +3,7 @@ package risc
 import "fmt"
 
 type ExecutionContext struct {
+	Pc              int32
 	Execution       Execution
 	InstructionType InstructionType
 	WriteRegisters  []RegisterType

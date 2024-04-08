@@ -25,6 +25,8 @@ Compared to MVP-1, we add a cache for instructions called L1I (Level 1 Instructi
 
 ### MVP-3
 
+TODO L1D
+
 MVP-3 keeps the same microarchitecture as MVP-2 with 4 stages and L1I. Yet, this version implements [pipelining](https://en.wikipedia.org/wiki/Instruction_pipelining).
 
 In a nutshell, pipelining allows keeping every stage as busy as possible. For example, as soon as the fetch unit has fetched an instruction, it will not wait for the instruction to be decoded, executed and written. It will fetch another instruction straight away during the next cycle(s).
@@ -50,6 +52,8 @@ In this case, we implement what we call pipeline interclock by delaying the exec
 ![](res/majorana-mvp-3.drawio.png)
 
 ### MVP-4
+
+TODO Pipeline
 
 One issue with MVP-3 is when it met an unconditional branches. For example:
 
@@ -94,6 +98,8 @@ One _small_ issue: MVP-5.0 is not always faster in all the benchmarks. Indeed, w
 
 #### MVP-5.1
 
+
+
 For MVP-5.1, the microarchitecture is the same as MVP-5.1. The only difference lies in the control unit, where we started to implement a new concept called forwarding. Consider a data hazard mentioned previously:
 
 ```asm
@@ -117,6 +123,14 @@ When the execute unit wants to access a memory address, it requests it to the MM
 
 The introduction of an L1D doesn't have any impact for benchmarks not reliant on frequent memory access (obviously); however, it yields significant performance improvements for those that do (up to 70% faster).
 
+MVP1: classic
+MVP2: l1i
+MVP3: lid
+MVP4: pipeline
+MVP5: btb
+MVP6.0: superscalar
+MVP6.1: forwarding
+
 ## Benchmarks
 
 All the benchmarks are executed at a fixed CPU clock frequency of 3.2 GHz.
@@ -128,8 +142,9 @@ Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency
 | Apple M1 | 31703.0 ns | 1300.0 ns | 3232.0 ns | 3231.0 ns |
 | MVP-1 | 4100053 ns, 129.3 slower | 600402 ns, 461.8 slower | 1820865 ns, 563.4 slower | 1158545 ns, 358.6 slower |
 | MVP-2 | 266111 ns, 8.4 slower | 162581 ns, 125.1 slower | 572820 ns, 177.2 slower | 377669 ns, 116.9 slower |
-| MVP-3 | 140903 ns, 4.4 slower | 142099 ns, 109.3 slower |  | 345650 ns, 107.0 slower |
-| MVP-4 | 125255 ns, 4.0 slower | 140819 ns, 108.3 slower | 508869 ns, 157.4 slower | 342451 ns, 106.0 slower |
-| MVP-5.0 | 125256 ns, 4.0 slower | 144660 ns, 111.3 slower | 364833 ns, 112.9 slower | 352069 ns, 109.0 slower |
-| MVP-5.1 | 156552 ns, 4.9 slower | 138261 ns, 106.4 slower | 361652 ns, 111.9 slower | 355268 ns, 110.0 slower |
-| MVP-6 | 156553 ns, 4.9 slower | 16992 ns, 13.1 slower | 106682 ns, 33.0 slower | 44354 ns, 13.7 slower |
+| MVP-3 | 266111 ns, 8.4 slower | 102916 ns, 79.2 slower | 415625 ns, 128.6 slower | 220475 ns, 68.2 slower |
+| MVP-4 | 140918 ns, 4.4 slower | 83549 ns, 64.3 slower | 364319 ns, 112.7 slower | 191550 ns, 59.3 slower |
+| MVP-5 | 125270 ns, 4.0 slower | 82269 ns, 63.3 slower | 354720 ns, 109.8 slower | 188351 ns, 58.3 slower |
+| MVP-6.0 | 125273 ns, 4.0 slower | 86112 ns, 66.2 slower | 210752 ns, 65.2 slower | 197970 ns, 61.3 slower |
+| MVP-6.1 | 156553 ns, 4.9 slower | 16992 ns, 13.1 slower | 106682 ns, 33.0 slower | 44354 ns, 13.7 slower |
+

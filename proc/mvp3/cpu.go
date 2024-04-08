@@ -3,40 +3,34 @@ package mvp3
 import (
 	"fmt"
 
-	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
 
 const (
-	cyclesMemoryAccess            = 50
-	flushCycles                   = 1
-	l1ICacheLineSizeInBytes int32 = 64
+	cyclesL1Access       = 1
+	cyclesMemoryAccess   = 50 + cyclesL1Access
+	cyclesRegisterAccess = 1
+	cyclesDecode         = 1
+
+	bytes            = 1
+	kilobytes        = 1024
+	l1ICacheLineSize = 64 * bytes
+	liICacheSize     = 1 * kilobytes
+	l1DCacheLineSize = 64 * bytes
+	liDCacheSize     = 1 * kilobytes
 )
 
 type CPU struct {
-	ctx         *risc.Context
-	fetchUnit   *fetchUnit
-	decodeBus   *comp.SimpleBus[int32]
-	decodeUnit  *decodeUnit
-	executeBus  *comp.SimpleBus[risc.InstructionRunnerPc]
-	executeUnit *executeUnit
-	writeBus    *comp.SimpleBus[risc.ExecutionContext]
-	writeUnit   *writeUnit
-	branchUnit  *simpleBranchUnit
+	ctx   *risc.Context
+	cycle int
+	mmu   *memoryManagementUnit
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
-	bu := &simpleBranchUnit{}
+	ctx := risc.NewContext(debug, memoryBytes)
 	return &CPU{
-		ctx:         risc.NewContext(debug, memoryBytes),
-		fetchUnit:   newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess),
-		decodeBus:   &comp.SimpleBus[int32]{},
-		decodeUnit:  &decodeUnit{},
-		executeBus:  &comp.SimpleBus[risc.InstructionRunnerPc]{},
-		executeUnit: newExecuteUnit(bu),
-		writeBus:    &comp.SimpleBus[risc.ExecutionContext]{},
-		writeUnit:   &writeUnit{},
-		branchUnit:  bu,
+		ctx: ctx,
+		mmu: newMemoryManagementUnit(ctx),
 	}
 }
 
@@ -45,70 +39,92 @@ func (m *CPU) Context() *risc.Context {
 }
 
 func (m *CPU) Run(app risc.Application) (int, error) {
-	cycle := 0
-	for {
-		cycle += 1
-		if m.ctx.Debug {
-			fmt.Printf("%d\n", int32(cycle))
-		}
-
-		// Fetch
-		m.fetchUnit.cycle(app, m.ctx, m.decodeBus)
-
-		// Decode
-		m.decodeUnit.cycle(app, m.decodeBus, m.executeBus)
-
-		// Create branch unit assertions
-
-		// Execute
-		flush, pc, ret, err := m.executeUnit.cycle(m.ctx, app, m.executeBus, m.writeBus)
+	var pc int32
+	for pc/4 < int32(len(app.Instructions)) {
+		nextPc := m.fetchInstruction(pc)
+		r := m.decode(app, nextPc)
+		exe, ins, err := m.execute(app, r, pc)
 		if err != nil {
 			return 0, err
 		}
-
-		// Write back
-		m.writeUnit.cycle(m.ctx, m.writeBus)
-
-		if ret {
-			return cycle, nil
-		}
-		if flush {
-			m.flush(pc)
-			cycle += flushCycles
-			continue
-		}
-
-		if m.isComplete() {
-			if m.ctx.Registers[risc.Ra] != 0 {
-				m.ctx.Registers[risc.Ra] = 0
-				m.fetchUnit.reset(m.ctx.Registers[risc.Ra])
-				continue
-			}
+		if exe.Return {
 			break
 		}
+		if exe.PcChange {
+			pc = exe.NextPc
+		} else {
+			pc += 4
+		}
+
+		if exe.RegisterChange {
+			m.ctx.WriteRegister(exe)
+			if m.ctx.Debug {
+				fmt.Println(ins, m.ctx.Registers)
+			}
+			m.cycle += cyclesRegisterAccess
+		} else if exe.MemoryChange {
+			if m.mmu.doesExecutionMemoryChangesExistsInL1D(exe) {
+				m.mmu.writeExecutionMemoryChangesToL1D(exe)
+				m.cycle += cyclesL1Access
+			} else {
+				m.ctx.WriteMemory(exe)
+				m.cycle += cyclesMemoryAccess
+			}
+		}
 	}
-	return cycle, nil
+	//if m.ctx.Registers[risc.Ra] != 0 {
+	//	pc = m.ctx.Registers[risc.Ra]
+	//	m.ctx.Registers[risc.Ra] = 0
+	//	goto loop
+	//}
+	m.cycle += m.mmu.flush()
+	return m.cycle, nil
 }
 
 func (m *CPU) Stats() map[string]any {
 	return nil
 }
 
-func (m *CPU) flush(pc int32) {
-	m.fetchUnit.flush(pc)
-	m.decodeUnit.flush()
-	m.decodeBus.Flush()
-	m.executeBus.Flush()
-	m.writeBus.Flush()
-	m.ctx.Flush()
+func (m *CPU) fetchInstruction(pc int32) int32 {
+	if _, exists := m.mmu.getFromL1I([]int32{pc}); exists {
+		m.cycle += cyclesL1Access
+	} else {
+		m.cycle += cyclesMemoryAccess
+		m.mmu.pushLineToL1I(pc, make([]int8, l1ICacheLineSize))
+	}
+
+	return pc
 }
 
-func (m *CPU) isComplete() bool {
-	return m.fetchUnit.isEmpty() &&
-		m.decodeUnit.isEmpty() &&
-		m.executeUnit.isEmpty() &&
-		m.writeUnit.isEmpty() &&
-		m.decodeBus.IsEmpty() &&
-		m.executeBus.IsEmpty() &&
-		m.writeBus.IsEmpty()
+func (m *CPU) decode(app risc.Application, pc int32) risc.InstructionRunner {
+	r := app.Instructions[pc/4]
+	m.cycle += cyclesDecode
+	return r
+}
+
+func (m *CPU) execute(app risc.Application, r risc.InstructionRunner, pc int32) (risc.Execution, risc.InstructionType, error) {
+	addrs := r.MemoryRead(m.ctx)
+	var memory []int8
+	if len(addrs) != 0 {
+		m.cycle += cyclesL1Access
+		if mem, exists := m.mmu.getFromL1D(addrs); exists {
+			memory = mem
+		} else {
+			m.cycle += cyclesMemoryAccess
+			line := m.mmu.fetchCacheLine(addrs[0])
+			m.mmu.pushLineToL1D(addrs[0], line)
+			mem, exists := m.mmu.getFromL1D(addrs)
+			if !exists {
+				panic("cache line doesn't exist")
+			}
+			memory = mem
+		}
+	}
+
+	exe, err := r.Run(m.ctx, app.Labels, pc, memory)
+	if err != nil {
+		return risc.Execution{}, 0, err
+	}
+	m.cycle += r.InstructionType().Cycles()
+	return exe, r.InstructionType(), nil
 }
