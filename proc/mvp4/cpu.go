@@ -8,39 +8,44 @@ import (
 )
 
 const (
-	cyclesMemoryAccess            = 50
-	flushCycles                   = 1
-	l1ICacheLineSizeInBytes int32 = 64
+	cyclesMemoryAccess = 50
+	cyclesL1Access     = 1
+	bytes              = 1
+	kilobytes          = 1024
+	l1ICacheLineSize   = 64 * bytes
+	liICacheSize       = 1 * kilobytes
+	l1DCacheLineSize   = 64 * bytes
+	liDCacheSize       = 1 * kilobytes
 )
 
 type CPU struct {
-	ctx         *risc.Context
-	fetchUnit   *fetchUnit
-	decodeBus   *comp.SimpleBus[int32]
-	decodeUnit  *decodeUnit
-	executeBus  *comp.SimpleBus[risc.InstructionRunnerPc]
-	executeUnit *executeUnit
-	writeBus    *comp.SimpleBus[risc.ExecutionContext]
-	writeUnit   *writeUnit
-	branchUnit  *btbBranchUnit
-
-	counterFlush int
+	ctx                  *risc.Context
+	fetchUnit            *fetchUnit
+	decodeBus            *comp.SimpleBus[int32]
+	decodeUnit           *decodeUnit
+	executeBus           *comp.SimpleBus[risc.InstructionRunnerPc]
+	executeUnit          *executeUnit
+	writeBus             *comp.SimpleBus[risc.ExecutionContext]
+	writeUnit            *writeUnit
+	branchUnit           *simpleBranchUnit
+	memoryManagementUnit *memoryManagementUnit
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
-	fu := newFetchUnit(l1ICacheLineSizeInBytes, cyclesMemoryAccess)
-	du := &decodeUnit{}
-	bu := newBTBBranchUnit(4, fu, du)
+	bu := &simpleBranchUnit{}
+	ctx := risc.NewContext(debug, memoryBytes)
+	mmu := newMemoryManagementUnit(ctx)
 	return &CPU{
-		ctx:         risc.NewContext(debug, memoryBytes),
-		fetchUnit:   fu,
-		decodeBus:   &comp.SimpleBus[int32]{},
-		decodeUnit:  du,
-		executeBus:  &comp.SimpleBus[risc.InstructionRunnerPc]{},
-		executeUnit: newExecuteUnit(bu),
-		writeBus:    &comp.SimpleBus[risc.ExecutionContext]{},
-		writeUnit:   &writeUnit{},
-		branchUnit:  bu,
+		ctx:                  ctx,
+		fetchUnit:            newFetchUnit(mmu, cyclesMemoryAccess),
+		decodeBus:            &comp.SimpleBus[int32]{},
+		decodeUnit:           &decodeUnit{},
+		executeBus:           &comp.SimpleBus[risc.InstructionRunnerPc]{},
+		executeUnit:          newExecuteUnit(bu, mmu),
+		writeBus:             &comp.SimpleBus[risc.ExecutionContext]{},
+		writeUnit:            &writeUnit{},
+		branchUnit:           bu,
+		memoryManagementUnit: mmu,
 	}
 }
 
@@ -60,7 +65,9 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.fetchUnit.cycle(app, m.ctx, m.decodeBus)
 
 		// Decode
-		m.decodeUnit.cycle(app, m.ctx, m.decodeBus, m.executeBus)
+		m.decodeUnit.cycle(app, m.decodeBus, m.executeBus)
+
+		// Create branch unit assertions
 
 		// Execute
 		flush, pc, ret, err := m.executeUnit.cycle(m.ctx, app, m.executeBus, m.writeBus)
@@ -70,45 +77,39 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 		// Write back
 		m.writeUnit.cycle(m.ctx, m.writeBus)
-		if m.ctx.Debug {
-			fmt.Printf("\tRegisters: %v\n", m.ctx.Registers)
-		}
 
 		if ret {
-			return cycle, nil
+			break
 		}
 		if flush {
-			if m.ctx.Debug {
-				fmt.Printf("\tFlush to %d\n", pc/4)
+			for !m.writeUnit.isEmpty() || !m.writeBus.IsEmpty() {
+				cycle++
+				m.writeUnit.cycle(m.ctx, m.writeBus)
 			}
 			m.flush(pc)
-			m.counterFlush++
-			cycle += flushCycles
 			continue
 		}
 
 		if m.isComplete() {
-			if m.ctx.Registers[risc.Ra] != 0 {
-				m.ctx.Registers[risc.Ra] = 0
-				m.fetchUnit.reset(m.ctx.Registers[risc.Ra], false)
-				continue
-			}
+			//if m.ctx.Registers[risc.Ra] != 0 {
+			//	m.ctx.Registers[risc.Ra] = 0
+			//	m.fetchUnit.reset(m.ctx.Registers[risc.Ra])
+			//	continue
+			//}
 			break
 		}
 	}
+	cycle += m.memoryManagementUnit.flush()
 	return cycle, nil
 }
 
 func (m *CPU) Stats() map[string]any {
-	return map[string]any{
-		"flush": m.counterFlush,
-	}
+	return nil
 }
 
 func (m *CPU) flush(pc int32) {
 	m.fetchUnit.flush(pc)
 	m.decodeUnit.flush()
-	m.executeUnit.flush()
 	m.decodeBus.Flush()
 	m.executeBus.Flush()
 	m.writeBus.Flush()
