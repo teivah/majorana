@@ -149,16 +149,6 @@ func TestMvp6_1(t *testing.T) {
 	testStringCopy(t, factory, testTo*2, testTo, false)
 }
 
-//func TestMvp6_1(t *testing.T) {
-//	factory := func(memory int) virtualMachine {
-//		return mvp6_1.NewCPU(false, memory)
-//	}
-//	testPrime(t, factory, memory, testFrom, testTo, false)
-//	testSums(t, factory, memory, testFrom, testTo, false)
-//	testStringLength(t, factory, 1024, 1, false)
-//	testStringCopy(t, factory, testTo*2, testTo, false)
-//}
-
 func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
 	cache := make(map[int]bool, to-from+1)
 	for i := from; i < to; i++ {

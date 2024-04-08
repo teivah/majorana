@@ -18,7 +18,7 @@ func newWriteUnit(inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
 	return &writeUnit{inBus: inBus}
 }
 
-func (u *writeUnit) cycle(ctx *risc.Context) {
+func (u *writeUnit) cycle(ctx *risc.Context, before int32) {
 	if u.coroutine != nil {
 		u.coroutine(ctx)
 		return
@@ -26,6 +26,9 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 
 	execution, exists := u.inBus.Get()
 	if !exists {
+		return
+	}
+	if before != -1 && execution.Pc > before {
 		return
 	}
 	if execution.Execution.RegisterChange {
