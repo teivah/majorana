@@ -27,7 +27,7 @@ type CPU struct {
 	decodeUnit           *decodeUnit
 	controlBus           *comp.BufferedBus[risc.InstructionRunnerPc]
 	controlUnit          *controlUnit
-	executeBus           *comp.BufferedBus[risc.InstructionRunnerPc]
+	executeBus           *comp.BufferedBus[*risc.InstructionRunnerPc]
 	executeUnits         []*executeUnit
 	writeBus             *comp.BufferedBus[risc.ExecutionContext]
 	writeUnits           []*writeUnit
@@ -39,9 +39,10 @@ type CPU struct {
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
 	busSize := 2
-	decodeBus := comp.NewBufferedBus[int32](busSize, busSize)
-	controlBus := comp.NewBufferedBus[risc.InstructionRunnerPc](busSize, busSize)
-	executeBus := comp.NewBufferedBus[risc.InstructionRunnerPc](busSize, busSize)
+	multiplier := 1
+	decodeBus := comp.NewBufferedBus[int32](busSize*multiplier, busSize*multiplier)
+	controlBus := comp.NewBufferedBus[risc.InstructionRunnerPc](busSize*multiplier, busSize*multiplier)
+	executeBus := comp.NewBufferedBus[*risc.InstructionRunnerPc](busSize, busSize)
 	writeBus := comp.NewBufferedBus[risc.ExecutionContext](busSize, busSize)
 
 	ctx := risc.NewContext(debug, memoryBytes)
@@ -76,6 +77,9 @@ func (m *CPU) Context() *risc.Context {
 }
 
 func (m *CPU) Run(app risc.Application) (int, error) {
+	defer func() {
+		log.Infou(m.ctx, "L1d", m.memoryManagementUnit.l1d.String())
+	}()
 	cycle := 0
 	for {
 		cycle += 1
@@ -135,7 +139,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			break
 		}
 		if flush {
-			log.Info(m.ctx, "\t️⚠️ Flush to %d", pc/4)
 			m.writeBus.Connect(cycle + 1)
 			for _, wu := range m.writeUnits {
 				for !wu.isEmpty() || !m.writeBus.IsEmpty() {
@@ -143,8 +146,11 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 					wu.cycle(m.ctx, from)
 				}
 			}
+
+			log.Info(m.ctx, "\t️⚠️ Flush to %d", pc/4)
 			m.flush(pc)
 			cycle += flushCycles
+			log.Info(m.ctx, "\tRegisters: %v", m.ctx.Registers)
 			continue
 		}
 
@@ -164,7 +170,12 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 func (m *CPU) Stats() map[string]any {
 	return map[string]any{
 		"flush":                  m.counterFlush,
+		"du_pending_read":        m.decodeUnit.pendingRead.Stats(),
+		"du_blocked":             m.decodeUnit.blocked.Stats(),
+		"du_pushed":              m.decodeUnit.pushed.Stats(),
 		"cu_push":                m.controlUnit.pushed.Stats(),
+		"cu_pending":             m.controlUnit.pending.Stats(),
+		"cu_pending_read":        m.controlUnit.pendingRead.Stats(),
 		"cu_blocked":             m.controlUnit.blocked.Stats(),
 		"cu_total":               m.controlUnit.total,
 		"cu_cant_add":            m.controlUnit.cantAdd,

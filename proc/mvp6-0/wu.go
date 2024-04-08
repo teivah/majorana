@@ -7,10 +7,11 @@ import (
 )
 
 type writeUnit struct {
-	pendingMemoryWrite bool
-	memoryWrite        risc.ExecutionContext
-	cycles             int
-	inBus              *comp.BufferedBus[risc.ExecutionContext]
+	memoryWrite risc.ExecutionContext
+	inBus       *comp.BufferedBus[risc.ExecutionContext]
+
+	// Pending
+	coroutine func(ctx *risc.Context)
 }
 
 func newWriteUnit(inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
@@ -18,14 +19,8 @@ func newWriteUnit(inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
 }
 
 func (u *writeUnit) cycle(ctx *risc.Context, before int32) {
-	if u.pendingMemoryWrite {
-		u.cycles--
-		if u.cycles == 0 {
-			u.pendingMemoryWrite = false
-			ctx.WriteMemory(u.memoryWrite.Execution)
-			ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
-			log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, -1, "write to memory")
-		}
+	if u.coroutine != nil {
+		u.coroutine(ctx)
 		return
 	}
 
@@ -41,8 +36,21 @@ func (u *writeUnit) cycle(ctx *risc.Context, before int32) {
 		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
 		log.Infoi(ctx, "WU", execution.InstructionType, -1, "write to register")
 	} else if execution.Execution.MemoryChange {
-		u.pendingMemoryWrite = true
-		u.cycles = cyclesMemoryAccess
+		remainingCycle := cyclesMemoryAccess
+		log.Infoi(ctx, "WU", execution.InstructionType, -1, "pending memory write")
+
+		u.coroutine = func(ctx *risc.Context) {
+			if remainingCycle > 0 {
+				log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, -1, "pending memory write")
+				remainingCycle--
+				return
+			}
+			u.coroutine = nil
+			ctx.WriteMemory(u.memoryWrite.Execution)
+			ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
+			log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, -1, "write to memory")
+		}
+
 		u.memoryWrite = execution
 	} else {
 		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
@@ -51,5 +59,5 @@ func (u *writeUnit) cycle(ctx *risc.Context, before int32) {
 }
 
 func (u *writeUnit) isEmpty() bool {
-	return !u.pendingMemoryWrite
+	return u.coroutine == nil
 }

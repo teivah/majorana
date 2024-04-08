@@ -358,7 +358,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-3":   851556,
 		"MVP-4":   450937,
 		"MVP-5":   400864,
-		"MVP-6.0": 400873,
+		"MVP-6.0": 400824,
 		"MVP-6.1": 500969,
 	}
 	sumsExpected := map[string]int{
@@ -367,7 +367,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-3":   329332,
 		"MVP-4":   267356,
 		"MVP-5":   263261,
-		"MVP-6.0": 275557,
+		"MVP-6.0": 74853,
 		"MVP-6.1": 54373,
 	}
 	copyExpected := map[string]int{
@@ -376,7 +376,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-3":   1329999,
 		"MVP-4":   1165822,
 		"MVP-5":   1135105,
-		"MVP-6.0": 674408,
+		"MVP-6.0": 351623,
 		"MVP-6.1": 341381,
 	}
 	lengthExpected := map[string]int{
@@ -385,7 +385,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-3":   705519,
 		"MVP-4":   612961,
 		"MVP-5":   602722,
-		"MVP-6.0": 633503,
+		"MVP-6.0": 131695,
 		"MVP-6.1": 141934,
 	}
 
