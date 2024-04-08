@@ -98,6 +98,8 @@ One _small_ issue: MVP-5.0 is not always faster in all the benchmarks. Indeed, w
 
 #### MVP-5.1
 
+
+
 For MVP-5.1, the microarchitecture is the same as MVP-5.1. The only difference lies in the control unit, where we started to implement a new concept called forwarding. Consider a data hazard mentioned previously:
 
 ```asm
@@ -120,6 +122,14 @@ From MVP-6, we finally introduce a proper memory management unit (MMU). The MMU 
 When the execute unit wants to access a memory address, it requests it to the MMU that either returns the value directly from L1D or from memory. In the latter case, the MMU fetches a whole cache line of 64 bytes from memory and push that into L1D. L1D eviction policy is based on a LRU cache (Least-Recently Used).
 
 The introduction of an L1D doesn't have any impact for benchmarks not reliant on frequent memory access (obviously); however, it yields significant performance improvements for those that do (up to 70% faster).
+
+MVP1: classic
+MVP2: l1i
+MVP3: lid
+MVP4: pipeline
+MVP5: btb
+MVP6.0: superscalar
+MVP6.1: forwarding
 
 ## Benchmarks
 

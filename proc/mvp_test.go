@@ -12,9 +12,8 @@ import (
 	"github.com/teivah/majorana/proc/mvp3"
 	"github.com/teivah/majorana/proc/mvp4"
 	"github.com/teivah/majorana/proc/mvp5"
-	"github.com/teivah/majorana/proc/mvp5-1"
 	"github.com/teivah/majorana/proc/mvp6-0"
-	"github.com/teivah/majorana/proc/mvp6y"
+	mvp6_1 "github.com/teivah/majorana/proc/mvp6-1"
 	"github.com/teivah/majorana/risc"
 	"github.com/teivah/majorana/test"
 )
@@ -140,25 +139,25 @@ func TestMvp6_0(t *testing.T) {
 	testStringCopy(t, factory, testTo*2, testTo, false)
 }
 
-func TestMvp5_1(t *testing.T) {
+func TestMvp6_1(t *testing.T) {
 	factory := func(memory int) virtualMachine {
-		return mvp5_1.NewCPU(false, memory)
-	}
-	testPrime(t, factory, memory, testFrom, testTo, false)
-	testSums(t, factory, memory, testFrom, testTo, false)
-	testStringLength(t, factory, 1024, 1, false)
-	testStringCopy(t, factory, testTo*2, testTo, false)
-}
-
-func TestMvp6(t *testing.T) {
-	factory := func(memory int) virtualMachine {
-		return mvp6y.NewCPU(false, memory)
+		return mvp6_1.NewCPU(false, memory)
 	}
 	testPrime(t, factory, memory, testFrom, testTo, false)
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
 }
+
+//func TestMvp6_1(t *testing.T) {
+//	factory := func(memory int) virtualMachine {
+//		return mvp6_1.NewCPU(false, memory)
+//	}
+//	testPrime(t, factory, memory, testFrom, testTo, false)
+//	testSums(t, factory, memory, testFrom, testTo, false)
+//	testStringLength(t, factory, 1024, 1, false)
+//	testStringCopy(t, factory, testTo*2, testTo, false)
+//}
 
 func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
 	cache := make(map[int]bool, to-from+1)
@@ -366,38 +365,38 @@ func TestBenchmarks(t *testing.T) {
 	primeExpected := map[string]int{
 		"MVP-1":   13120170,
 		"MVP-2":   851554,
-		"MVP-3":   450889,
-		"MVP-4":   400816,
-		"MVP-5.0": 400820,
-		"MVP-5.1": 500966,
-		"MVP-6":   500969,
+		"MVP-3":   851556,
+		"MVP-4":   450937,
+		"MVP-5":   400864,
+		"MVP-6.0": 400772,
+		"MVP-6.1": 500969,
 	}
 	sumsExpected := map[string]int{
 		"MVP-1":   1921287,
 		"MVP-2":   520260,
-		"MVP-3":   454716,
-		"MVP-4":   450621,
-		"MVP-5.0": 462913,
-		"MVP-5.1": 442436,
-		"MVP-6":   54373,
+		"MVP-3":   329332,
+		"MVP-4":   267356,
+		"MVP-5":   263261,
+		"MVP-6.0": 275504,
+		"MVP-6.1": 54373,
 	}
 	copyExpected := map[string]int{
 		"MVP-1":   5826769,
 		"MVP-2":   1833023,
-		"MVP-3":   1833023,
-		"MVP-4":   1628381,
-		"MVP-5.0": 1167466,
-		"MVP-5.1": 1157286,
-		"MVP-6":   341381,
+		"MVP-3":   1329999,
+		"MVP-4":   1165822,
+		"MVP-5":   1135105,
+		"MVP-6.0": 674355,
+		"MVP-6.1": 341381,
 	}
 	lengthExpected := map[string]int{
 		"MVP-1":   3707344,
 		"MVP-2":   1208542,
-		"MVP-3":   1106081,
-		"MVP-4":   1095842,
-		"MVP-5.0": 1126620,
-		"MVP-5.1": 1136859,
-		"MVP-6":   141934,
+		"MVP-3":   705519,
+		"MVP-4":   612961,
+		"MVP-5":   602722,
+		"MVP-6.0": 633451,
+		"MVP-6.1": 141934,
 	}
 
 	tableRow := map[string]int{
@@ -405,9 +404,9 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-2":   1,
 		"MVP-3":   2,
 		"MVP-4":   3,
-		"MVP-5.0": 4,
-		"MVP-5.1": 5,
-		"MVP-6":   6,
+		"MVP-5":   4,
+		"MVP-6.0": 5,
+		"MVP-6.1": 6,
 	}
 
 	vms := map[string]func(m int) virtualMachine{
@@ -421,16 +420,16 @@ func TestBenchmarks(t *testing.T) {
 			return mvp3.NewCPU(false, m)
 		},
 		"MVP-4": func(m int) virtualMachine {
+			return mvp4.NewCPU(false, m)
+		},
+		"MVP-5": func(m int) virtualMachine {
 			return mvp5.NewCPU(false, m)
 		},
-		"MVP-5.0": func(m int) virtualMachine {
+		"MVP-6.0": func(m int) virtualMachine {
 			return mvp6_0.NewCPU(false, m)
 		},
-		"MVP-5.1": func(m int) virtualMachine {
-			return mvp5_1.NewCPU(false, m)
-		},
-		"MVP-6": func(m int) virtualMachine {
-			return mvp6y.NewCPU(false, m)
+		"MVP-6.1": func(m int) virtualMachine {
+			return mvp6_1.NewCPU(false, m)
 		},
 	}
 

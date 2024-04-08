@@ -1,4 +1,4 @@
-package mvp6_0
+package mvp6_1
 
 import (
 	"github.com/teivah/majorana/risc"
