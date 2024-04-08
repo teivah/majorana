@@ -81,7 +81,7 @@ func (eu *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application)
 		if m, exists := eu.mmu.getFromL1D(addrs); exists {
 			eu.memory = m
 			eu.pendingMemoryRead = true
-			eu.remainingCycles = cyclesL1Access
+			eu.remainingCycles = cycleL1DAccess
 		} else {
 			eu.addrs = addrs
 			eu.pendingMemoryRead = true

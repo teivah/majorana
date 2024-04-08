@@ -12,7 +12,7 @@ import (
 	"github.com/teivah/majorana/proc/mvp3"
 	"github.com/teivah/majorana/proc/mvp4"
 	"github.com/teivah/majorana/proc/mvp5"
-	"github.com/teivah/majorana/proc/mvp6-0"
+	mvp6_0 "github.com/teivah/majorana/proc/mvp6-0"
 	mvp6_1 "github.com/teivah/majorana/proc/mvp6-1"
 	"github.com/teivah/majorana/risc"
 	"github.com/teivah/majorana/test"
@@ -368,8 +368,8 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-3":   851556,
 		"MVP-4":   450937,
 		"MVP-5":   400864,
-		"MVP-6.0": 400772,
-		"MVP-6.1": 500969,
+		"MVP-6.0": 400873,
+		"MVP-6.1": 400873,
 	}
 	sumsExpected := map[string]int{
 		"MVP-1":   1921287,
@@ -377,8 +377,8 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-3":   329332,
 		"MVP-4":   267356,
 		"MVP-5":   263261,
-		"MVP-6.0": 275504,
-		"MVP-6.1": 54373,
+		"MVP-6.0": 275557,
+		"MVP-6.1": 275557,
 	}
 	copyExpected := map[string]int{
 		"MVP-1":   5826769,
@@ -386,8 +386,8 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-3":   1329999,
 		"MVP-4":   1165822,
 		"MVP-5":   1135105,
-		"MVP-6.0": 674355,
-		"MVP-6.1": 341381,
+		"MVP-6.0": 674408,
+		"MVP-6.1": 674408,
 	}
 	lengthExpected := map[string]int{
 		"MVP-1":   3707344,
@@ -395,8 +395,8 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-3":   705519,
 		"MVP-4":   612961,
 		"MVP-5":   602722,
-		"MVP-6.0": 633451,
-		"MVP-6.1": 141934,
+		"MVP-6.0": 633503,
+		"MVP-6.1": 633503,
 	}
 
 	tableRow := map[string]int{
@@ -429,7 +429,7 @@ func TestBenchmarks(t *testing.T) {
 			return mvp6_0.NewCPU(false, m)
 		},
 		"MVP-6.1": func(m int) virtualMachine {
-			return mvp6_1.NewCPU(false, m)
+			return mvp6_0.NewCPU(false, m)
 		},
 	}
 

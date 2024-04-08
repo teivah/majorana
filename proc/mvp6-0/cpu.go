@@ -7,14 +7,17 @@ import (
 )
 
 const (
+	bytes     = 1
+	kilobytes = 1024
+
 	cyclesMemoryAccess = 50
-	cyclesL1Access     = 1
-	bytes              = 1
-	kilobytes          = 1024
-	l1ICacheLineSize   = 64 * bytes
-	liICacheSize       = 1 * kilobytes
-	l1DCacheLineSize   = 64 * bytes
-	liDCacheSize       = 1 * kilobytes
+	cycleL1DAccess     = 1
+	flushCycles        = 1
+
+	l1ICacheLineSize = 64 * bytes
+	liICacheSize     = 1 * kilobytes
+	l1DCacheLineSize = 64 * bytes
+	liDCacheSize     = 1 * kilobytes
 )
 
 type CPU struct {
@@ -132,6 +135,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			break
 		}
 		if flush {
+			log.Info(m.ctx, "\t️⚠️ Flush to %d", pc/4)
 			m.writeBus.Connect(cycle + 1)
 			for _, wu := range m.writeUnits {
 				for !wu.isEmpty() || !m.writeBus.IsEmpty() {
@@ -139,10 +143,8 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 					wu.cycle(m.ctx, from)
 				}
 			}
-
-			log.Info(m.ctx, "\t️⚠️ Flush to %d", pc/4)
 			m.flush(pc)
-			log.Info(m.ctx, "\tRegisters: %v", m.ctx.Registers)
+			cycle += flushCycles
 			continue
 		}
 

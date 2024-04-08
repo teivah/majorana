@@ -7,14 +7,14 @@ import (
 )
 
 type fetchUnit struct {
-	pc                 int32
-	mmu                *memoryManagementUnit
-	remainingCycles    int
-	complete           bool
-	processing         bool
-	pendingMemoryFetch bool
-	toCleanPending     bool
-	outBus             *comp.BufferedBus[int32]
+	pc             int32
+	toCleanPending bool
+	outBus         *comp.BufferedBus[int32]
+	complete       bool
+	mmu            *memoryManagementUnit
+	// Pending
+	coroutine       func(cycle int, app risc.Application, ctx *risc.Context)
+	remainingCycles int
 }
 
 func newFetchUnit(mmu *memoryManagementUnit, outBus *comp.BufferedBus[int32]) *fetchUnit {
@@ -22,12 +22,6 @@ func newFetchUnit(mmu *memoryManagementUnit, outBus *comp.BufferedBus[int32]) *f
 		mmu:    mmu,
 		outBus: outBus,
 	}
-}
-
-func (u *fetchUnit) reset(pc int32, cleanPending bool) {
-	u.complete = false
-	u.pc = pc
-	u.toCleanPending = cleanPending
 }
 
 func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
@@ -38,38 +32,49 @@ func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		u.outBus.Clean()
 		u.toCleanPending = false
 	}
-	if u.complete {
+	if u.coroutine != nil {
+		u.coroutine(cycle, app, ctx)
 		return
 	}
 
-	if u.pendingMemoryFetch {
-		u.remainingCycles--
-		if u.remainingCycles == 0 {
-			u.pendingMemoryFetch = false
-		} else {
-			return
-		}
-	}
+	u.coFetch(cycle, app, ctx)
+}
 
-	if !u.processing {
-		u.processing = true
-		if _, exists := u.mmu.getFromL1I([]int32{u.pc}); exists {
-			u.remainingCycles = 1
-		} else {
-			u.remainingCycles = cyclesMemoryAccess
-			u.mmu.pushLineToL1I(u.pc, make([]int8, l1ICacheLineSize))
-		}
-	}
-
+func (u *fetchUnit) coFetch(cycle int, app risc.Application, ctx *risc.Context) {
+	u.coroutine = nil
 	for i := 0; i < u.outBus.OutLength(); i++ {
 		if !u.outBus.CanAdd() {
 			log.Infou(ctx, "FU", "can't add")
 			return
 		}
-		u.processing = false
+
+		if _, exists := u.mmu.getFromL1I([]int32{u.pc}); !exists {
+			u.remainingCycles = cyclesMemoryAccess - 1
+			u.coroutine = func(cycle int, app risc.Application, ctx *risc.Context) {
+				if u.remainingCycles != 0 {
+					log.Infou(ctx, "FU", "pending memory access")
+					u.remainingCycles--
+					return
+				}
+				u.coroutine = nil
+				u.mmu.pushLineToL1I(u.pc, make([]int8, l1ICacheLineSize))
+
+				currentPc := u.pc
+				u.pc += 4
+				if u.pc/4 >= int32(len(app.Instructions)) {
+					u.coroutine = func(cycle int, app risc.Application, ctx *risc.Context) {}
+					u.complete = true
+				}
+				log.Infou(ctx, "FU", "pushing new element from pc %d", currentPc/4)
+				u.outBus.Add(currentPc, cycle)
+			}
+			return
+		}
+
 		currentPc := u.pc
 		u.pc += 4
 		if u.pc/4 >= int32(len(app.Instructions)) {
+			u.coroutine = func(cycle int, app risc.Application, ctx *risc.Context) {}
 			u.complete = true
 		}
 		log.Infou(ctx, "FU", "pushing new element from pc %d", currentPc/4)
@@ -77,8 +82,14 @@ func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 	}
 }
 
+func (u *fetchUnit) reset(pc int32, cleanPending bool) {
+	u.coroutine = nil
+	u.pc = pc
+	u.toCleanPending = cleanPending
+}
+
 func (u *fetchUnit) flush(pc int32) {
-	u.processing = false
+	u.coroutine = nil
 	u.complete = false
 	u.pc = pc
 }
