@@ -1,10 +1,9 @@
-package mvp6
+package mvp6_0
 
 import (
 	"fmt"
 
 	"github.com/teivah/majorana/common/log"
-	"github.com/teivah/majorana/common/obs"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -15,33 +14,13 @@ type decodeUnit struct {
 	log                     string
 	inBus                   *comp.BufferedBus[int32]
 	outBus                  *comp.BufferedBus[risc.InstructionRunnerPc]
-
-	pushed      *obs.Gauge
-	pendingRead *obs.Gauge
-	blocked     *obs.Gauge
 }
 
 func newDecodeUnit(inBus *comp.BufferedBus[int32], outBus *comp.BufferedBus[risc.InstructionRunnerPc]) *decodeUnit {
-	return &decodeUnit{
-		inBus:       inBus,
-		outBus:      outBus,
-		pushed:      &obs.Gauge{},
-		pendingRead: &obs.Gauge{},
-		blocked:     &obs.Gauge{},
-	}
+	return &decodeUnit{inBus: inBus, outBus: outBus}
 }
 
 func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
-	pushed := 0
-	defer func() {
-		u.pushed.Push(pushed)
-	}()
-	u.pendingRead.Push(u.inBus.PendingRead())
-	if u.inBus.CanGet() {
-		u.blocked.Push(1)
-	} else {
-		u.blocked.Push(0)
-	}
 	if u.ret {
 		return
 	}
@@ -62,9 +41,7 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 			return
 		}
 		runner := app.Instructions[pc/4]
-		// Clear forward
-		runner.Forward(risc.Forward{})
-		log.Infoi(ctx, "DU", runner.InstructionType(), pc, "decoding")
+		log.Infoi(ctx, "DU", runner.InstructionType(), pc/4, "decoding")
 		jump := false
 		if runner.InstructionType().IsUnconditionalBranch() {
 			u.pendingBranchResolution = true
@@ -75,7 +52,6 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 			Runner: runner,
 			Pc:     pc,
 		}, cycle)
-		pushed++
 		if jump {
 			return
 		}

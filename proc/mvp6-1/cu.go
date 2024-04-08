@@ -1,4 +1,4 @@
-package mvp5_1
+package mvp6_0
 
 import (
 	"github.com/teivah/majorana/common/log"
@@ -13,7 +13,7 @@ const (
 
 type controlUnit struct {
 	inBus    *comp.BufferedBus[risc.InstructionRunnerPc]
-	outBus   *comp.BufferedBus[*risc.InstructionRunnerPc]
+	outBus   *comp.BufferedBus[risc.InstructionRunnerPc]
 	pendings *comp.Queue[risc.InstructionRunnerPc]
 
 	pushed            *obs.Gauge
@@ -24,7 +24,7 @@ type controlUnit struct {
 	blockedDataHazard int
 }
 
-func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc]) *controlUnit {
+func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.InstructionRunnerPc]) *controlUnit {
 	return &controlUnit{
 		inBus:    inBus,
 		outBus:   outBus,
@@ -104,7 +104,7 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, pushed int, run
 }
 
 func (u *controlUnit) pushRunner(ctx *risc.Context, cycle int, runner risc.InstructionRunnerPc) {
-	u.outBus.Add(&runner, cycle)
+	u.outBus.Add(runner, cycle)
 	ctx.AddPendingRegisters(runner.Runner)
 	log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
 }

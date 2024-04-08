@@ -25,6 +25,8 @@ Compared to MVP-1, we add a cache for instructions called L1I (Level 1 Instructi
 
 ### MVP-3
 
+TODO L1D
+
 MVP-3 keeps the same microarchitecture as MVP-2 with 4 stages and L1I. Yet, this version implements [pipelining](https://en.wikipedia.org/wiki/Instruction_pipelining).
 
 In a nutshell, pipelining allows keeping every stage as busy as possible. For example, as soon as the fetch unit has fetched an instruction, it will not wait for the instruction to be decoded, executed and written. It will fetch another instruction straight away during the next cycle(s).
@@ -50,6 +52,8 @@ In this case, we implement what we call pipeline interclock by delaying the exec
 ![](res/majorana-mvp-3.drawio.png)
 
 ### MVP-4
+
+TODO Pipeline
 
 One issue with MVP-3 is when it met an unconditional branches. For example:
 
