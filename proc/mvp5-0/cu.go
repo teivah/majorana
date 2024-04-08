@@ -54,21 +54,15 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 
 	remaining := u.outBus.RemainingToAdd()
 	for elem := range u.pendings.Iterator() {
-		pending := u.pendings.Value(elem)
-		if pushed > 0 && pending.Runner.InstructionType().IsBranch() {
-			u.blockedBranch++
-			return
-		}
-
-		hazard, reason := ctx.IsDataHazard(pending.Runner)
-		if !hazard {
-			u.pushRunner(ctx, cycle, pending)
-			u.pendings.Remove(elem)
+		runner := u.pendings.Value(elem)
+		push, stop := u.handleRunner(ctx, cycle, pushed, runner)
+		if !push {
+		} else {
 			remaining--
 			pushed++
-		} else {
-			log.Infoi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "data hazard: reason=%s", reason)
-			u.blockedDataHazard++
+			u.pendings.Remove(elem)
+		}
+		if stop {
 			return
 		}
 	}
@@ -78,23 +72,34 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		if !exists {
 			return
 		}
-		if pushed > 0 && runner.Runner.InstructionType().IsBranch() {
+		push, stop := u.handleRunner(ctx, cycle, pushed, runner)
+		if !push {
 			u.pendings.Push(runner)
-			u.blockedBranch++
-			return
-		}
-
-		hazard, reason := ctx.IsDataHazard(runner.Runner)
-		if !hazard {
-			u.pushRunner(ctx, cycle, runner)
+		} else {
 			remaining--
 			pushed++
-		} else {
-			u.pendings.Push(runner)
-			log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", reason)
-			u.blockedDataHazard++
+		}
+		if stop {
 			return
 		}
+	}
+}
+
+func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, pushed int, runner risc.InstructionRunnerPc) (push, stop bool) {
+	if pushed > 0 && runner.Runner.InstructionType().IsBranch() {
+		u.blockedBranch++
+		return false, true
+	}
+
+	hazard, reason := ctx.IsDataHazard(runner.Runner)
+	if !hazard {
+		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
+		u.pushRunner(ctx, cycle, runner)
+		return true, false
+	} else {
+		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", reason)
+		u.blockedDataHazard++
+		return false, true
 	}
 }
 
