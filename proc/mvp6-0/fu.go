@@ -1,4 +1,4 @@
-package mvp5_0
+package mvp6_0
 
 import (
 	"github.com/teivah/majorana/common/log"
@@ -8,7 +8,7 @@ import (
 
 type fetchUnit struct {
 	pc                 int32
-	l1i                l1i
+	mmu                *memoryManagementUnit
 	remainingCycles    int
 	complete           bool
 	processing         bool
@@ -17,9 +17,9 @@ type fetchUnit struct {
 	outBus             *comp.BufferedBus[int32]
 }
 
-func newFetchUnit(l1iCacheLineSizeInBytes int32, outBus *comp.BufferedBus[int32]) *fetchUnit {
+func newFetchUnit(mmu *memoryManagementUnit, outBus *comp.BufferedBus[int32]) *fetchUnit {
 	return &fetchUnit{
-		l1i:    newL1I(l1iCacheLineSizeInBytes),
+		mmu:    mmu,
 		outBus: outBus,
 	}
 }
@@ -51,14 +51,14 @@ func (u *fetchUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		}
 	}
 
-	if u.l1i.present(u.pc) {
-		u.remainingCycles = 1
-	} else {
-		u.pendingMemoryFetch = true
-		u.remainingCycles = cyclesMemoryAccess
-		// Should be done after the processing of the 50 cycles
-		u.l1i.fetch(u.pc)
-		return
+	if !u.processing {
+		u.processing = true
+		if _, exists := u.mmu.getFromL1I([]int32{u.pc}); exists {
+			u.remainingCycles = 1
+		} else {
+			u.remainingCycles = cyclesMemoryAccess
+			u.mmu.pushLineToL1I(u.pc, make([]int8, l1ICacheLineSize))
+		}
 	}
 
 	for i := 0; i < u.outBus.OutLength(); i++ {

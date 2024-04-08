@@ -1,4 +1,4 @@
-package mvp5_0
+package mvp6_0
 
 import (
 	"github.com/teivah/majorana/common/log"
@@ -17,7 +17,7 @@ func newWriteUnit(inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
 	return &writeUnit{inBus: inBus}
 }
 
-func (u *writeUnit) cycle(ctx *risc.Context) {
+func (u *writeUnit) cycle(ctx *risc.Context, before int32) {
 	if u.pendingMemoryWrite {
 		u.cycles--
 		if u.cycles == 0 {
@@ -31,6 +31,9 @@ func (u *writeUnit) cycle(ctx *risc.Context) {
 
 	execution, exists := u.inBus.Get()
 	if !exists {
+		return
+	}
+	if before != -1 && execution.Pc > before {
 		return
 	}
 	if execution.Execution.RegisterChange {
