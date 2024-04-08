@@ -106,9 +106,11 @@ func (m *CPU) execute(app risc.Application, r risc.InstructionRunner, pc int32) 
 	addrs := r.MemoryRead(m.ctx)
 	var memory []int8
 	if len(addrs) != 0 {
+		m.cycle += cyclesL1Access
 		if mem, exists := m.mmu.getFromL1D(addrs); exists {
 			memory = mem
 		} else {
+			m.cycle += cyclesMemoryAccess
 			line := m.mmu.fetchCacheLine(addrs[0])
 			m.mmu.pushLineToL1D(addrs[0], line)
 			mem, exists := m.mmu.getFromL1D(addrs)
