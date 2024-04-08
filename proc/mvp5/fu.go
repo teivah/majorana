@@ -1,4 +1,4 @@
-package mvp3
+package mvp5
 
 import (
 	"fmt"
@@ -9,38 +9,48 @@ import (
 
 type fetchUnit struct {
 	pc                 int32
-	l1i                l1i
+	mmu                *memoryManagementUnit
 	remainingCycles    int
 	complete           bool
 	processing         bool
 	cyclesMemoryAccess int
+	toCleanPending     bool
 }
 
-func newFetchUnit(l1iCacheLineSizeInBytes int32, cyclesMemoryAccess int) *fetchUnit {
+func newFetchUnit(mmu *memoryManagementUnit, cyclesMemoryAccess int) *fetchUnit {
 	return &fetchUnit{
-		l1i:                newL1I(l1iCacheLineSizeInBytes),
+		mmu:                mmu,
 		cyclesMemoryAccess: cyclesMemoryAccess,
 	}
 }
 
-func (fu *fetchUnit) reset(pc int32) {
+func (fu *fetchUnit) reset(pc int32, cleanPending bool) {
 	fu.complete = false
 	fu.pc = pc
+	fu.toCleanPending = cleanPending
 }
 
 func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp.SimpleBus[int32]) {
+	if fu.toCleanPending {
+		// The fetch unit may have sent to the bus wrong instruction, we make sure
+		// this is not the case by cleaning it
+		if ctx.Debug {
+			fmt.Printf("\tFU: Cleaning output bus\n")
+		}
+		outBus.Clean()
+		fu.toCleanPending = false
+	}
 	if fu.complete {
 		return
 	}
 
 	if !fu.processing {
 		fu.processing = true
-		if fu.l1i.present(fu.pc) {
+		if _, exists := fu.mmu.getFromL1I([]int32{fu.pc}); exists {
 			fu.remainingCycles = 1
 		} else {
 			fu.remainingCycles = fu.cyclesMemoryAccess
-			// Should be done after the processing of the 50 cycles
-			fu.l1i.fetch(fu.pc)
+			fu.mmu.pushLineToL1I(fu.pc, make([]int8, l1ICacheLineSize))
 		}
 	}
 

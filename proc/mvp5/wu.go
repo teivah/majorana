@@ -1,4 +1,4 @@
-package mvp3
+package mvp5
 
 import (
 	"github.com/teivah/majorana/proc/comp"
@@ -35,5 +35,5 @@ func (wu *writeUnit) cycle(ctx *risc.Context, inBus *comp.SimpleBus[risc.Executi
 }
 
 func (wu *writeUnit) isEmpty() bool {
-	return true
+	return !wu.pendingMemoryWrite
 }

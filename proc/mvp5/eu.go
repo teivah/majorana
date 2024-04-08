@@ -1,4 +1,4 @@
-package mvp3
+package mvp5
 
 import (
 	"fmt"
@@ -8,16 +8,21 @@ import (
 )
 
 type executeUnit struct {
-	branchUnit        *simpleBranchUnit
 	processing        bool
+	remainingCycles   int
 	pendingMemoryRead bool
 	addrs             []int32
-	remainingCycles   int
+	memory            []int8
 	runner            risc.InstructionRunnerPc
+	bu                *btbBranchUnit
+	mmu               *memoryManagementUnit
 }
 
-func newExecuteUnit(branchUnit *simpleBranchUnit) *executeUnit {
-	return &executeUnit{branchUnit: branchUnit}
+func newExecuteUnit(bu *btbBranchUnit, mmu *memoryManagementUnit) *executeUnit {
+	return &executeUnit{
+		bu:  bu,
+		mmu: mmu,
+	}
 }
 
 func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *comp.SimpleBus[risc.InstructionRunnerPc], outBus *comp.SimpleBus[risc.ExecutionContext]) (bool, int32, bool, error) {
@@ -31,9 +36,18 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 			eu.runner = risc.InstructionRunnerPc{}
 		}()
 		var memory []int8
-		for _, addr := range eu.addrs {
-			memory = append(memory, ctx.Memory[addr])
+		if eu.memory != nil {
+			memory = eu.memory
+		} else {
+			line := eu.mmu.fetchCacheLine(eu.addrs[0])
+			eu.mmu.pushLineToL1D(eu.addrs[0], line)
+			m, exists := eu.mmu.getFromL1D(eu.addrs)
+			if !exists {
+				panic("cache line doesn't exist")
+			}
+			memory = m
 		}
+		eu.memory = nil
 		return eu.run(ctx, app, outBus, memory)
 	}
 
@@ -59,7 +73,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 
 	runner := eu.runner
 	// Create the branch unit assertions
-	eu.branchUnit.assert(runner)
+	eu.bu.assert(runner)
 
 	// To avoid writeback hazard, if the pipeline contains read registers not
 	// written yet, we wait for it
@@ -74,9 +88,15 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 
 	addrs := runner.Runner.MemoryRead(ctx)
 	if len(addrs) != 0 {
-		eu.addrs = addrs
-		eu.pendingMemoryRead = true
-		eu.remainingCycles = cyclesMemoryAccess
+		if m, exists := eu.mmu.getFromL1D(addrs); exists {
+			eu.memory = m
+			eu.pendingMemoryRead = true
+			eu.remainingCycles = cyclesL1Access
+		} else {
+			eu.addrs = addrs
+			eu.pendingMemoryRead = true
+			eu.remainingCycles = cyclesMemoryAccess
+		}
 		return false, 0, false, nil
 	}
 
@@ -92,7 +112,13 @@ func (eu *executeUnit) run(ctx *risc.Context, app risc.Application, outBus *comp
 		return false, 0, false, err
 	}
 	if execution.Return {
-		return false, 0, true, err
+		return false, 0, true, nil
+	}
+
+	eu.processing = false
+	if execution.MemoryChange && eu.mmu.doesExecutionMemoryChangesExistsInL1D(execution) {
+		eu.mmu.writeExecutionMemoryChangesToL1D(execution)
+		return false, 0, false, nil
 	}
 
 	outBus.Add(risc.ExecutionContext{
@@ -103,11 +129,20 @@ func (eu *executeUnit) run(ctx *risc.Context, app risc.Application, outBus *comp
 	ctx.AddPendingWriteRegisters(eu.runner.Runner.WriteRegisters())
 	eu.processing = false
 
-	if execution.PcChange && eu.branchUnit.shouldFlushPipeline(execution.NextPc) {
+	if eu.runner.Runner.InstructionType().IsUnconditionalBranch() {
+		eu.bu.notifyJumpAddressResolved(eu.runner.Pc, execution.NextPc)
+	}
+
+	if execution.PcChange && eu.bu.shouldFlushPipeline(execution.NextPc) {
 		return true, execution.NextPc, false, nil
 	}
 
 	return false, 0, false, nil
+}
+
+func (eu *executeUnit) flush() {
+	eu.processing = false
+	eu.remainingCycles = 0
 }
 
 func (eu *executeUnit) isEmpty() bool {
