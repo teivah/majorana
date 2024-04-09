@@ -118,64 +118,6 @@ func (u *controlUnit) pushRunner(ctx *risc.Context, cycle int, runner *risc.Inst
 	log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
 }
 
-func isHazardWithPushedRunners(pushedRunners []*risc.InstructionRunnerPc, runner risc.InstructionRunner) (bool, *risc.InstructionRunnerPc, risc.RegisterType) {
-	pendingWriteRegisters := make(map[risc.RegisterType]*risc.InstructionRunnerPc)
-	for _, runner := range pushedRunners {
-		for _, register := range runner.Runner.WriteRegisters() {
-			if register == risc.Zero {
-				continue
-			}
-			pendingWriteRegisters[register] = runner
-		}
-	}
-
-	for _, register := range runner.ReadRegisters() {
-		if register == risc.Zero {
-			continue
-		}
-		if v, exists := pendingWriteRegisters[register]; exists {
-			// An instruction needs to read from a register that was updated
-			return true, v, register
-		}
-	}
-	return false, nil, risc.Zero
-}
-
-func isMemoryHazard(skippedRegisterReadForMemoryWrite map[risc.RegisterType]bool, skippedRegisterWrite map[risc.RegisterType]bool, runner risc.InstructionRunner) (bool, risc.RegisterType) {
-	// Prevent such memory hazards:
-	//
-	// sw t0, 0, zero    # memory[0] = t0
-	// addi t0, zero, 42 # t0 = 42
-	//
-	// If sw is skipped because of a memory hazard, and that addi is executed first,
-	// memory[0] will be equal to the wrong value.
-	for _, register := range runner.WriteRegisters() {
-		if register == risc.Zero {
-			continue
-		}
-		if skippedRegisterReadForMemoryWrite[register] {
-			return true, register
-		}
-	}
-
-	// Prevent such memory hazards:
-	//
-	// add    t1, t0, a0
-	// lb     t1, 0(t1)
-	//
-	// The second instruction reads from t1, so it has to wait for the first
-	// instruction to be written
-	for _, register := range runner.ReadRegisters() {
-		if register == risc.Zero {
-			continue
-		}
-		if skippedRegisterWrite[register] {
-			return true, register
-		}
-	}
-	return false, risc.Zero
-}
-
 func (u *controlUnit) flush() {
 	u.pendings = comp.NewQueue[risc.InstructionRunnerPc](pendingLength)
 }
