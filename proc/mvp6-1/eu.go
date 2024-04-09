@@ -51,9 +51,11 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 		var value int32
 		select {
 		case v := <-u.runner.Receiver:
+			log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "receive forward register value %d", v)
 			value = v
 		default:
 			// Not yet ready
+			//log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "forward register value not ready yet")
 			return false, 0, 0, false, nil
 		}
 
@@ -133,12 +135,12 @@ func (u *executeUnit) coRun(cycle int, ctx *risc.Context, app risc.Application) 
 			u.bu.notifyJumpAddressResolved(u.runner.Pc, execution.NextPc)
 		}
 		if execution.PcChange && u.bu.shouldFlushPipeline(execution.NextPc) {
-			log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
-				"should be a flush")
+			log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "should be a flush")
 			return true, u.runner.Pc, execution.NextPc, false, nil
 		}
 	} else {
 		u.runner.Forwarder <- execution.RegisterValue
+		log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "forward register value %d", execution.RegisterValue)
 		if u.runner.Runner.InstructionType().IsBranch() {
 			panic("shouldn't be a branch")
 		}

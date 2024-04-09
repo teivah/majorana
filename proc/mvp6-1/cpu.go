@@ -27,7 +27,7 @@ type CPU struct {
 	decodeUnit           *decodeUnit
 	controlBus           *comp.BufferedBus[risc.InstructionRunnerPc]
 	controlUnit          *controlUnit
-	executeBus           *comp.BufferedBus[*risc.InstructionRunnerPc]
+	executeBuses         []*comp.BufferedBus[*risc.InstructionRunnerPc]
 	executeUnits         []*executeUnit
 	writeBus             *comp.BufferedBus[risc.ExecutionContext]
 	writeUnits           []*writeUnit
@@ -42,7 +42,10 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 	multiplier := 1
 	decodeBus := comp.NewBufferedBus[int32](busSize*multiplier, busSize*multiplier)
 	controlBus := comp.NewBufferedBus[risc.InstructionRunnerPc](busSize*multiplier, busSize*multiplier)
-	executeBus := comp.NewBufferedBus[*risc.InstructionRunnerPc](busSize, busSize)
+	executeBuses := []*comp.BufferedBus[*risc.InstructionRunnerPc]{
+		comp.NewBufferedBus[*risc.InstructionRunnerPc](busSize, busSize),
+		comp.NewBufferedBus[*risc.InstructionRunnerPc](busSize, busSize),
+	}
 	writeBus := comp.NewBufferedBus[risc.ExecutionContext](busSize, busSize)
 
 	ctx := risc.NewContext(debug, memoryBytes)
@@ -51,16 +54,16 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 	du := newDecodeUnit(decodeBus, controlBus)
 	bu := newBTBBranchUnit(4, fu, du)
 	return &CPU{
-		ctx:         ctx,
-		fetchUnit:   fu,
-		decodeBus:   decodeBus,
-		decodeUnit:  du,
-		controlBus:  controlBus,
-		controlUnit: newControlUnit(controlBus, executeBus),
-		executeBus:  executeBus,
+		ctx:          ctx,
+		fetchUnit:    fu,
+		decodeBus:    decodeBus,
+		decodeUnit:   du,
+		controlBus:   controlBus,
+		controlUnit:  newControlUnit(controlBus, executeBuses),
+		executeBuses: executeBuses,
 		executeUnits: []*executeUnit{
-			newExecuteUnit(bu, executeBus, writeBus, mmu),
-			newExecuteUnit(bu, executeBus, writeBus, mmu),
+			newExecuteUnit(bu, executeBuses[0], writeBus, mmu),
+			newExecuteUnit(bu, executeBuses[1], writeBus, mmu),
 		},
 		writeBus: writeBus,
 		writeUnits: []*writeUnit{
@@ -86,7 +89,8 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		log.Info(m.ctx, "Cycle %d", cycle)
 		m.decodeBus.Connect(cycle)
 		m.controlBus.Connect(cycle)
-		m.executeBus.Connect(cycle)
+		m.executeBuses[0].Connect(cycle)
+		m.executeBuses[1].Connect(cycle)
 		m.writeBus.Connect(cycle)
 
 		// Fetch
@@ -105,7 +109,8 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			pc    int32
 			ret   bool
 		)
-		for _, eu := range m.executeUnits {
+		for i, eu := range m.executeUnits {
+			log.Infou(m.ctx, "EU", "Execute unit %d", i)
 			f, fp, p, r, err := eu.cycle(cycle, m.ctx, app)
 			if err != nil {
 				return 0, err
@@ -194,7 +199,8 @@ func (m *CPU) flush(pc int32) {
 	}
 	m.decodeBus.Clean()
 	m.controlBus.Clean()
-	m.executeBus.Clean()
+	m.executeBuses[0].Clean()
+	m.executeBuses[1].Clean()
 	m.writeBus.Clean()
 	m.ctx.Flush()
 }
@@ -206,7 +212,8 @@ func (m *CPU) isEmpty() bool {
 		m.areWriteUnitsEmpty() &&
 		m.decodeBus.IsEmpty() &&
 		m.controlBus.IsEmpty() &&
-		m.executeBus.IsEmpty() &&
+		m.executeBuses[0].IsEmpty() &&
+		m.executeBuses[1].IsEmpty() &&
 		m.writeBus.IsEmpty()
 	if !empty {
 		return false
