@@ -59,30 +59,18 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	}
 
 	remaining := u.outBus.RemainingToAdd()
-	var pushedRunners []*risc.InstructionRunnerPc
-
-	defer func() {
-		for _, runner := range pushedRunners {
-			ctx.AddPendingRegisters(runner.Runner)
-		}
-	}()
-
 	for elem := range u.pendings.Iterator() {
-		pending := u.pendings.Value(elem)
-		if pushed > 0 && pending.Runner.InstructionType().IsBranch() {
-			u.blockedBranch++
-			return
-		}
+		runner := u.pendings.Value(elem)
 
-		hazard, reason := ctx.IsDataHazard(pending.Runner)
-		if !hazard {
-			u.pushRunner(ctx, cycle, &pending)
+		push, stop := u.handleRunner(ctx, cycle, pushed, runner)
+		if push {
 			u.pendings.Remove(elem)
 			remaining--
 			pushed++
 		} else {
-			log.Infoi(ctx, "CU", pending.Runner.InstructionType(), pending.Pc, "data hazard: reason=%s", reason)
-			u.blockedDataHazard++
+			u.blockedBranch++
+		}
+		if stop {
 			return
 		}
 	}
@@ -92,23 +80,35 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		if !exists {
 			return
 		}
-		if pushed > 0 && runner.Runner.InstructionType().IsBranch() {
-			u.pendings.Push(runner)
-			u.blockedBranch++
-			return
-		}
 
-		hazard, reason := ctx.IsDataHazard(runner.Runner)
-		if !hazard {
-			u.pushRunner(ctx, cycle, &runner)
+		push, stop := u.handleRunner(ctx, cycle, pushed, runner)
+		if push {
 			remaining--
 			pushed++
 		} else {
 			u.pendings.Push(runner)
-			log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", reason)
-			u.blockedDataHazard++
+			u.blockedBranch++
+		}
+		if stop {
 			return
 		}
+	}
+}
+
+func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, pushed int, runner risc.InstructionRunnerPc) (push, stop bool) {
+	if pushed > 0 && runner.Runner.InstructionType().IsBranch() {
+		u.blockedBranch++
+		return false, true
+	}
+
+	hazard, reason := ctx.IsDataHazard(runner.Runner)
+	if !hazard {
+		u.pushRunner(ctx, cycle, &runner)
+		return true, false
+	} else {
+		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", reason)
+		u.blockedDataHazard++
+		return false, true
 	}
 }
 
