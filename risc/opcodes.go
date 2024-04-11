@@ -315,7 +315,7 @@ func (op *bge) Run(ctx *Context, labels map[string]int32, pc int32, memory []int
 			return Execution{}, fmt.Errorf("label %s does not exist", op.label)
 		}
 		if ctx.Debug {
-			fmt.Printf("\t\tRun: bge true %d\n", addr/4)
+			fmt.Printf("\t\tRun: bge %d >= %d true %d\n", rs1, rs2, addr/4)
 		}
 		return Execution{
 			NextPc:   addr,
@@ -323,7 +323,7 @@ func (op *bge) Run(ctx *Context, labels map[string]int32, pc int32, memory []int
 		}, nil
 	}
 	if ctx.Debug {
-		fmt.Printf("\t\tRun: bge false\n")
+		fmt.Printf("\t\tRun: bge %d >= %d false\n", rs1, rs2)
 	}
 	return Execution{}, nil
 }

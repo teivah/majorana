@@ -34,21 +34,21 @@ func (u *writeUnit) cycle(ctx *risc.Context, before int32) {
 	if execution.Execution.RegisterChange {
 		ctx.WriteRegister(execution.Execution)
 		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
-		log.Infoi(ctx, "WU", execution.InstructionType, -1, "write to register")
+		log.Infoi(ctx, "WU", execution.InstructionType, execution.Pc, "write to register")
 	} else if execution.Execution.MemoryChange {
 		remainingCycle := cyclesMemoryAccess
-		log.Infoi(ctx, "WU", execution.InstructionType, -1, "pending memory write")
+		log.Infoi(ctx, "WU", execution.InstructionType, execution.Pc, "pending memory write")
 
 		u.coroutine = func(ctx *risc.Context) {
 			if remainingCycle > 0 {
-				log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, -1, "pending memory write")
+				log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, execution.Pc, "pending memory write")
 				remainingCycle--
 				return
 			}
 			u.coroutine = nil
 			ctx.WriteMemory(u.memoryWrite.Execution)
 			ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
-			log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, -1, "write to memory")
+			log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, execution.Pc, "write to memory")
 		}
 
 		u.memoryWrite = execution
