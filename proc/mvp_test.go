@@ -377,7 +377,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   1165822,
 		"MVP-5":   1135105,
 		"MVP-6.0": 351623,
-		"MVP-6.1": 321051,
+		"MVP-6.1": 321048,
 	}
 	lengthExpected := map[string]int{
 		"MVP-1":   3707344,

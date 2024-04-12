@@ -73,8 +73,6 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		if push {
 			u.pendings.Remove(elem)
 			pushedCount++
-		} else {
-			u.blockedBranch++
 		}
 		if stop {
 			return
@@ -92,7 +90,6 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			pushedCount++
 		} else {
 			u.pendings.Push(runner)
-			u.blockedBranch++
 		}
 		if stop {
 			return

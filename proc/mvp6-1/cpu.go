@@ -144,6 +144,46 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			break
 		}
 		if flush {
+			// TODO Comment the rationale for this code
+			log.Info(m.ctx, "\t️⚠️ Executing previous unit cycles")
+			for {
+				m.executeUnits[0].before = from
+				m.executeUnits[1].before = from
+
+				fromCycle := cycle
+				if !m.executeUnits[0].isEmpty() || !m.executeUnits[1].isEmpty() {
+					if !m.executeUnits[0].isEmpty() {
+						f, fp, p, r, err := m.executeUnits[0].cycle(fromCycle, m.ctx, app)
+						if err != nil {
+							return 0, nil
+						}
+						if f {
+							log.Info(m.ctx, "\t️⚠️️⚠️ Proposition of an inner flush")
+							from = fp
+							flush = f
+							pc = p
+							ret = r
+						}
+					}
+					if !m.executeUnits[1].isEmpty() {
+						f, fp, p, r, err := m.executeUnits[1].cycle(fromCycle, m.ctx, app)
+						if err != nil {
+							return 0, nil
+						}
+						if f {
+							log.Info(m.ctx, "\t️⚠️️⚠️ Proposition of an inner flush")
+							from = fp
+							flush = f
+							pc = p
+							ret = r
+						}
+					}
+					cycle++
+				} else {
+					break
+				}
+			}
+
 			m.writeBus.Connect(cycle + 1)
 			for _, wu := range m.writeUnits {
 				for !wu.isEmpty() || !m.writeBus.IsEmpty() {

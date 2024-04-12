@@ -16,6 +16,7 @@ type executeUnit struct {
 	coroutine func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error)
 	memory    []int8
 	runner    risc.InstructionRunnerPc
+	before    int32
 }
 
 func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext], mmu *memoryManagementUnit) *executeUnit {
@@ -24,11 +25,17 @@ func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.Instruction
 		inBus:  inBus,
 		outBus: outBus,
 		mmu:    mmu,
+		before: -1,
 	}
 }
 
 func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error) {
 	if u.coroutine != nil {
+		if u.before != -1 && u.runner.Pc > u.before {
+			u.before = -1
+			u.coroutine = nil
+			return false, 0, 0, false, nil
+		}
 		return u.coroutine(cycle, ctx, app)
 	}
 
@@ -87,6 +94,7 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 
 			u.coroutine = func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error) {
 				if remainingCycles > 0 {
+					log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "pending memory access %d", remainingCycles)
 					remainingCycles--
 					return false, 0, 0, false, nil
 				}
@@ -111,6 +119,7 @@ func (u *executeUnit) coRun(cycle int, ctx *risc.Context, app risc.Application) 
 	if err != nil {
 		return false, 0, 0, false, err
 	}
+	log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "execution result: %+v", execution)
 	if execution.Return {
 		return false, 0, 0, true, nil
 	}
