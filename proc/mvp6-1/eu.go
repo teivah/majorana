@@ -1,69 +1,82 @@
 package mvp6_1
 
 import (
+	co "github.com/teivah/majorana/common/coroutine"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
 
+type euReq struct {
+	cycle int
+	ctx   *risc.Context
+	app   risc.Application
+}
+
+type euResp struct {
+	flush    bool
+	from     int32
+	pc       int32
+	isReturn bool
+	err      error
+}
+
 type executeUnit struct {
+	co.Coroutine[euReq, euResp]
 	bu     *btbBranchUnit
 	inBus  *comp.BufferedBus[*risc.InstructionRunnerPc]
 	outBus *comp.BufferedBus[risc.ExecutionContext]
 	mmu    *memoryManagementUnit
 
 	// Pending
-	coroutine func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error)
-	memory    []int8
-	runner    risc.InstructionRunnerPc
-	before    int32
+	memory []int8
+	runner risc.InstructionRunnerPc
+	before int32
 }
 
 func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext], mmu *memoryManagementUnit) *executeUnit {
-	return &executeUnit{
+	eu := &executeUnit{
 		bu:     bu,
 		inBus:  inBus,
 		outBus: outBus,
 		mmu:    mmu,
 		before: -1,
 	}
+	eu.Coroutine = co.New(eu.start)
+	//eu.Pre(func(r euReq) (euResp, bool) {
+	//	if eu.before != -1 && eu.runner.Pc > eu.before {
+	//		eu.before = -1
+	//		eu.Reset()
+	//		return euResp{}, true
+	//	}
+	//	return euResp{}, false
+	//})
+	return eu
 }
 
-func (u *executeUnit) cycle(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error) {
-	if u.coroutine != nil {
-		if u.before != -1 && u.runner.Pc > u.before {
-			u.before = -1
-			u.coroutine = nil
-			return false, 0, 0, false, nil
-		}
-		return u.coroutine(cycle, ctx, app)
-	}
-
+func (u *executeUnit) start(r euReq) euResp {
 	runner, exists := u.inBus.Get()
 	if !exists {
-		return false, 0, 0, false, nil
+		return euResp{}
 	}
 	u.runner = *runner
-	u.coroutine = u.coPrepareRun
-	return u.coPrepareRun(cycle, ctx, app)
+	return u.ExecuteWithCheckpoint(r, u.prepareRun)
 }
 
-func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error) {
+func (u *executeUnit) prepareRun(r euReq) euResp {
 	if !u.outBus.CanAdd() {
-		log.Infou(ctx, "EU", "can't add")
-		return false, 0, 0, false, nil
+		log.Infou(r.ctx, "EU", "can't add")
+		return euResp{}
 	}
 
 	if u.runner.Receiver != nil {
 		var value int32
 		select {
 		case v := <-u.runner.Receiver:
-			log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "receive forward register value %d", v)
+			log.Infoi(r.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "receive forward register value %d", v)
 			value = v
 		default:
-			// Not yet ready
-			//log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "forward register value not ready yet")
-			return false, 0, 0, false, nil
+			return euResp{}
 		}
 
 		u.runner.Runner.Forward(risc.Forward{Value: value, Register: u.runner.ForwardRegister})
@@ -72,31 +85,32 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 	// Create the branch unit assertions
 	u.bu.assert(u.runner)
 
-	log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "executing")
+	log.Infoi(r.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "executing")
 
-	addrs := u.runner.Runner.MemoryRead(ctx)
+	addrs := u.runner.Runner.MemoryRead(r.ctx)
 	if len(addrs) != 0 {
 		if memory, exists := u.mmu.getFromL1D(addrs); exists {
 			u.memory = memory
 			// As the coroutine is executed the next cycle, if a L1D access takes
 			// one cycle, we should be good to go during the next cycle
 			remainingCycles := cycleL1DAccess - 1
-			u.coroutine = func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error) {
+
+			u.Checkpoint(func(r euReq) euResp {
 				if remainingCycles > 0 {
 					remainingCycles--
-					return false, 0, 0, false, nil
+					return euResp{}
 				}
-				return u.coRun(cycle, ctx, app)
-			}
-			return false, 0, 0, false, nil
+				return u.run(r)
+			})
+			return euResp{}
 		} else {
 			remainingCycles := cyclesMemoryAccess - 1
 
-			u.coroutine = func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error) {
+			u.Checkpoint(func(r euReq) euResp {
 				if remainingCycles > 0 {
-					log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "pending memory access %d", remainingCycles)
+					log.Infoi(r.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "pending memory access %d", remainingCycles)
 					remainingCycles--
-					return false, 0, 0, false, nil
+					return euResp{}
 				}
 				line := u.mmu.fetchCacheLine(addrs[0])
 				u.mmu.pushLineToL1D(addrs[0], line)
@@ -105,29 +119,29 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 					panic("cache line doesn't exist")
 				}
 				u.memory = m
-				return u.coRun(cycle, ctx, app)
-			}
-			return false, 0, 0, false, nil
+				return u.run(r)
+			})
+			return euResp{}
 		}
 	}
-	return u.coRun(cycle, ctx, app)
+	return u.run(r)
 }
 
-func (u *executeUnit) coRun(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error) {
-	u.coroutine = nil
-	execution, err := u.runner.Runner.Run(ctx, app.Labels, u.runner.Pc, u.memory)
+func (u *executeUnit) run(r euReq) euResp {
+	u.Reset()
+	execution, err := u.runner.Runner.Run(r.ctx, r.app.Labels, u.runner.Pc, u.memory)
 	if err != nil {
-		return false, 0, 0, false, err
+		return euResp{err: err}
 	}
-	log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "execution result: %+v", execution)
+	log.Infoi(r.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "execution result: %+v", execution)
 	if execution.Return {
-		return false, 0, 0, true, nil
+		return euResp{isReturn: true}
 	}
 
 	if execution.MemoryChange && u.mmu.doesExecutionMemoryChangesExistsInL1D(execution) {
 		u.mmu.writeExecutionMemoryChangesToL1D(execution)
-		ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
-		return false, 0, 0, false, nil
+		r.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
+		return euResp{}
 	}
 
 	u.outBus.Add(risc.ExecutionContext{
@@ -136,33 +150,33 @@ func (u *executeUnit) coRun(cycle int, ctx *risc.Context, app risc.Application) 
 		InstructionType: u.runner.Runner.InstructionType(),
 		WriteRegisters:  u.runner.Runner.WriteRegisters(),
 		ReadRegisters:   u.runner.Runner.ReadRegisters(),
-	}, cycle)
+	}, r.cycle)
 
 	if u.runner.Forwarder == nil {
 		if u.runner.Runner.InstructionType().IsUnconditionalBranch() {
-			log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
+			log.Infoi(r.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc,
 				"notify jump address resolved from %d to %d", u.runner.Pc/4, execution.NextPc/4)
 			u.bu.notifyJumpAddressResolved(u.runner.Pc, execution.NextPc)
 		}
 		if execution.PcChange && u.bu.shouldFlushPipeline(execution.NextPc) {
-			log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "should be a flush")
-			return true, u.runner.Pc, execution.NextPc, false, nil
+			log.Infoi(r.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "should be a flush")
+			return euResp{flush: true, from: u.runner.Pc, pc: execution.NextPc}
 		}
 	} else {
 		u.runner.Forwarder <- execution.RegisterValue
-		log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "forward register value %d", execution.RegisterValue)
+		log.Infoi(r.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "forward register value %d", execution.RegisterValue)
 		if u.runner.Runner.InstructionType().IsBranch() {
 			panic("shouldn't be a branch")
 		}
 	}
 
-	return false, 0, 0, false, nil
+	return euResp{}
 }
 
 func (u *executeUnit) flush() {
-	u.coroutine = nil
+	u.Reset()
 }
 
 func (u *executeUnit) isEmpty() bool {
-	return u.coroutine == nil
+	return u.IsStart()
 }

@@ -1,63 +1,68 @@
 package mvp6_1
 
 import (
+	co "github.com/teivah/majorana/common/coroutine"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
 
+type wuReq struct {
+	ctx    *risc.Context
+	before int32
+}
+
 type writeUnit struct {
+	co.Coroutine[wuReq, error]
 	memoryWrite risc.ExecutionContext
 	inBus       *comp.BufferedBus[risc.ExecutionContext]
-
-	// Pending
-	coroutine func(ctx *risc.Context)
 }
 
 func newWriteUnit(inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
-	return &writeUnit{inBus: inBus}
+	wu := &writeUnit{
+		inBus: inBus,
+	}
+	wu.Coroutine = co.New(wu.start)
+	return wu
 }
 
-func (u *writeUnit) cycle(ctx *risc.Context, before int32) {
-	if u.coroutine != nil {
-		u.coroutine(ctx)
-		return
-	}
-
+func (u *writeUnit) start(r wuReq) error {
 	execution, exists := u.inBus.Get()
 	if !exists {
-		return
+		return nil
 	}
-	if before != -1 && execution.Pc > before {
-		return
+	if r.before != -1 && execution.Pc > r.before {
+		return nil
 	}
 	if execution.Execution.RegisterChange {
-		ctx.WriteRegister(execution.Execution)
-		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
-		log.Infoi(ctx, "WU", execution.InstructionType, execution.Pc, "write to register")
+		r.ctx.WriteRegister(execution.Execution)
+		r.ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
+		log.Infoi(r.ctx, "WU", execution.InstructionType, execution.Pc, "write to register")
 	} else if execution.Execution.MemoryChange {
 		remainingCycle := cyclesMemoryAccess
-		log.Infoi(ctx, "WU", execution.InstructionType, execution.Pc, "pending memory write")
+		log.Infoi(r.ctx, "WU", execution.InstructionType, execution.Pc, "pending memory write")
 
-		u.coroutine = func(ctx *risc.Context) {
+		u.Checkpoint(func(r wuReq) error {
 			if remainingCycle > 0 {
-				log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, execution.Pc, "pending memory write")
+				log.Infoi(r.ctx, "WU", u.memoryWrite.InstructionType, execution.Pc, "pending memory write")
 				remainingCycle--
-				return
+				return nil
 			}
-			u.coroutine = nil
-			ctx.WriteMemory(u.memoryWrite.Execution)
-			ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
-			log.Infoi(ctx, "WU", u.memoryWrite.InstructionType, execution.Pc, "write to memory")
-		}
+			u.Reset()
+			r.ctx.WriteMemory(u.memoryWrite.Execution)
+			r.ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
+			log.Infoi(r.ctx, "WU", u.memoryWrite.InstructionType, execution.Pc, "write to memory")
+			return nil
+		})
 
 		u.memoryWrite = execution
 	} else {
-		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
-		log.Infoi(ctx, "WU", execution.InstructionType, -1, "cleaning")
+		r.ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
+		log.Infoi(r.ctx, "WU", execution.InstructionType, -1, "cleaning")
 	}
+	return nil
 }
 
 func (u *writeUnit) isEmpty() bool {
-	return u.coroutine == nil
+	return u.IsStart()
 }

@@ -90,7 +90,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.writeBus.Connect(cycle)
 
 		// Fetch
-		m.fetchUnit.cycle(cycle, app, m.ctx)
+		_ = m.fetchUnit.Cycle(fuReq{cycle, app, m.ctx})
 
 		// Decode
 		m.decodeUnit.cycle(cycle, app, m.ctx)
@@ -107,21 +107,21 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		)
 		for i, eu := range m.executeUnits {
 			log.Infou(m.ctx, "EU", "Execute unit %d", i)
-			f, fp, p, r, err := eu.cycle(cycle, m.ctx, app)
-			if err != nil {
-				return 0, err
+			resp := eu.Cycle(euReq{cycle, m.ctx, app})
+			if resp.err != nil {
+				return 0, resp.err
 			}
-			if f {
-				from = fp
+			if resp.flush {
+				from = resp.from
 			}
-			flush = flush || f
-			pc = max(pc, p)
-			ret = ret || r
+			flush = flush || resp.flush
+			pc = max(pc, resp.pc)
+			ret = ret || resp.isReturn
 		}
 
 		// Write back
 		for _, wu := range m.writeUnits {
-			wu.cycle(m.ctx, -1)
+			_ = wu.Cycle(wuReq{m.ctx, -1})
 		}
 		log.Info(m.ctx, "\tRegisters: %v", m.ctx.Registers)
 
@@ -132,7 +132,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			m.writeBus.Connect(cycle)
 			for !m.areWriteUnitsEmpty() || !m.writeBus.IsEmpty() {
 				for _, wu := range m.writeUnits {
-					wu.cycle(m.ctx, -1)
+					_ = wu.Cycle(wuReq{m.ctx, -1})
 				}
 				cycle++
 				m.writeBus.Connect(cycle)
@@ -140,51 +140,11 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			break
 		}
 		if flush {
-			// TODO Comment the rationale for this code
-			log.Info(m.ctx, "\t️⚠️ Executing previous unit cycles")
-			for {
-				m.executeUnits[0].before = from
-				m.executeUnits[1].before = from
-
-				fromCycle := cycle
-				if !m.executeUnits[0].isEmpty() || !m.executeUnits[1].isEmpty() {
-					if !m.executeUnits[0].isEmpty() {
-						f, fp, p, r, err := m.executeUnits[0].cycle(fromCycle, m.ctx, app)
-						if err != nil {
-							return 0, nil
-						}
-						if f {
-							log.Info(m.ctx, "\t️⚠️️⚠️ Proposition of an inner flush")
-							from = fp
-							flush = f
-							pc = p
-							ret = r
-						}
-					}
-					if !m.executeUnits[1].isEmpty() {
-						f, fp, p, r, err := m.executeUnits[1].cycle(fromCycle, m.ctx, app)
-						if err != nil {
-							return 0, nil
-						}
-						if f {
-							log.Info(m.ctx, "\t️⚠️️⚠️ Proposition of an inner flush")
-							from = fp
-							flush = f
-							pc = p
-							ret = r
-						}
-					}
-					cycle++
-				} else {
-					break
-				}
-			}
-
 			m.writeBus.Connect(cycle + 1)
 			for _, wu := range m.writeUnits {
 				for !wu.isEmpty() || !m.writeBus.IsEmpty() {
 					cycle++
-					wu.cycle(m.ctx, from)
+					_ = wu.Cycle(wuReq{m.ctx, from})
 				}
 			}
 
@@ -196,11 +156,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 
 		if m.isEmpty() {
-			//if m.ctx.Registers[risc.Ra] != 0 {
-			//	m.ctx.Registers[risc.Ra] = 0
-			//	m.fetchUnit.reset(m.ctx.Registers[risc.Ra], false)
-			//	continue
-			//}
 			break
 		}
 	}
