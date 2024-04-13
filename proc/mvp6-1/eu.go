@@ -31,7 +31,6 @@ type executeUnit struct {
 	// Pending
 	memory []int8
 	runner risc.InstructionRunnerPc
-	before int32
 }
 
 func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext], mmu *memoryManagementUnit) *executeUnit {
@@ -40,17 +39,8 @@ func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.Instruction
 		inBus:  inBus,
 		outBus: outBus,
 		mmu:    mmu,
-		before: -1,
 	}
 	eu.Coroutine = co.New(eu.start)
-	//eu.Pre(func(r euReq) (euResp, bool) {
-	//	if eu.before != -1 && eu.runner.Pc > eu.before {
-	//		eu.before = -1
-	//		eu.Reset()
-	//		return euResp{}, true
-	//	}
-	//	return euResp{}, false
-	//})
 	return eu
 }
 

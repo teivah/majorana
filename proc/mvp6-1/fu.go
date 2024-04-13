@@ -20,9 +20,6 @@ type fetchUnit struct {
 	outBus         *comp.BufferedBus[int32]
 	complete       bool
 	mmu            *memoryManagementUnit
-	// Pending
-	// TODO Remove
-	remainingCycles int
 }
 
 func newFetchUnit(mmu *memoryManagementUnit, outBus *comp.BufferedBus[int32]) *fetchUnit {
@@ -51,11 +48,11 @@ func (u *fetchUnit) start(r fuReq) error {
 		}
 
 		if _, exists := u.mmu.getFromL1I([]int32{u.pc}); !exists {
-			u.remainingCycles = cyclesMemoryAccess - 1
+			remainingCycles := cyclesMemoryAccess - 1
 			u.Checkpoint(func(r fuReq) error {
-				if u.remainingCycles != 0 {
+				if remainingCycles != 0 {
 					log.Infou(r.ctx, "FU", "pending memory access")
-					u.remainingCycles--
+					remainingCycles--
 					return nil
 				}
 				u.Reset()
