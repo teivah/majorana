@@ -13,10 +13,11 @@ const (
 
 type controlUnit struct {
 	inBus                        *comp.BufferedBus[risc.InstructionRunnerPc]
-	outBuses                     []*comp.BufferedBus[*risc.InstructionRunnerPc]
+	outBus                       *comp.BufferedBus[*risc.InstructionRunnerPc]
 	pendings                     *comp.Queue[risc.InstructionRunnerPc]
-	pushedRunnersInPreviousCycle map[*risc.InstructionRunnerPc]int
-	pushedRunnersInCurrentCycle  map[*risc.InstructionRunnerPc]int
+	pushedRunnersInPreviousCycle map[*risc.InstructionRunnerPc]bool
+	pushedRunnersInCurrentCycle  map[*risc.InstructionRunnerPc]bool
+	skippedInCurrentCycle        []risc.InstructionRunnerPc
 
 	pushed            *obs.Gauge
 	pending           *obs.Gauge
@@ -27,30 +28,32 @@ type controlUnit struct {
 	cantAdd           int
 	blockedBranch     int
 	blockedDataHazard int
+	routeSecond       bool
 }
 
-func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBuses []*comp.BufferedBus[*risc.InstructionRunnerPc]) *controlUnit {
+func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc]) *controlUnit {
 	return &controlUnit{
 		inBus:                        inBus,
-		outBuses:                     outBuses,
+		outBus:                       outBus,
 		pendings:                     comp.NewQueue[risc.InstructionRunnerPc](pendingLength),
 		pushed:                       &obs.Gauge{},
 		pending:                      &obs.Gauge{},
 		pendingRead:                  &obs.Gauge{},
 		blocked:                      &obs.Gauge{},
-		pushedRunnersInCurrentCycle:  make(map[*risc.InstructionRunnerPc]int),
-		pushedRunnersInPreviousCycle: make(map[*risc.InstructionRunnerPc]int),
+		pushedRunnersInCurrentCycle:  make(map[*risc.InstructionRunnerPc]bool),
+		pushedRunnersInPreviousCycle: make(map[*risc.InstructionRunnerPc]bool),
 	}
 }
 
 func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	pushedCount := 0
-	u.pushedRunnersInCurrentCycle = make(map[*risc.InstructionRunnerPc]int)
+	u.pushedRunnersInCurrentCycle = make(map[*risc.InstructionRunnerPc]bool)
 	defer func() {
 		u.pushed.Push(pushedCount)
 		u.pending.Push(u.pendings.Length())
 		u.pushedRunnersInPreviousCycle = u.pushedRunnersInCurrentCycle
 	}()
+	u.skippedInCurrentCycle = nil
 	u.pendingRead.Push(u.inBus.PendingRead())
 	if u.inBus.CanGet() {
 		u.blocked.Push(1)
@@ -59,7 +62,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	}
 	u.total++
 
-	if !u.outBuses[0].CanAdd() && !u.outBuses[1].CanAdd() {
+	if !u.outBus.CanAdd() {
 		u.cantAdd++
 		log.Infou(ctx, "CU", "can't add")
 		return
@@ -73,6 +76,8 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		if push {
 			u.pendings.Remove(elem)
 			pushedCount++
+		} else {
+			u.skippedInCurrentCycle = append(u.skippedInCurrentCycle, runner)
 		}
 		if stop {
 			return
@@ -90,6 +95,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			pushedCount++
 		} else {
 			u.pendings.Push(runner)
+			u.skippedInCurrentCycle = append(u.skippedInCurrentCycle, runner)
 		}
 		if stop {
 			return
@@ -103,83 +109,126 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, pushedCount int
 		return false, true
 	}
 
-	hazard, reason := ctx.IsDataHazard(runner.Runner)
-	if !hazard {
-		pushed, id := u.pushRunner(ctx, cycle, runner)
+	if u.isDataHazardWithSkippedRunners(runner) {
+		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "hazard with skipped runner")
+		return false, false
+	}
+
+	hazards, hazardTypes := ctx.IsDataHazard3(runner.Runner)
+	if len(hazards) == 0 {
+		pushed := u.pushRunner(ctx, cycle, runner)
 		if !pushed {
 			// TODO Return?
 			return false, true
 		}
-		u.pushedRunnersInCurrentCycle[runner] = id
+		u.pushedRunnersInCurrentCycle[runner] = true
 		return true, false
-	} else {
-		if should, previousRunner, id, register := u.shouldUseForwarding(runner); should {
-			ch := make(chan int32, 1)
-			previousRunner.Forwarder = ch
-			previousRunner.ForwardRegister = register
-			runner.Receiver = ch
-			runner.ForwardRegister = register
+	}
 
-			pushed := u.pushRunnerToBus(ctx, cycle, runner, id)
-			if !pushed {
-				// TODO Return?
-				return false, true
-			}
-			u.pushedRunnersInCurrentCycle[runner] = id
-			log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "forward runner on %s (source %d)", register, previousRunner.Pc/4)
-			u.forwarding++
+	if u.isDataHazardWithSkippedRunners(runner) {
+		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard with skipped runners")
+		return false, false
+	}
+
+	if should, previousRunner, register := u.shouldUseForwarding(runner, hazards, hazardTypes); should {
+		ch := make(chan int32, 1)
+		previousRunner.Forwarder = ch
+		previousRunner.ForwardRegister = register
+		runner.Receiver = ch
+		runner.ForwardRegister = register
+
+		pushed := u.pushRunner(ctx, cycle, runner)
+		if !pushed {
 			// TODO Return?
-			return true, true
-		} else {
-			log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", reason)
-			u.blockedDataHazard++
 			return false, true
 		}
+		u.pushedRunnersInCurrentCycle[runner] = true
+		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "forward runner on %s (source %d)", register, previousRunner.Pc/4)
+		u.forwarding++
+		// TODO Return?
+		return true, true
 	}
+
+	log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%+v, types=%+v", hazards, hazardTypes)
+	u.blockedDataHazard++
+
+	return false, true
 }
 
-func (u *controlUnit) shouldUseForwarding(runner *risc.InstructionRunnerPc) (bool, *risc.InstructionRunnerPc, int, risc.RegisterType) {
-	// If there's a hazard with an instruction pushed in the same cycle
-	for previousRunner := range u.pushedRunnersInCurrentCycle {
-		for _, writeRegister := range previousRunner.Runner.WriteRegisters() {
-			for _, readRegister := range runner.Runner.ReadRegisters() {
-				if readRegister == writeRegister {
-					return false, nil, 0, risc.Zero
+func (u *controlUnit) isDataHazardWithSkippedRunners(runner *risc.InstructionRunnerPc) bool {
+	for _, skippedRunner := range u.skippedInCurrentCycle {
+		for _, register := range runner.Runner.ReadRegisters() {
+			if register == risc.Zero {
+				continue
+			}
+			for _, skippedRegister := range skippedRunner.Runner.WriteRegisters() {
+				if skippedRegister == risc.Zero {
+					continue
+				}
+				if register == skippedRegister {
+					// Read after write
+					return true
 				}
 			}
 		}
+
+		for _, register := range runner.Runner.WriteRegisters() {
+			if register == risc.Zero {
+				continue
+			}
+			for _, skippedRegister := range skippedRunner.Runner.WriteRegisters() {
+				if skippedRegister == risc.Zero {
+					continue
+				}
+				if register == skippedRegister {
+					// Write after write
+					return true
+				}
+			}
+			for _, skippedRegister := range skippedRunner.Runner.ReadRegisters() {
+				if skippedRegister == risc.Zero {
+					continue
+				}
+				if register == skippedRegister {
+					// Write after read
+					return true
+				}
+			}
+		}
+	}
+
+	return false
+}
+
+func (u *controlUnit) shouldUseForwarding(runner *risc.InstructionRunnerPc, hazards []risc.Hazard, hazardTypes map[risc.HazardType]bool) (bool, *risc.InstructionRunnerPc, risc.RegisterType) {
+	if len(hazardTypes) > 1 || !hazardTypes[risc.ReadAfterWrite] || len(hazards) > 1 {
+		return false, nil, risc.Zero
 	}
 
 	// Can we use forwarding with an instruction pushed in the previous cycle
-	for previousRunner, id := range u.pushedRunnersInPreviousCycle {
+	for previousRunner := range u.pushedRunnersInPreviousCycle {
 		for _, writeRegister := range previousRunner.Runner.WriteRegisters() {
 			for _, readRegister := range runner.Runner.ReadRegisters() {
+				if readRegister == risc.Zero {
+					continue
+				}
 				if readRegister == writeRegister {
-					return true, previousRunner, id, readRegister
+					return true, previousRunner, readRegister
 				}
 			}
 		}
 	}
-	return false, nil, 0, risc.Zero
+	return false, nil, risc.Zero
 }
 
-func (u *controlUnit) pushRunner(ctx *risc.Context, cycle int, runner *risc.InstructionRunnerPc) (bool, int) {
-	if u.pushRunnerToBus(ctx, cycle, runner, 0) {
-		return true, 0
-	}
-	if u.pushRunnerToBus(ctx, cycle, runner, 1) {
-		return true, 1
-	}
-	return false, 0
-}
-
-func (u *controlUnit) pushRunnerToBus(ctx *risc.Context, cycle int, runner *risc.InstructionRunnerPc, id int) bool {
-	if !u.outBuses[id].CanAdd() {
+func (u *controlUnit) pushRunner(ctx *risc.Context, cycle int, runner *risc.InstructionRunnerPc) bool {
+	if !u.outBus.CanAdd() {
 		return false
 	}
-	u.outBuses[id].Add(runner, cycle)
+
+	u.outBus.Add(runner, cycle)
 	ctx.AddPendingRegisters(runner.Runner)
-	log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner to %d", id)
+	log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
 	return true
 }
 
