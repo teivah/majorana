@@ -118,7 +118,6 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, pushedCount int
 	if len(hazards) == 0 {
 		pushed := u.pushRunner(ctx, cycle, runner)
 		if !pushed {
-			// TODO Return?
 			return false, true
 		}
 		u.pushedRunnersInCurrentCycle[runner] = true
@@ -139,7 +138,6 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, pushedCount int
 
 		pushed := u.pushRunner(ctx, cycle, runner)
 		if !pushed {
-			// TODO Return?
 			return false, true
 		}
 		u.pushedRunnersInCurrentCycle[runner] = true
