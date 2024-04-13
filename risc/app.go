@@ -126,6 +126,80 @@ func (ctx *Context) IsDataHazard(runner InstructionRunner) (bool, string) {
 	return false, ""
 }
 
+func (ctx *Context) IsDataHazard3(runner InstructionRunner) ([]Hazard, map[HazardType]bool) {
+	var hazards []Hazard
+	hazardTypes := make(map[HazardType]bool)
+	for _, register := range runner.ReadRegisters() {
+		if register == Zero {
+			continue
+		}
+		if v, exists := ctx.PendingWriteRegisters[register]; exists && v > 0 {
+			hazards = append(hazards, Hazard{Type: ReadAfterWrite, Register: register})
+			hazardTypes[ReadAfterWrite] = true
+		}
+	}
+	for _, register := range runner.WriteRegisters() {
+		if register == Zero {
+			continue
+		}
+		if v, exists := ctx.PendingWriteRegisters[register]; exists && v > 0 {
+			hazards = append(hazards, Hazard{Type: WriteAfterWrite, Register: register})
+			hazardTypes[WriteAfterWrite] = true
+		}
+		if v, exists := ctx.PendingReadRegisters[register]; exists && v > 0 {
+			hazards = append(hazards, Hazard{Type: WriteAfterRead, Register: register})
+			hazardTypes[WriteAfterRead] = true
+		}
+	}
+	return hazards, hazardTypes
+}
+
+type HazardType uint32
+
+const (
+	// ReadAfterWrite we should wait to read the latest value
+	ReadAfterWrite HazardType = iota
+	// WriteAfterWrite we should get the latest written value in the end
+	WriteAfterWrite
+	// WriteAfterRead we should read the value before it's written
+	WriteAfterRead
+)
+
+func (h HazardType) Stringer() string {
+	switch h {
+	case ReadAfterWrite:
+		return "RAW"
+	case WriteAfterWrite:
+		return "WAW"
+	case WriteAfterRead:
+		return "WAR"
+	default:
+		panic(h)
+	}
+}
+
+type Hazard struct {
+	Type     HazardType
+	Register RegisterType
+}
+
+func (ctx *Context) IsDataHazard2(runner InstructionRunner) (bool, int, []RegisterType) {
+	var hazards []RegisterType
+	for _, register := range runner.ReadRegisters() {
+		if register == Zero {
+			continue
+		}
+		if v, exists := ctx.PendingWriteRegisters[register]; exists && v > 0 {
+			// An instruction needs to read from a register that was updated
+			hazards = append(hazards, register)
+		}
+	}
+	if len(hazards) == 0 {
+		return false, 0, nil
+	}
+	return true, len(hazards), hazards
+}
+
 type Execution struct {
 	RegisterChange bool
 	Register       RegisterType

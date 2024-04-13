@@ -1,0 +1,12 @@
+53
+  CU: lw to 0
+54
+  CU: addi1 to 1
+55
+  CU: div to 1 (forward on T1 on addi1)
+56
+  CU: addi3 to 1 (forward on T1 on div)
+57
+  CU: addi4 to 0
+58
+  CU: bge to 0 (forward on T2 on addi4) // Should also wait on addi3

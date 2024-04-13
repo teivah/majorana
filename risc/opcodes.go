@@ -284,7 +284,7 @@ func (op *beqz) InstructionType() InstructionType {
 }
 
 func (op *beqz) ReadRegisters() []RegisterType {
-	return []RegisterType{op.rs, op.rs}
+	return []RegisterType{op.rs}
 }
 
 func (op *beqz) WriteRegisters() []RegisterType {

@@ -102,6 +102,7 @@ func (u *executeUnit) coRun(cycle int, ctx *risc.Context, app risc.Application) 
 
 	if execution.MemoryChange && u.mmu.doesExecutionMemoryChangesExistsInL1D(execution) {
 		u.mmu.writeExecutionMemoryChangesToL1D(execution)
+		ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
 		return false, 0, 0, false, nil
 	}
 

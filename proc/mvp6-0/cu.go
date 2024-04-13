@@ -101,12 +101,12 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, pushed int, run
 		return false, true
 	}
 
-	hazard, reason := ctx.IsDataHazard(runner.Runner)
-	if !hazard {
+	hazards, _ := ctx.IsDataHazard3(runner.Runner)
+	if len(hazards) == 0 {
 		u.pushRunner(ctx, cycle, &runner)
 		return true, false
 	} else {
-		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", reason)
+		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", hazards)
 		u.blockedDataHazard++
 		return false, true
 	}

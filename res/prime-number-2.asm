@@ -1,5 +1,5 @@
     # Init by storing value to memory
-    lw t0, 0(zero)
+    lw t0, 0(zero)    # 0 t0 = memory[0]
     sw t0, 0(zero)    # 1 memory[0] = t0
 
     addi t0, zero, 0  # 2 t0 = 0
