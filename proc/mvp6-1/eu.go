@@ -90,7 +90,7 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 					remainingCycles--
 					return euResp{}
 				}
-				return u.run(r)
+				return u.ExecuteWithReset(r, u.run)
 			})
 			return euResp{}
 		} else {
@@ -109,16 +109,15 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 					panic("cache line doesn't exist")
 				}
 				u.memory = m
-				return u.run(r)
+				return u.ExecuteWithReset(r, u.run)
 			})
 			return euResp{}
 		}
 	}
-	return u.run(r)
+	return u.ExecuteWithReset(r, u.run)
 }
 
 func (u *executeUnit) run(r euReq) euResp {
-	u.Reset()
 	execution, err := u.runner.Runner.Run(r.ctx, r.app.Labels, u.runner.Pc, u.memory)
 	if err != nil {
 		return euResp{err: err}

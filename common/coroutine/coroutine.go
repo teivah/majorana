@@ -42,6 +42,11 @@ func (c *Coroutine[A, B]) Reset() {
 	c.isStart = true
 }
 
+func (c *Coroutine[A, B]) ExecuteWithReset(a A, f func(A) B) B {
+	c.Reset()
+	return f(a)
+}
+
 func (c *Coroutine[A, B]) IsStart() bool {
 	return c.isStart
 }

@@ -15,11 +15,12 @@ type fuReq struct {
 
 type fetchUnit struct {
 	co.Coroutine[fuReq, error]
-	pc             int32
-	toCleanPending bool
-	outBus         *comp.BufferedBus[int32]
-	complete       bool
-	mmu            *memoryManagementUnit
+	pc              int32
+	toCleanPending  bool
+	outBus          *comp.BufferedBus[int32]
+	complete        bool
+	mmu             *memoryManagementUnit
+	remainingCycles int
 }
 
 func newFetchUnit(mmu *memoryManagementUnit, outBus *comp.BufferedBus[int32]) *fetchUnit {
@@ -48,26 +49,8 @@ func (u *fetchUnit) start(r fuReq) error {
 		}
 
 		if _, exists := u.mmu.getFromL1I([]int32{u.pc}); !exists {
-			remainingCycles := cyclesMemoryAccess - 1
-			u.Checkpoint(func(r fuReq) error {
-				if remainingCycles != 0 {
-					log.Infou(r.ctx, "FU", "pending memory access")
-					remainingCycles--
-					return nil
-				}
-				u.Reset()
-				u.mmu.pushLineToL1I(u.pc, make([]int8, l1ICacheLineSize))
-
-				currentPc := u.pc
-				u.pc += 4
-				if u.pc/4 >= int32(len(r.app.Instructions)) {
-					u.Checkpoint(func(fuReq) error { return nil })
-					u.complete = true
-				}
-				log.Infou(r.ctx, "FU", "pushing new element from pc %d", currentPc/4)
-				u.outBus.Add(currentPc, r.cycle)
-				return nil
-			})
+			u.remainingCycles = cyclesMemoryAccess - 1
+			u.Checkpoint(u.memoryAccess)
 			return nil
 		}
 
@@ -81,6 +64,27 @@ func (u *fetchUnit) start(r fuReq) error {
 		u.outBus.Add(currentPc, r.cycle)
 	}
 	return nil
+}
+
+func (u *fetchUnit) memoryAccess(r fuReq) error {
+	if u.remainingCycles != 0 {
+		log.Infou(r.ctx, "FU", "pending memory access")
+		u.remainingCycles--
+		return nil
+	}
+	u.Reset()
+	u.mmu.pushLineToL1I(u.pc, make([]int8, l1ICacheLineSize))
+
+	currentPc := u.pc
+	u.pc += 4
+	if u.pc/4 >= int32(len(r.app.Instructions)) {
+		u.Checkpoint(func(fuReq) error { return nil })
+		u.complete = true
+	}
+	log.Infou(r.ctx, "FU", "pushing new element from pc %d", currentPc/4)
+	u.outBus.Add(currentPc, r.cycle)
+	return nil
+
 }
 
 func (u *fetchUnit) reset(pc int32, cleanPending bool) {
