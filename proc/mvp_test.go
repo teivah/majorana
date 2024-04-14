@@ -83,7 +83,6 @@ func strlen(bytes []byte) int {
 func bubsort(list []int32, size int) {
 	swapped := true
 	for swapped {
-		fmt.Println("a")
 		swapped = false
 		for i := 1; i < size; i++ {
 			if list[i-1] > list[i] {
@@ -330,7 +329,7 @@ func testStringCopy(t *testing.T, factory func(int) virtualMachine, memory int, 
 
 func testBubbleSort(t *testing.T, factory func(int) virtualMachine, stats bool) {
 	t.Run("Bubble sort", func(t *testing.T) {
-		data := 2
+		data := 100
 		vm := factory(data * 4)
 		for i := 0; i < data; i++ {
 			bytes := risc.BytesFromLowBits(int32(data - i))
