@@ -104,6 +104,10 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 }
 
 func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, pushedCount int, runner *risc.InstructionRunnerPc) (push, stop bool) {
+	if runner.Runner.InstructionType() == risc.Ret && !u.outBus.IsEmpty() {
+		return false, true
+	}
+
 	if pushedCount > 0 && runner.Runner.InstructionType().IsBranch() {
 		u.blockedBranch++
 		return false, true

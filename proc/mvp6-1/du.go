@@ -91,6 +91,7 @@ func (u *decodeUnit) notifyBranchResolved() {
 
 func (u *decodeUnit) flush() {
 	u.pendingBranchResolution = false
+	u.ret = false
 }
 
 func (u *decodeUnit) isEmpty() bool {

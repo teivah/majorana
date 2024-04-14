@@ -391,6 +391,49 @@ func (op *bgeu) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+type ble struct {
+	rs1     RegisterType
+	rs2     RegisterType
+	label   string
+	forward Forward
+}
+
+func (op *ble) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1)
+	rs2 := registerRead(ctx, op.forward, op.rs2)
+	if rs1 <= rs2 {
+		addr, ok := labels[op.label]
+		if !ok {
+			return Execution{}, fmt.Errorf("label %s does not exist", op.label)
+		}
+		return Execution{
+			NextPc:   addr,
+			PcChange: true,
+		}, nil
+	}
+	return Execution{}, nil
+}
+
+func (op *ble) InstructionType() InstructionType {
+	return Ble
+}
+
+func (op *ble) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs1, op.rs2}
+}
+
+func (op *ble) WriteRegisters() []RegisterType {
+	return nil
+}
+
+func (op *ble) Forward(forward Forward) {
+	op.forward = forward
+}
+
+func (op *ble) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
 type blt struct {
 	rs1     RegisterType
 	rs2     RegisterType
@@ -517,6 +560,47 @@ func (op *bne) Forward(forward Forward) {
 }
 
 func (op *bne) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+type bnez struct {
+	rs      RegisterType
+	label   string
+	forward Forward
+}
+
+func (op *bnez) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs)
+	if rs1 != 0 {
+		addr, ok := labels[op.label]
+		if !ok {
+			return Execution{}, fmt.Errorf("label %s does not exist", op.label)
+		}
+		return Execution{
+			NextPc:   addr,
+			PcChange: true,
+		}, nil
+	}
+	return Execution{}, nil
+}
+
+func (op *bnez) InstructionType() InstructionType {
+	return Bnez
+}
+
+func (op *bnez) ReadRegisters() []RegisterType {
+	return []RegisterType{op.rs}
+}
+
+func (op *bnez) WriteRegisters() []RegisterType {
+	return nil
+}
+
+func (op *bnez) Forward(forward Forward) {
+	op.forward = forward
+}
+
+func (op *bnez) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 

@@ -6,6 +6,7 @@ import (
 
 var globalBool bool
 var globalInt int
+var globalInts32 []int32
 var globalBytes []byte
 
 func BenchmarkPrime(b *testing.B) {
@@ -63,4 +64,21 @@ func BenchmarkStringLength(b *testing.B) {
 		local = strlen(src)
 	}
 	globalInt = local
+}
+
+func BenchmarkBubbleSort(b *testing.B) {
+	b.StopTimer()
+	// We recreate the slice to prevent CPU cache hit
+	src := make([]int32, 0, benchBubSort)
+	for i := 0; i < benchBubSort; i++ {
+		src = append(src, int32(benchBubSort-i))
+	}
+	b.StartTimer()
+
+	var local []int32
+	for i := 0; i < b.N; i++ {
+		bubsort(src, len(src))
+		local = src
+	}
+	globalInts32 = local
 }

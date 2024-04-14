@@ -120,9 +120,11 @@ const (
 	Beqz
 	Bge
 	Bgeu
+	Ble
 	Blt
 	Bltu
 	Bne
+	Bnez
 	Div
 	J
 	Jal
@@ -176,12 +178,16 @@ func (ins InstructionType) String() string {
 		return "Bge"
 	case Bgeu:
 		return "Bgeu"
+	case Ble:
+		return "Ble"
 	case Blt:
 		return "Blt"
 	case Bltu:
 		return "Bltu"
 	case Bne:
 		return "Bne"
+	case Bnez:
+		return "Bnez"
 	case Div:
 		return "Div"
 	case J:
@@ -267,6 +273,8 @@ func (ins InstructionType) Cycles() int {
 		return 1
 	case Bge:
 		return 1
+	case Ble:
+		return 1
 	case Bgeu:
 		return 1
 	case Blt:
@@ -274,6 +282,8 @@ func (ins InstructionType) Cycles() int {
 	case Bltu:
 		return 1
 	case Bne:
+		return 1
+	case Bnez:
 		return 1
 	case Div:
 		return 1
@@ -380,7 +390,7 @@ func (ins InstructionType) IsUnconditionalBranch() bool {
 
 func (ins InstructionType) IsConditionalBranch() bool {
 	switch ins {
-	case Beq, Beqz, Bne, Blt, Bge, Bgeu:
+	case Beq, Beqz, Bne, Bnez, Blt, Ble, Bge, Bgeu:
 		return true
 	}
 	return false

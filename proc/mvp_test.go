@@ -24,6 +24,7 @@ const (
 	benchSums         = 4096
 	benchStringCopy   = 10 * 1024 // 10 KB
 	benchStringLength = 10 * 1024 // 10 KB
+	benchBubSort      = 200
 	testFrom          = 2
 	testTo            = 200
 )
@@ -79,6 +80,21 @@ func strlen(bytes []byte) int {
 	return res
 }
 
+func bubsort(list []int32, size int) {
+	swapped := true
+	for swapped {
+		fmt.Println("a")
+		swapped = false
+		for i := 1; i < size; i++ {
+			if list[i-1] > list[i] {
+				// Swap elements
+				list[i-1], list[i] = list[i], list[i-1]
+				swapped = true
+			}
+		}
+	}
+}
+
 func TestMvp1(t *testing.T) {
 	factory := func(memory int) virtualMachine {
 		return mvp1.NewCPU(false, memory)
@@ -87,6 +103,7 @@ func TestMvp1(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, factory, false)
 }
 
 func TestMvp2(t *testing.T) {
@@ -97,6 +114,7 @@ func TestMvp2(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, factory, false)
 }
 
 func TestMvp3(t *testing.T) {
@@ -107,6 +125,7 @@ func TestMvp3(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, factory, false)
 }
 
 func TestMvp4(t *testing.T) {
@@ -117,6 +136,7 @@ func TestMvp4(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, factory, false)
 }
 
 func TestMvp5(t *testing.T) {
@@ -127,6 +147,7 @@ func TestMvp5(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, factory, false)
 }
 
 func TestMvp6_0(t *testing.T) {
@@ -137,6 +158,7 @@ func TestMvp6_0(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, factory, false)
 }
 
 func TestMvp6_1(t *testing.T) {
@@ -147,6 +169,7 @@ func TestMvp6_1(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, factory, false)
 }
 
 func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
@@ -305,6 +328,40 @@ func testStringCopy(t *testing.T, factory func(int) virtualMachine, memory int, 
 	})
 }
 
+func testBubbleSort(t *testing.T, factory func(int) virtualMachine, stats bool) {
+	t.Run("Bubble sort", func(t *testing.T) {
+		data := 100
+		vm := factory(data * 4)
+		for i := 0; i < data; i++ {
+			bytes := risc.BytesFromLowBits(int32(data - i))
+			vm.Context().Memory[4*i+0] = bytes[0]
+			vm.Context().Memory[4*i+1] = bytes[1]
+			vm.Context().Memory[4*i+2] = bytes[2]
+			vm.Context().Memory[4*i+3] = bytes[3]
+		}
+		vm.Context().Registers[risc.A0] = 0
+		vm.Context().Registers[risc.A1] = int32(data)
+
+		instructions := test.ReadFile(t, "../res/bubble-sort.asm")
+		app, err := risc.Parse(instructions)
+		require.NoError(t, err)
+		cycle, err := vm.Run(app)
+		require.NoError(t, err)
+
+		for i := 0; i < data; i++ {
+			n := risc.I32FromBytes(vm.Context().Memory[4*i], vm.Context().Memory[4*i+1], vm.Context().Memory[4*i+2], vm.Context().Memory[4*i+3])
+			require.Equal(t, int32(i+1), n)
+		}
+
+		if stats {
+			t.Logf("Cycle: %d", cycle)
+			for k, v := range vm.Stats() {
+				t.Log(k, v)
+			}
+		}
+	})
+}
+
 //func TestMvp1Jal(t *testing.T) {
 //	factory := func() virtualMachine {
 //		return mvp1.NewCPU(false, memory)
@@ -367,8 +424,8 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-3":   329332,
 		"MVP-4":   267356,
 		"MVP-5":   263261,
-		"MVP-6.0": 74853,
-		"MVP-6.1": 66406,
+		"MVP-6.0": 74854,
+		"MVP-6.1": 66407,
 	}
 	copyExpected := map[string]int{
 		"MVP-1":   5826769,
@@ -387,6 +444,15 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-5":   602722,
 		"MVP-6.0": 131695,
 		"MVP-6.1": 111051,
+	}
+	bubbleExpected := map[string]int{
+		"MVP-1":   29792552,
+		"MVP-2":   11345853,
+		"MVP-3":   5377179,
+		"MVP-4":   4620336,
+		"MVP-5":   4580537,
+		"MVP-6.0": 780642,
+		"MVP-6.1": 780640,
 	}
 
 	tableRow := map[string]int{
@@ -550,10 +616,46 @@ func TestBenchmarks(t *testing.T) {
 		}
 	})
 
-	output := `| Machine | Prime number | Sum of array | String copy | String length |
-|:------:|:-----:|:-----:|:-----:|:-----:|
+	bubbleOutput := make([]string, len(tableRow))
+	t.Run("Bubble sort", func(t *testing.T) {
+		for name, factory := range vms {
+			t.Run(name, func(t *testing.T) {
+				if _, exists := bubbleExpected[name]; !exists {
+					t.SkipNow()
+				}
+				data := benchBubSort
+				vm := factory(data * 4)
+				for i := 0; i < data; i++ {
+					bytes := risc.BytesFromLowBits(int32(data - i))
+					vm.Context().Memory[4*i+0] = bytes[0]
+					vm.Context().Memory[4*i+1] = bytes[1]
+					vm.Context().Memory[4*i+2] = bytes[2]
+					vm.Context().Memory[4*i+3] = bytes[3]
+				}
+				vm.Context().Registers[risc.A0] = 0
+				vm.Context().Registers[risc.A1] = int32(data)
+
+				instructions := test.ReadFile(t, "../res/bubble-sort.asm")
+				app, err := risc.Parse(instructions)
+				require.NoError(t, err)
+				cycles, err := vm.Run(app)
+				require.NoError(t, err)
+
+				for i := 0; i < data; i++ {
+					n := risc.I32FromBytes(vm.Context().Memory[4*i], vm.Context().Memory[4*i+1], vm.Context().Memory[4*i+2], vm.Context().Memory[4*i+3])
+					require.Equal(t, int32(i+1), n)
+				}
+
+				assert.Equal(t, bubbleExpected[name], cycles)
+				lengthOutput[tableRow[name]] = bubbleSortStats(cycles)
+			})
+		}
+	})
+
+	output := `| Machine | Prime number | Sum of array | String copy | String length | Bubble sort |
+|:------:|:-----:|:-----:|:-----:|:-----:|:-----:|
 `
-	output += fmt.Sprintf("| Apple M1 | %.1f ns | %.1f ns | %.1f ns | %.1f ns |\n", m1PrimeExecutionTime, m1SumsExecutionTime, m1StringCopyExecutionTime, m1StringLengthExecutionTime)
+	output += fmt.Sprintf("| Apple M1 | %.1f ns | %.1f ns | %.1f ns | %.1f ns | %.1f ns |\n", m1PrimeExecutionTime, m1SumsExecutionTime, m1StringCopyExecutionTime, m1StringLengthExecutionTime, m1BubbleSortExecutionTime)
 	var keys []string
 	for k := range tableRow {
 		keys = append(keys, k)
@@ -561,7 +663,7 @@ func TestBenchmarks(t *testing.T) {
 	sort.Strings(keys)
 	for _, mvp := range keys {
 		idx := tableRow[mvp]
-		output += fmt.Sprintf("| %s | %s | %s | %s | %s |\n", mvp, primeOutput[idx], sumsOutput[idx], cpyOutput[idx], lengthOutput[idx])
+		output += fmt.Sprintf("| %s | %s | %s | %s | %s | %s |\n", mvp, primeOutput[idx], sumsOutput[idx], cpyOutput[idx], lengthOutput[idx], bubbleOutput[idx])
 	}
 	fmt.Println(output)
 }

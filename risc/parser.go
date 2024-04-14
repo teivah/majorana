@@ -202,6 +202,24 @@ func Parse(s string) (Application, error) {
 				rs2:   rs2,
 				label: label,
 			})
+		case "ble":
+			if err := validateArgs(3, elements, remainingLine); err != nil {
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
+			}
+			rs1, err := parseRegister(strings.TrimSpace(elements[0]))
+			if err != nil {
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
+			}
+			rs2, err := parseRegister(strings.TrimSpace(elements[1]))
+			if err != nil {
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
+			}
+			label := strings.TrimSpace(elements[2])
+			instructions = append(instructions, &ble{
+				rs1:   rs1,
+				rs2:   rs2,
+				label: label,
+			})
 		case "blt":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
 				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
@@ -254,6 +272,19 @@ func Parse(s string) (Application, error) {
 			instructions = append(instructions, &bne{
 				rs1:   rs1,
 				rs2:   rs2,
+				label: label,
+			})
+		case "bnez":
+			if err := validateArgs(2, elements, remainingLine); err != nil {
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
+			}
+			rs, err := parseRegister(strings.TrimSpace(elements[0]))
+			if err != nil {
+				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
+			}
+			label := strings.TrimSpace(elements[1])
+			instructions = append(instructions, &bnez{
+				rs:    rs,
 				label: label,
 			})
 		case "div":

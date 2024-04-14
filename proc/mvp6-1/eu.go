@@ -70,6 +70,7 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 		}
 
 		u.runner.Runner.Forward(risc.Forward{Value: value, Register: u.runner.ForwardRegister})
+		u.runner.Receiver = nil
 	}
 
 	// Create the branch unit assertions
@@ -79,7 +80,10 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 
 	addrs := u.runner.Runner.MemoryRead(r.ctx)
 	if len(addrs) != 0 {
-		if memory, exists := u.mmu.getFromL1D(addrs); exists {
+		memory, pending, exists := u.mmu.getFromL1D(addrs)
+		if pending {
+			return euResp{}
+		} else if exists {
 			u.memory = memory
 			// As the coroutine is executed the next cycle, if a L1D access takes
 			// one cycle, we should be good to go during the next cycle
@@ -104,7 +108,7 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 				}
 				line := u.mmu.fetchCacheLine(addrs[0])
 				u.mmu.pushLineToL1D(addrs[0], line)
-				m, exists := u.mmu.getFromL1D(addrs)
+				m, _, exists := u.mmu.getFromL1D(addrs)
 				if !exists {
 					panic("cache line doesn't exist")
 				}

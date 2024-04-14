@@ -8,9 +8,10 @@ import (
 )
 
 type memoryManagementUnit struct {
-	ctx *risc.Context
-	l1i *comp.LRUCache
-	l1d *comp.LRUCache
+	ctx      *risc.Context
+	l1i      *comp.LRUCache
+	l1d      *comp.LRUCache
+	pendings [][2]int32
 }
 
 func newMemoryManagementUnit(ctx *risc.Context) *memoryManagementUnit {
@@ -37,16 +38,24 @@ func (u *memoryManagementUnit) pushLineToL1I(addr int32, line []int8) {
 	u.l1i.PushLine(addr, line)
 }
 
-func (u *memoryManagementUnit) getFromL1D(addrs []int32) ([]int8, bool) {
+// getFromL1D returns whether an address is pending request and present in L1D.
+func (u *memoryManagementUnit) getFromL1D(addrs []int32) ([]int8, bool, bool) {
 	memory := make([]int8, 0, len(addrs))
 	for _, addr := range addrs {
 		v, exists := u.l1d.Get(addr)
 		if !exists {
-			return nil, false
+			for _, pending := range u.pendings {
+				if pending[0] <= addr && addr < pending[1] {
+					return nil, true, false
+				}
+			}
+
+			u.pendings = append(u.pendings, [2]int32{addr, addr + l1DCacheLineSize + 1})
+			return nil, false, false
 		}
 		memory = append(memory, v)
 	}
-	return memory, true
+	return memory, false, true
 }
 
 func (u *memoryManagementUnit) doesExecutionMemoryChangesExistsInL1D(execution risc.Execution) bool {
@@ -54,7 +63,7 @@ func (u *memoryManagementUnit) doesExecutionMemoryChangesExistsInL1D(execution r
 	for addr := range execution.MemoryChanges {
 		addrs = append(addrs, addr)
 	}
-	_, exists := u.getFromL1D(addrs)
+	_, _, exists := u.getFromL1D(addrs)
 	return exists
 }
 
@@ -102,6 +111,16 @@ func (u *memoryManagementUnit) fetchCacheLine(addr int32) []int8 {
 
 func (u *memoryManagementUnit) pushLineToL1D(addr int32, line []int8) {
 	evicted := u.l1d.PushLine(addr, line)
+	for i, pending := range u.pendings {
+		if pending[0] == addr {
+			if len(u.pendings) == 0 {
+				u.pendings = nil
+			} else {
+				u.pendings = append(u.pendings[:i], u.pendings[i+1:]...)
+			}
+			break
+		}
+	}
 	if len(evicted) == 0 {
 		return
 	}

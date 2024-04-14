@@ -54,7 +54,10 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 
 	addrs := u.runner.Runner.MemoryRead(ctx)
 	if len(addrs) != 0 {
-		if memory, exists := u.mmu.getFromL1D(addrs); exists {
+		memory, pending, exists := u.mmu.getFromL1D(addrs)
+		if pending {
+			return false, 0, 0, false, nil
+		} else if exists {
 			u.memory = memory
 			// As the coroutine is executed the next cycle, if a L1D access takes
 			// one cycle, we should be good to go during the next cycle
@@ -77,7 +80,7 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 				}
 				line := u.mmu.fetchCacheLine(addrs[0])
 				u.mmu.pushLineToL1D(addrs[0], line)
-				m, exists := u.mmu.getFromL1D(addrs)
+				m, _, exists := u.mmu.getFromL1D(addrs)
 				if !exists {
 					panic("cache line doesn't exist")
 				}

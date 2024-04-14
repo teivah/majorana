@@ -12,6 +12,7 @@ const (
 	m1SumsExecutionTime         = 1300.
 	m1StringCopyExecutionTime   = 3232.
 	m1StringLengthExecutionTime = 3231.
+	m1BubbleSortExecutionTime   = 73.39
 )
 
 func primeStats(cycles int) string {
@@ -39,5 +40,12 @@ func stringLengthStats(cycles int) string {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1StringLengthExecutionTime
+	return fmt.Sprintf("%.0f ns, %.1f%% slower", ns, slower)
+}
+
+func bubbleSortStats(cycles int) string {
+	s := float64(cycles) / m1Frequency
+	ns := s * secondToNanosecond
+	slower := ns / m1BubbleSortExecutionTime
 	return fmt.Sprintf("%.0f ns, %.1f%% slower", ns, slower)
 }
