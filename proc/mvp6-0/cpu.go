@@ -139,6 +139,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			break
 		}
 		if flush {
+			// TODO Same checks as in MVP 6.1
 			m.writeBus.Connect(cycle + 1)
 			for _, wu := range m.writeUnits {
 				for !wu.isEmpty() || !m.writeBus.IsEmpty() {
