@@ -838,13 +838,6 @@ func validateArgs(expected int, args []string, line string) error {
 	return nil
 }
 
-func validateArgsInterval(min, max int, args []string, line string) error {
-	if len(args) >= min && len(args) <= max {
-		return nil
-	}
-	return fmt.Errorf("invalid line: expected between %d and %d arguments, got %d: %v", min, max, len(args), line)
-}
-
 func parseRegister(s string) (RegisterType, error) {
 	switch s {
 	case "zero", "$zero":

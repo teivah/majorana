@@ -1,14 +1,14 @@
 package test
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 )
 
 func ReadFile(t *testing.T, filename string) string {
-	content, err := ioutil.ReadFile(filename)
+	content, err := os.ReadFile(filename)
 	require.NoError(t, err)
 	return string(content)
 }

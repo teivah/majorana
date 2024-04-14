@@ -387,7 +387,7 @@ func (op *bgeu) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op bgeu) MemoryRead(ctx *Context) []int32 {
+func (op *bgeu) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
