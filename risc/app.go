@@ -42,6 +42,7 @@ func (ctx *Context) Flush() {
 }
 
 func (ctx *Context) SequenceID(pc int32) int32 {
+	// TODO Find better
 	return pc + ctx.sequenceID*1000
 }
 

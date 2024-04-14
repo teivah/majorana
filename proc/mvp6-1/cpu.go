@@ -59,13 +59,11 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 		executeUnits: []*executeUnit{
 			newExecuteUnit(bu, executeBus, writeBus, mmu),
 			newExecuteUnit(bu, executeBus, writeBus, mmu),
-			newExecuteUnit(bu, executeBus, writeBus, mmu),
 		},
 		writeBus: writeBus,
 		writeUnits: []*writeUnit{
 			newWriteUnit(writeBus),
 			newWriteUnit(writeBus),
-			//newWriteUnit(writeBus),
 		},
 		branchUnit:           bu,
 		memoryManagementUnit: mmu,
@@ -143,7 +141,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			break
 		}
 		if flush {
-			// TODO Comment the rationale for this code
+			// Execute pending instructions up to sequenceID.
 			log.Info(m.ctx, "\t️⚠️ Executing previous unit cycles")
 
 			for _, eu := range m.executeUnits {
@@ -153,6 +151,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 			for {
 				isEmpty := true
+				cycle++
 				for _, eu := range m.executeUnits {
 					if !eu.isEmpty() {
 						isEmpty = false
@@ -168,12 +167,10 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 							ret = resp.isReturn
 						}
 					}
-					cycle++
 				}
 				m.writeBus.Connect(cycle + 1)
 				for _, wu := range m.writeUnits {
 					for !wu.isEmpty() || !m.writeBus.IsEmpty() {
-						cycle++
 						_ = wu.Cycle(wuReq{m.ctx, sequenceID})
 					}
 				}
@@ -181,14 +178,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 					break
 				}
 			}
-
-			//m.writeBus.Connect(cycle + 1)
-			//for _, wu := range m.writeUnits {
-			//	for !wu.isEmpty() || !m.writeBus.IsEmpty() {
-			//		cycle++
-			//		_ = wu.Cycle(wuReq{m.ctx, from})
-			//	}
-			//}
 
 			log.Info(m.ctx, "\t️⚠️ Flush to %d", pc/4)
 			m.flush(pc)
