@@ -6,3 +6,8 @@
 - Register renaming to prevent war and waw
 - Coroutine
 - Spectre https://www.youtube.com/watch?v=q3-xCvzBjGs
+- What if I disable the BU?
+- TLB?
+- CU: graph analysis
+- If a matching entry is found in the btb, fetching begins immediately at the predicted pc
+- L1 should be per core

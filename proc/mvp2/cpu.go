@@ -17,15 +17,15 @@ const (
 type CPU struct {
 	ctx     *risc.Context
 	cycle   int
-	li1From int32
-	li1To   int32
+	l1iFrom int32
+	l1iTo   int32
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
 	return &CPU{
 		ctx:     risc.NewContext(debug, memoryBytes),
-		li1From: -1,
-		li1To:   -1,
+		l1iFrom: -1,
+		l1iTo:   -1,
 	}
 }
 
@@ -87,13 +87,13 @@ func (m *CPU) fetchInstruction(pc int32) int32 {
 }
 
 func (m *CPU) isPresentInL1i(pc int32) bool {
-	return pc >= m.li1From && pc <= m.li1To
+	return pc >= m.l1iFrom && pc <= m.l1iTo
 }
 
 func (m *CPU) fetchL1i(pc int32) {
 	m.cycle += cyclesMemoryAccess
-	m.li1From = pc
-	m.li1To = pc + l1iSize
+	m.l1iFrom = pc
+	m.l1iTo = pc + l1iSize
 }
 
 func (m *CPU) decode(app risc.Application, pc int32) risc.InstructionRunner {
