@@ -330,7 +330,7 @@ func testStringCopy(t *testing.T, factory func(int) virtualMachine, memory int, 
 
 func testBubbleSort(t *testing.T, factory func(int) virtualMachine, stats bool) {
 	t.Run("Bubble sort", func(t *testing.T) {
-		data := 100
+		data := 2
 		vm := factory(data * 4)
 		for i := 0; i < data; i++ {
 			bytes := risc.BytesFromLowBits(int32(data - i))

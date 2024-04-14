@@ -12,7 +12,7 @@ bubsort:
     add t3, a0, t3    # new scaled memory address
     lw  t4, -4(t3)    # load list[i-1] into t4
     lw  t5, 0(t3)     # load list[i] into t5
-    ble t4, t5, 3     # if list[i-1] < list[i], it's in position
+    ble t4, t5, 3     # if list[i-1] <= list[i], it's in position
     # if we get here, we need to swap
     li  t0, 1         # swapped = true
     sw  t4, 0(t3)     # list[i] = list[i-1]

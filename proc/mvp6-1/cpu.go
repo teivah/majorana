@@ -33,8 +33,6 @@ type CPU struct {
 	writeUnits           []*writeUnit
 	branchUnit           *btbBranchUnit
 	memoryManagementUnit *memoryManagementUnit
-
-	counterFlush int
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
@@ -47,7 +45,7 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 
 	ctx := risc.NewContext(debug, memoryBytes)
 	mmu := newMemoryManagementUnit(ctx)
-	fu := newFetchUnit(mmu, decodeBus)
+	fu := newFetchUnit(ctx, mmu, decodeBus)
 	du := newDecodeUnit(decodeBus, controlBus)
 	bu := newBTBBranchUnit(4, fu, du)
 	return &CPU{
@@ -61,11 +59,13 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 		executeUnits: []*executeUnit{
 			newExecuteUnit(bu, executeBus, writeBus, mmu),
 			newExecuteUnit(bu, executeBus, writeBus, mmu),
+			newExecuteUnit(bu, executeBus, writeBus, mmu),
 		},
 		writeBus: writeBus,
 		writeUnits: []*writeUnit{
 			newWriteUnit(writeBus),
 			newWriteUnit(writeBus),
+			//newWriteUnit(writeBus),
 		},
 		branchUnit:           bu,
 		memoryManagementUnit: mmu,
@@ -82,7 +82,10 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	}()
 	cycle := 0
 	for {
-		cycle += 1
+		cycle++
+		//if cycle > 1000 {
+		//	return 0, nil
+		//}
 		log.Info(m.ctx, "Cycle %d", cycle)
 		m.decodeBus.Connect(cycle)
 		m.controlBus.Connect(cycle)
@@ -100,19 +103,20 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 		// Execute
 		var (
-			flush bool
-			from  int32
-			pc    int32
-			ret   bool
+			flush      bool
+			sequenceID int32
+			pc         int32
+			ret        bool
 		)
 		for i, eu := range m.executeUnits {
 			log.Infou(m.ctx, "EU", "Execute unit %d", i)
+			eu.sequenceID = sequenceID
 			resp := eu.Cycle(euReq{cycle, m.ctx, app})
 			if resp.err != nil {
 				return 0, resp.err
 			}
 			if resp.flush {
-				from = resp.from
+				sequenceID = resp.sequenceID
 			}
 			flush = flush || resp.flush
 			pc = max(pc, resp.pc)
@@ -127,7 +131,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 		if ret {
 			log.Info(m.ctx, "\t🛑 Return")
-			m.counterFlush++
 			cycle++
 			m.writeBus.Connect(cycle)
 			for !m.areWriteUnitsEmpty() || !m.writeBus.IsEmpty() {
@@ -140,13 +143,52 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			break
 		}
 		if flush {
-			m.writeBus.Connect(cycle + 1)
-			for _, wu := range m.writeUnits {
-				for !wu.isEmpty() || !m.writeBus.IsEmpty() {
+			// TODO Comment the rationale for this code
+			log.Info(m.ctx, "\t️⚠️ Executing previous unit cycles")
+
+			for _, eu := range m.executeUnits {
+				eu.sequenceID = sequenceID
+			}
+			fromCycle := cycle
+
+			for {
+				isEmpty := true
+				for _, eu := range m.executeUnits {
+					if !eu.isEmpty() {
+						isEmpty = false
+						resp := eu.Cycle(euReq{fromCycle, m.ctx, app})
+						if resp.err != nil {
+							return 0, nil
+						}
+						if resp.flush {
+							log.Info(m.ctx, "\t️⚠️️⚠️ Proposition of an inner flush")
+							sequenceID = resp.sequenceID
+							flush = resp.flush
+							pc = resp.pc
+							ret = resp.isReturn
+						}
+					}
 					cycle++
-					_ = wu.Cycle(wuReq{m.ctx, from})
+				}
+				m.writeBus.Connect(cycle + 1)
+				for _, wu := range m.writeUnits {
+					for !wu.isEmpty() || !m.writeBus.IsEmpty() {
+						cycle++
+						_ = wu.Cycle(wuReq{m.ctx, sequenceID})
+					}
+				}
+				if isEmpty {
+					break
 				}
 			}
+
+			//m.writeBus.Connect(cycle + 1)
+			//for _, wu := range m.writeUnits {
+			//	for !wu.isEmpty() || !m.writeBus.IsEmpty() {
+			//		cycle++
+			//		_ = wu.Cycle(wuReq{m.ctx, from})
+			//	}
+			//}
 
 			log.Info(m.ctx, "\t️⚠️ Flush to %d", pc/4)
 			m.flush(pc)
@@ -165,7 +207,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 func (m *CPU) Stats() map[string]any {
 	return map[string]any{
-		"flush":                  m.counterFlush,
 		"du_pending_read":        m.decodeUnit.pendingRead.Stats(),
 		"du_blocked":             m.decodeUnit.blocked.Stats(),
 		"du_pushed":              m.decodeUnit.pushed.Stats(),

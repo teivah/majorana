@@ -60,7 +60,7 @@ func (m *CPU) Context() *risc.Context {
 func (m *CPU) Run(app risc.Application) (int, error) {
 	cycle := 0
 	for {
-		cycle += 1
+		cycle++
 		if m.ctx.Debug {
 			fmt.Printf("%d\n", int32(cycle))
 		}
@@ -130,10 +130,10 @@ func (m *CPU) flush(pc int32) {
 
 func (m *CPU) isComplete() bool {
 	return m.fetchUnit.isEmpty() &&
-		m.decodeUnit.isEmpty() &&
-		m.executeUnit.isEmpty() &&
-		m.writeUnit.isEmpty() &&
-		m.decodeBus.IsEmpty() &&
-		m.executeBus.IsEmpty() &&
-		m.writeBus.IsEmpty()
+			m.decodeUnit.isEmpty() &&
+			m.executeUnit.isEmpty() &&
+			m.writeUnit.isEmpty() &&
+			m.decodeBus.IsEmpty() &&
+			m.executeBus.IsEmpty() &&
+			m.writeBus.IsEmpty()
 }

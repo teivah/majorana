@@ -28,7 +28,7 @@ func (u *writeUnit) cycle(ctx *risc.Context, before int32) {
 	if !exists {
 		return
 	}
-	if before != -1 && execution.Pc > before {
+	if before != -1 && execution.SequenceID > before {
 		return
 	}
 	if execution.Execution.RegisterChange {

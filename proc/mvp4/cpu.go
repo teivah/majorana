@@ -56,7 +56,7 @@ func (m *CPU) Context() *risc.Context {
 func (m *CPU) Run(app risc.Application) (int, error) {
 	cycle := 0
 	for {
-		cycle += 1
+		cycle++
 		if m.ctx.Debug {
 			fmt.Printf("%d\n", int32(cycle))
 		}

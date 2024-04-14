@@ -3,8 +3,9 @@ package risc
 import "fmt"
 
 type InstructionRunnerPc struct {
-	Runner InstructionRunner
-	Pc     int32
+	Runner     InstructionRunner
+	Pc         int32
+	SequenceID int32
 
 	Forwarder       chan<- int32
 	Receiver        <-chan int32

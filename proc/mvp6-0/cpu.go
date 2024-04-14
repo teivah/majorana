@@ -82,7 +82,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	}()
 	cycle := 0
 	for {
-		cycle += 1
+		cycle++
 		log.Info(m.ctx, "Cycle %d", cycle)
 		m.decodeBus.Connect(cycle)
 		m.controlBus.Connect(cycle)

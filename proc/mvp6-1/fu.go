@@ -14,6 +14,8 @@ type fuReq struct {
 }
 
 type fetchUnit struct {
+	// TODO Should be everywhere in struct
+	ctx *risc.Context
 	co.Coroutine[fuReq, error]
 	pc              int32
 	toCleanPending  bool
@@ -23,13 +25,14 @@ type fetchUnit struct {
 	remainingCycles int
 }
 
-func newFetchUnit(mmu *memoryManagementUnit, outBus *comp.BufferedBus[int32]) *fetchUnit {
+func newFetchUnit(ctx *risc.Context, mmu *memoryManagementUnit, outBus *comp.BufferedBus[int32]) *fetchUnit {
 	fu := &fetchUnit{
+		ctx:    ctx,
 		mmu:    mmu,
 		outBus: outBus,
 	}
 	fu.Coroutine = co.New(fu.start)
-	fu.Coroutine.Pre(func(r fuReq) {
+	fu.Coroutine.Pre(func(r fuReq) bool {
 		if fu.toCleanPending {
 			// The fetch unit may have sent to the bus wrong instruction, we make sure
 			// this is not the case by cleaning it
@@ -37,6 +40,7 @@ func newFetchUnit(mmu *memoryManagementUnit, outBus *comp.BufferedBus[int32]) *f
 			fu.outBus.Clean()
 			fu.toCleanPending = false
 		}
+		return false
 	})
 	return fu
 }
@@ -89,11 +93,19 @@ func (u *fetchUnit) memoryAccess(r fuReq) error {
 
 func (u *fetchUnit) reset(pc int32, cleanPending bool) {
 	u.Reset()
+	if u.pc > pc {
+		// Jump backwards
+		u.ctx.IncSequenceID()
+	}
 	u.pc = pc
 	u.toCleanPending = cleanPending
 }
 
 func (u *fetchUnit) flush(pc int32) {
+	if u.pc > pc {
+		// Jump backwards
+		u.ctx.IncSequenceID()
+	}
 	u.Reset()
 	u.complete = false
 	u.pc = pc

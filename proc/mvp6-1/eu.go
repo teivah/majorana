@@ -14,11 +14,11 @@ type euReq struct {
 }
 
 type euResp struct {
-	flush    bool
-	from     int32
-	pc       int32
-	isReturn bool
-	err      error
+	flush      bool
+	sequenceID int32
+	pc         int32
+	isReturn   bool
+	err        error
 }
 
 type executeUnit struct {
@@ -29,8 +29,9 @@ type executeUnit struct {
 	mmu    *memoryManagementUnit
 
 	// Pending
-	memory []int8
-	runner risc.InstructionRunnerPc
+	memory     []int8
+	runner     risc.InstructionRunnerPc
+	sequenceID int32
 }
 
 func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext], mmu *memoryManagementUnit) *executeUnit {
@@ -41,6 +42,16 @@ func newExecuteUnit(bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.Instruction
 		mmu:    mmu,
 	}
 	eu.Coroutine = co.New(eu.start)
+	eu.Coroutine.Pre(func(r euReq) bool {
+		if eu.sequenceID == 0 || eu.runner.Runner == nil {
+			return false
+		}
+		if eu.runner.SequenceID > eu.sequenceID {
+			eu.flush()
+			return true
+		}
+		return false
+	})
 	return eu
 }
 
@@ -138,7 +149,7 @@ func (u *executeUnit) run(r euReq) euResp {
 	}
 
 	u.outBus.Add(risc.ExecutionContext{
-		Pc:              u.runner.Pc,
+		SequenceID:      u.runner.SequenceID,
 		Execution:       execution,
 		InstructionType: u.runner.Runner.InstructionType(),
 		WriteRegisters:  u.runner.Runner.WriteRegisters(),
@@ -153,7 +164,7 @@ func (u *executeUnit) run(r euReq) euResp {
 		}
 		if execution.PcChange && u.bu.shouldFlushPipeline(execution.NextPc) {
 			log.Infoi(r.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "should be a flush")
-			return euResp{flush: true, from: u.runner.Pc, pc: execution.NextPc}
+			return euResp{flush: true, sequenceID: u.runner.SequenceID, pc: execution.NextPc}
 		}
 	} else {
 		u.runner.Forwarder <- execution.RegisterValue
@@ -168,6 +179,7 @@ func (u *executeUnit) run(r euReq) euResp {
 
 func (u *executeUnit) flush() {
 	u.Reset()
+	u.sequenceID = 0
 }
 
 func (u *executeUnit) isEmpty() bool {

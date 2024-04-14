@@ -110,7 +110,7 @@ func (u *executeUnit) coRun(cycle int, ctx *risc.Context, app risc.Application) 
 	}
 
 	u.outBus.Add(risc.ExecutionContext{
-		Pc:              u.runner.Pc,
+		SequenceID:      u.runner.SequenceID,
 		Execution:       execution,
 		InstructionType: u.runner.Runner.InstructionType(),
 		WriteRegisters:  u.runner.Runner.WriteRegisters(),

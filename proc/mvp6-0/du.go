@@ -70,8 +70,9 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 			jump = true
 		}
 		u.outBus.Add(risc.InstructionRunnerPc{
-			Runner: runner,
-			Pc:     pc,
+			Runner:     runner,
+			Pc:         pc,
+			SequenceID: ctx.SequenceID(pc),
 		}, cycle)
 		pushed++
 		if jump {

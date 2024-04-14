@@ -3,7 +3,7 @@ package risc
 import "fmt"
 
 type ExecutionContext struct {
-	Pc              int32
+	SequenceID      int32
 	Execution       Execution
 	InstructionType InstructionType
 	WriteRegisters  []RegisterType
@@ -21,6 +21,9 @@ type Context struct {
 	PendingReadRegisters  map[RegisterType]int
 	Memory                []int8
 	Debug                 bool
+	// SequenceID represents a monotonic ID for the sequence.
+	// It increments when we jump backwards.
+	sequenceID int32
 }
 
 func NewContext(debug bool, memoryBytes int) *Context {
@@ -36,6 +39,14 @@ func NewContext(debug bool, memoryBytes int) *Context {
 func (ctx *Context) Flush() {
 	ctx.PendingWriteRegisters = make(map[RegisterType]int)
 	ctx.PendingReadRegisters = make(map[RegisterType]int)
+}
+
+func (ctx *Context) SequenceID(pc int32) int32 {
+	return pc + ctx.sequenceID*1000
+}
+
+func (ctx *Context) IncSequenceID() {
+	ctx.sequenceID++
 }
 
 func (ctx *Context) WriteRegister(exe Execution) {

@@ -4,7 +4,8 @@ type Coroutine[A, B any] struct {
 	start   func(A) B
 	current func(A) B
 	isStart bool
-	pre     func(A)
+	// Return true if should stop
+	pre func(A) bool
 }
 
 func New[A, B any](f func(A) B) Coroutine[A, B] {
@@ -15,13 +16,16 @@ func New[A, B any](f func(A) B) Coroutine[A, B] {
 	}
 }
 
-func (c *Coroutine[A, B]) Pre(f func(A)) {
+func (c *Coroutine[A, B]) Pre(f func(A) bool) {
 	c.pre = f
 }
 
 func (c *Coroutine[A, B]) Cycle(a A) B {
+	var zero B
 	if c.pre != nil {
-		c.pre(a)
+		if c.pre(a) {
+			return zero
+		}
 	}
 	return c.current(a)
 }
