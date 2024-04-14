@@ -647,7 +647,7 @@ func TestBenchmarks(t *testing.T) {
 				}
 
 				assert.Equal(t, bubbleExpected[name], cycles)
-				lengthOutput[tableRow[name]] = bubbleSortStats(cycles)
+				bubbleOutput[tableRow[name]] = bubbleSortStats(cycles)
 			})
 		}
 	})
