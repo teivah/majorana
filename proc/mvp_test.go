@@ -103,6 +103,7 @@ func TestMvp1(t *testing.T) {
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
+	testConditionalBranch(t, factory, false)
 }
 
 func TestMvp2(t *testing.T) {
@@ -114,6 +115,7 @@ func TestMvp2(t *testing.T) {
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
+	testConditionalBranch(t, factory, false)
 }
 
 func TestMvp3(t *testing.T) {
@@ -125,6 +127,7 @@ func TestMvp3(t *testing.T) {
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
+	testConditionalBranch(t, factory, false)
 }
 
 func TestMvp4(t *testing.T) {
@@ -136,6 +139,7 @@ func TestMvp4(t *testing.T) {
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
+	testConditionalBranch(t, factory, false)
 }
 
 func TestMvp5(t *testing.T) {
@@ -147,28 +151,55 @@ func TestMvp5(t *testing.T) {
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
+	testConditionalBranch(t, factory, false)
 }
 
-func TestMvp6_0(t *testing.T) {
+func TestMvp6_0_2x2(t *testing.T) {
 	factory := func(memory int) virtualMachine {
-		return mvp6_0.NewCPU(false, memory)
+		return mvp6_0.NewCPU(false, memory, 2, 2)
 	}
 	testPrime(t, factory, memory, testFrom, testTo, false)
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
+	testConditionalBranch(t, factory, false)
 }
 
-func TestMvp6_1(t *testing.T) {
+func TestMvp6_0_3x3(t *testing.T) {
 	factory := func(memory int) virtualMachine {
-		return mvp6_1.NewCPU(false, memory)
+		return mvp6_0.NewCPU(false, memory, 3, 3)
 	}
 	testPrime(t, factory, memory, testFrom, testTo, false)
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
+	testConditionalBranch(t, factory, false)
+}
+
+func TestMvp6_1_2x2(t *testing.T) {
+	factory := func(memory int) virtualMachine {
+		return mvp6_1.NewCPU(false, memory, 2, 2)
+	}
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, factory, false)
+	testConditionalBranch(t, factory, false)
+}
+
+func TestMvp6_1_3x3(t *testing.T) {
+	factory := func(memory int) virtualMachine {
+		return mvp6_1.NewCPU(false, memory, 3, 3)
+	}
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, factory, false)
+	testConditionalBranch(t, factory, false)
 }
 
 func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
@@ -361,6 +392,18 @@ func testBubbleSort(t *testing.T, factory func(int) virtualMachine, stats bool) 
 	})
 }
 
+func testConditionalBranch(t *testing.T, factory func(int) virtualMachine, stats bool) {
+	t.Run("Conditional branch", func(t *testing.T) {
+		vm := factory(40)
+		instructions := test.ReadFile(t, "../res/conditional-branch.asm")
+		app, err := risc.Parse(instructions)
+		require.NoError(t, err)
+		_, err = vm.Run(app)
+		require.NoError(t, err)
+		assert.Equal(t, int32(0), vm.Context().Registers[risc.T1])
+	})
+}
+
 //func TestMvp1Jal(t *testing.T) {
 //	factory := func() virtualMachine {
 //		return mvp1.NewCPU(false, memory)
@@ -481,10 +524,10 @@ func TestBenchmarks(t *testing.T) {
 			return mvp5.NewCPU(false, m)
 		},
 		"MVP-6.0": func(m int) virtualMachine {
-			return mvp6_0.NewCPU(false, m)
+			return mvp6_0.NewCPU(false, m, 2, 2)
 		},
 		"MVP-6.1": func(m int) virtualMachine {
-			return mvp6_1.NewCPU(false, m)
+			return mvp6_1.NewCPU(false, m, 2, 2)
 		},
 	}
 

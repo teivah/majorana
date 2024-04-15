@@ -35,7 +35,7 @@ type CPU struct {
 	memoryManagementUnit *memoryManagementUnit
 }
 
-func NewCPU(debug bool, memoryBytes int) *CPU {
+func NewCPU(debug bool, memoryBytes int, eu, wu int) *CPU {
 	busSize := 2
 	multiplier := 1
 	decodeBus := comp.NewBufferedBus[int32](busSize*multiplier, busSize*multiplier)
@@ -48,23 +48,28 @@ func NewCPU(debug bool, memoryBytes int) *CPU {
 	fu := newFetchUnit(ctx, mmu, decodeBus)
 	du := newDecodeUnit(decodeBus, controlBus)
 	bu := newBTBBranchUnit(4, fu, du)
+
+	eus := make([]*executeUnit, 0, eu)
+	for i := 0; i < eu; i++ {
+		eus = append(eus, newExecuteUnit(bu, executeBus, writeBus, mmu))
+	}
+
+	wus := make([]*writeUnit, 0, wu)
+	for i := 0; i < wu; i++ {
+		wus = append(wus, newWriteUnit(writeBus))
+	}
+
 	return &CPU{
-		ctx:         ctx,
-		fetchUnit:   fu,
-		decodeBus:   decodeBus,
-		decodeUnit:  du,
-		controlBus:  controlBus,
-		controlUnit: newControlUnit(controlBus, executeBus),
-		executeBus:  executeBus,
-		executeUnits: []*executeUnit{
-			newExecuteUnit(bu, executeBus, writeBus, mmu),
-			newExecuteUnit(bu, executeBus, writeBus, mmu),
-		},
-		writeBus: writeBus,
-		writeUnits: []*writeUnit{
-			newWriteUnit(writeBus),
-			newWriteUnit(writeBus),
-		},
+		ctx:                  ctx,
+		fetchUnit:            fu,
+		decodeBus:            decodeBus,
+		decodeUnit:           du,
+		controlBus:           controlBus,
+		controlUnit:          newControlUnit(controlBus, executeBus),
+		executeBus:           executeBus,
+		executeUnits:         eus,
+		writeBus:             writeBus,
+		writeUnits:           wus,
 		branchUnit:           bu,
 		memoryManagementUnit: mmu,
 	}
