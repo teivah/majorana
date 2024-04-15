@@ -104,6 +104,7 @@ func TestMvp1(t *testing.T) {
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
 	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func TestMvp2(t *testing.T) {
@@ -116,6 +117,7 @@ func TestMvp2(t *testing.T) {
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
 	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func TestMvp3(t *testing.T) {
@@ -128,6 +130,7 @@ func TestMvp3(t *testing.T) {
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
 	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func TestMvp4(t *testing.T) {
@@ -140,6 +143,7 @@ func TestMvp4(t *testing.T) {
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
 	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func TestMvp5(t *testing.T) {
@@ -152,6 +156,7 @@ func TestMvp5(t *testing.T) {
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
 	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func TestMvp6_0_2x2(t *testing.T) {
@@ -164,6 +169,7 @@ func TestMvp6_0_2x2(t *testing.T) {
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
 	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func TestMvp6_0_3x3(t *testing.T) {
@@ -176,6 +182,7 @@ func TestMvp6_0_3x3(t *testing.T) {
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
 	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func TestMvp6_1_2x2(t *testing.T) {
@@ -188,6 +195,7 @@ func TestMvp6_1_2x2(t *testing.T) {
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
 	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func TestMvp6_1_3x3(t *testing.T) {
@@ -200,6 +208,7 @@ func TestMvp6_1_3x3(t *testing.T) {
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
 	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
@@ -401,6 +410,28 @@ func testConditionalBranch(t *testing.T, factory func(int) virtualMachine, stats
 		_, err = vm.Run(app)
 		require.NoError(t, err)
 		assert.Equal(t, int32(0), vm.Context().Registers[risc.T1])
+	})
+}
+
+func testSpectre(t *testing.T, factory func(int) virtualMachine, stats bool) {
+	t.Run("Spectre", func(t *testing.T) {
+		vm := factory(40)
+		secret := 42
+		data := []int{3, 1, 2, 3, 0, 0, 0, 0, 0, secret}
+		for idx, i := range data {
+			bytes := risc.BytesFromLowBits(int32(i))
+			vm.Context().Memory[4*idx+0] = bytes[0]
+			vm.Context().Memory[4*idx+1] = bytes[1]
+			vm.Context().Memory[4*idx+2] = bytes[2]
+			vm.Context().Memory[4*idx+3] = bytes[3]
+		}
+		instructions := test.ReadFile(t, "../res/spectre.asm")
+		app, err := risc.Parse(instructions)
+		require.NoError(t, err)
+		_, err = vm.Run(app)
+		require.NoError(t, err)
+		got := risc.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
+		assert.NotEqual(t, int32(secret), got)
 	})
 }
 
