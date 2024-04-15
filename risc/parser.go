@@ -19,9 +19,7 @@ func Parse(s string) (Application, error) {
 
 		firstWhitespace := strings.Index(line, " ")
 		lastCharacters := line[len(line)-1]
-		if firstWhitespace == -1 && lastCharacters != ':' {
-			return Application{}, fmt.Errorf("invalid line: %s", line)
-		} else if firstWhitespace == -1 && lastCharacters == ':' {
+		if firstWhitespace == -1 && lastCharacters == ':' {
 			labels[line[:len(line)-1]] = pc
 			continue
 		}
@@ -34,7 +32,11 @@ func Parse(s string) (Application, error) {
 
 		elements := strings.Split(remainingLine, ",")
 
-		switch strings.ToLower(line[:firstWhitespace]) {
+		del := firstWhitespace
+		if del == -1 {
+			del = len(line)
+		}
+		switch strings.ToLower(line[:del]) {
 		case "add":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
 				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
