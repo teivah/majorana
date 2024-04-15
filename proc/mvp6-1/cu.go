@@ -19,6 +19,7 @@ type controlUnit struct {
 	pushedRunnersInCurrentCycle  map[*risc.InstructionRunnerPc]bool
 	skippedInCurrentCycle        []risc.InstructionRunnerPc
 
+	// Monitoring
 	pushed            *obs.Gauge
 	pending           *obs.Gauge
 	pendingRead       *obs.Gauge
@@ -28,7 +29,6 @@ type controlUnit struct {
 	cantAdd           int
 	blockedBranch     int
 	blockedDataHazard int
-	routeSecond       bool
 }
 
 func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc]) *controlUnit {
@@ -46,10 +46,9 @@ func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *c
 }
 
 func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
-	pushedCount := 0
 	u.pushedRunnersInCurrentCycle = make(map[*risc.InstructionRunnerPc]bool)
 	defer func() {
-		u.pushed.Push(pushedCount)
+		u.pushed.Push(len(u.pushedRunnersInCurrentCycle))
 		u.pending.Push(u.pendings.Length())
 		u.pushedRunnersInPreviousCycle = u.pushedRunnersInCurrentCycle
 	}()
@@ -68,14 +67,12 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		return
 	}
 
-	//remaining := u.outBus.RemainingToAdd()
 	for elem := range u.pendings.Iterator() {
 		runner := u.pendings.Value(elem)
 
-		push, stop := u.handleRunner(ctx, cycle, pushedCount, &runner)
+		push, stop := u.handleRunner(ctx, cycle, &runner)
 		if push {
 			u.pendings.Remove(elem)
-			pushedCount++
 		} else {
 			u.skippedInCurrentCycle = append(u.skippedInCurrentCycle, runner)
 		}
@@ -90,10 +87,8 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			return
 		}
 
-		push, stop := u.handleRunner(ctx, cycle, pushedCount, &runner)
-		if push {
-			pushedCount++
-		} else {
+		push, stop := u.handleRunner(ctx, cycle, &runner)
+		if !push {
 			u.pendings.Push(runner)
 			u.skippedInCurrentCycle = append(u.skippedInCurrentCycle, runner)
 		}
@@ -103,12 +98,12 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 	}
 }
 
-func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, pushedCount int, runner *risc.InstructionRunnerPc) (push, stop bool) {
+func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, runner *risc.InstructionRunnerPc) (push, stop bool) {
 	if runner.Runner.InstructionType() == risc.Ret && !u.outBus.IsEmpty() {
 		return false, true
 	}
 
-	if pushedCount > 0 && runner.Runner.InstructionType().IsBranch() {
+	if len(u.pushedRunnersInCurrentCycle) > 0 && runner.Runner.InstructionType().IsBranch() {
 		u.blockedBranch++
 		return false, true
 	}
@@ -126,11 +121,6 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, pushedCount int
 		}
 		u.pushedRunnersInCurrentCycle[runner] = true
 		return true, false
-	}
-
-	if u.isDataHazardWithSkippedRunners(runner) {
-		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard with skipped runners")
-		return false, false
 	}
 
 	if should, previousRunner, register := u.shouldUseForwarding(runner, hazards, hazardTypes); should {
@@ -154,6 +144,8 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, pushedCount int
 	log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%+v, types=%+v", hazards, hazardTypes)
 	u.blockedDataHazard++
 
+	// We have to stop here, otherwise we could fall into the case where an
+	// instruction is executed even if a branch shouldn't be taken.
 	return false, true
 }
 
@@ -164,9 +156,6 @@ func (u *controlUnit) isDataHazardWithSkippedRunners(runner *risc.InstructionRun
 				continue
 			}
 			for _, skippedRegister := range skippedRunner.Runner.WriteRegisters() {
-				if skippedRegister == risc.Zero {
-					continue
-				}
 				if register == skippedRegister {
 					// Read after write
 					return true
@@ -179,18 +168,12 @@ func (u *controlUnit) isDataHazardWithSkippedRunners(runner *risc.InstructionRun
 				continue
 			}
 			for _, skippedRegister := range skippedRunner.Runner.WriteRegisters() {
-				if skippedRegister == risc.Zero {
-					continue
-				}
 				if register == skippedRegister {
 					// Write after write
 					return true
 				}
 			}
 			for _, skippedRegister := range skippedRunner.Runner.ReadRegisters() {
-				if skippedRegister == risc.Zero {
-					continue
-				}
 				if register == skippedRegister {
 					// Write after read
 					return true
