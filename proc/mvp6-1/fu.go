@@ -92,11 +92,8 @@ func (u *fetchUnit) memoryAccess(r fuReq) error {
 }
 
 func (u *fetchUnit) reset(pc int32, cleanPending bool) {
+	u.ctx.IncSequenceID()
 	u.Reset()
-	if u.pc > pc {
-		// Jump backwards
-		u.ctx.IncSequenceID()
-	}
 	u.pc = pc
 	u.toCleanPending = cleanPending
 }
