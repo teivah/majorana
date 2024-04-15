@@ -55,8 +55,8 @@ func (u *btbBranchUnit) shouldFlushPipeline(pc int32) bool {
 	return u.expectation != pc
 }
 
-func (u *btbBranchUnit) notifyUnconditionalBranch() {
-	u.cu.notifyUnconditionalBranch()
+func (u *btbBranchUnit) notifyConditionalBranch() {
+	u.cu.notifyConditionalBranch()
 }
 
 func (u *btbBranchUnit) notifyUnconditionalJumpAddressResolved(pc, pcTo int32) {
