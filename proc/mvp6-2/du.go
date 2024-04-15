@@ -68,6 +68,7 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		jump := false
 		if runner.InstructionType().IsUnconditionalBranch() {
 			u.pendingBranchResolution = true
+			log.Infoi(ctx, "DU", runner.InstructionType(), pc, "pending branch resolution")
 			u.log = fmt.Sprintf("%v at %d", runner.InstructionType(), pc/4)
 			jump = true
 		}

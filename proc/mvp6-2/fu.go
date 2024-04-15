@@ -102,10 +102,7 @@ func (u *fetchUnit) reset(pc int32, cleanPending bool) {
 }
 
 func (u *fetchUnit) flush(pc int32) {
-	if u.pc > pc {
-		// Jump backwards
-		u.ctx.IncSequenceID()
-	}
+	u.ctx.IncSequenceID()
 	u.Reset()
 	u.complete = false
 	u.pc = pc

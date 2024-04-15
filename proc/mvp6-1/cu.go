@@ -103,11 +103,6 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, runner *risc.In
 		return false, true
 	}
 
-	if len(u.pushedRunnersInCurrentCycle) > 0 && runner.Runner.InstructionType().IsBranch() {
-		u.blockedBranch++
-		return false, true
-	}
-
 	if u.isDataHazardWithSkippedRunners(runner) {
 		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "hazard with skipped runner")
 		return false, false
