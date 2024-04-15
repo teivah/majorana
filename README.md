@@ -127,11 +127,11 @@ Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency
 
 | Machine | Prime number | Sum of array | String copy | String length | Bubble sort |
 |:------:|:-----:|:-----:|:-----:|:-----:|:-----:|
-| Apple M1 | 31703.0 ns | 1300.0 ns | 3232.0 ns | 3231.0 ns | 73.4 ns |
-| MVP-1 | 4100053 ns, 129.3% slower | 600402 ns, 461.8% slower | 1820865 ns, 563.4% slower | 1158545 ns, 358.6% slower | 9310172 ns, 126858.9% slower |
-| MVP-2 | 266111 ns, 8.4% slower | 162581 ns, 125.1% slower | 572820 ns, 177.2% slower | 377669 ns, 116.9% slower | 3545579 ns, 48311.5% slower |
-| MVP-3 | 266111 ns, 8.4% slower | 102916 ns, 79.2% slower | 415625 ns, 128.6% slower | 220475 ns, 68.2% slower | 1680368 ns, 22896.4% slower |
-| MVP-4 | 140918 ns, 4.4% slower | 83549 ns, 64.3% slower | 364319 ns, 112.7% slower | 191550 ns, 59.3% slower | 1443855 ns, 19673.7% slower |
-| MVP-5 | 125270 ns, 4.0% slower | 82269 ns, 63.3% slower | 354720 ns, 109.8% slower | 188351 ns, 58.3% slower | 1431418 ns, 19504.3% slower |
-| MVP-6.0 | 125257 ns, 4.0% slower | 23392 ns, 18.0% slower | 207523 ns, 64.2% slower | 41155 ns, 12.7% slower | 243951 ns, 3324.0% slower |
-| MVP-6.1 | 125257 ns, 4.0% slower | 20752 ns, 16.0% slower | 201092 ns, 62.2% slower | 34703 ns, 10.7% slower | 237669 ns, 3238.4% slower |
+| Apple M1 | 31703.0 ns | 1300.0 ns | 3232.0 ns | 3231.0 ns | 42182.0 ns |
+| MVP-1 | 4100053 ns, 129.3% slower | 600402 ns, 461.8% slower | 1820865 ns, 563.4% slower | 1158545 ns, 358.6% slower | 9310172 ns, 220.7% slower |
+| MVP-2 | 266111 ns, 8.4% slower | 162581 ns, 125.1% slower | 572820 ns, 177.2% slower | 377669 ns, 116.9% slower | 3545579 ns, 84.1% slower |
+| MVP-3 | 266111 ns, 8.4% slower | 102916 ns, 79.2% slower | 415625 ns, 128.6% slower | 220475 ns, 68.2% slower | 1680368 ns, 39.8% slower |
+| MVP-4 | 140918 ns, 4.4% slower | 83549 ns, 64.3% slower | 364319 ns, 112.7% slower | 191550 ns, 59.3% slower | 1443855 ns, 34.2% slower |
+| MVP-5 | 125270 ns, 4.0% slower | 82269 ns, 63.3% slower | 354720 ns, 109.8% slower | 188351 ns, 58.3% slower | 1431418 ns, 33.9% slower |
+| MVP-6.0 | 125257 ns, 4.0% slower | 23392 ns, 18.0% slower | 207523 ns, 64.2% slower | 41155 ns, 12.7% slower | 243951 ns, 5.8% slower |
+| MVP-6.1 | 125257 ns, 4.0% slower | 20752 ns, 16.0% slower | 201092 ns, 62.2% slower | 34703 ns, 10.7% slower | 237669 ns, 5.6% slower |

@@ -12,7 +12,7 @@ const (
 	m1SumsExecutionTime         = 1300.
 	m1StringCopyExecutionTime   = 3232.
 	m1StringLengthExecutionTime = 3231.
-	m1BubbleSortExecutionTime   = 73.39
+	m1BubbleSortExecutionTime   = 42182.
 )
 
 func primeStats(cycles int) string {

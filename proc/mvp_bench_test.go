@@ -19,7 +19,6 @@ func BenchmarkPrime(b *testing.B) {
 
 func BenchmarkSums(b *testing.B) {
 	b.StopTimer()
-	// We recreate the slice to prevent CPU cache hit
 	n := benchSums
 	s := make([]int, 0, n)
 	for i := 0; i < n; i++ {
@@ -36,7 +35,6 @@ func BenchmarkSums(b *testing.B) {
 
 func BenchmarkStringCopy(b *testing.B) {
 	b.StopTimer()
-	// We recreate the slice to prevent CPU cache hit
 	src := make([]byte, 0, benchStringCopy)
 	for i := 0; i < benchStringCopy; i++ {
 		src = append(src, byte(i))
@@ -52,7 +50,6 @@ func BenchmarkStringCopy(b *testing.B) {
 
 func BenchmarkStringLength(b *testing.B) {
 	b.StopTimer()
-	// We recreate the slice to prevent CPU cache hit
 	src := make([]byte, 0, benchStringLength)
 	for i := 0; i < benchStringLength; i++ {
 		src = append(src, byte(i))
@@ -67,16 +64,14 @@ func BenchmarkStringLength(b *testing.B) {
 }
 
 func BenchmarkBubbleSort(b *testing.B) {
-	b.StopTimer()
-	// We recreate the slice to prevent CPU cache hit
-	src := make([]int32, 0, benchBubSort)
-	for i := 0; i < benchBubSort; i++ {
-		src = append(src, int32(benchBubSort-i))
-	}
-	b.StartTimer()
-
 	var local []int32
 	for i := 0; i < b.N; i++ {
+		b.StopTimer()
+		src := make([]int32, 0, benchBubSort)
+		for i := 0; i < benchBubSort; i++ {
+			src = append(src, int32(benchBubSort-i))
+		}
+		b.StartTimer()
 		bubsort(src, len(src))
 		local = src
 	}
