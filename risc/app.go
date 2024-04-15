@@ -22,7 +22,7 @@ type Context struct {
 	Memory                []int8
 	Debug                 bool
 	// SequenceID represents a monotonic ID for the sequence.
-	// It increments when we jump backwards.
+	// It increments when we jump backwards or during a flush.
 	sequenceID int32
 }
 
