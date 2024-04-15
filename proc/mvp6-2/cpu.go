@@ -47,7 +47,8 @@ func NewCPU(debug bool, memoryBytes int, eu, wu int) *CPU {
 	mmu := newMemoryManagementUnit(ctx)
 	fu := newFetchUnit(ctx, mmu, decodeBus)
 	du := newDecodeUnit(decodeBus, controlBus)
-	bu := newBTBBranchUnit(4, fu, du)
+	cu := newControlUnit(controlBus, executeBus)
+	bu := newBTBBranchUnit(4, fu, du, cu)
 
 	eus := make([]*executeUnit, 0, eu)
 	for i := 0; i < eu; i++ {
@@ -65,7 +66,7 @@ func NewCPU(debug bool, memoryBytes int, eu, wu int) *CPU {
 		decodeBus:            decodeBus,
 		decodeUnit:           du,
 		controlBus:           controlBus,
-		controlUnit:          newControlUnit(controlBus, executeBus),
+		controlUnit:          cu,
 		executeBus:           executeBus,
 		executeUnits:         eus,
 		writeBus:             writeBus,

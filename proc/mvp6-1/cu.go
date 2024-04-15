@@ -18,6 +18,8 @@ type controlUnit struct {
 	pushedRunnersInPreviousCycle map[*risc.InstructionRunnerPc]bool
 	pushedRunnersInCurrentCycle  map[*risc.InstructionRunnerPc]bool
 	skippedInCurrentCycle        []risc.InstructionRunnerPc
+	pushedBranchInCurrentCycle   bool
+	pendingConditionalBranch     bool
 
 	// Monitoring
 	pushed            *obs.Gauge
@@ -53,6 +55,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		u.pushedRunnersInPreviousCycle = u.pushedRunnersInCurrentCycle
 	}()
 	u.skippedInCurrentCycle = nil
+	u.pushedBranchInCurrentCycle = false
 	u.pendingRead.Push(u.inBus.PendingRead())
 	if u.inBus.CanGet() {
 		u.blocked.Push(1)
@@ -73,6 +76,12 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		push, stop := u.handleRunner(ctx, cycle, &runner)
 		if push {
 			u.pendings.Remove(elem)
+			if runner.Runner.InstructionType().IsBranch() {
+				u.pushedBranchInCurrentCycle = true
+			}
+			if runner.Runner.InstructionType().IsConditionalBranch() {
+				u.pendingConditionalBranch = true
+			}
 		} else {
 			u.skippedInCurrentCycle = append(u.skippedInCurrentCycle, runner)
 		}
@@ -88,7 +97,14 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 		}
 
 		push, stop := u.handleRunner(ctx, cycle, &runner)
-		if !push {
+		if push {
+			if runner.Runner.InstructionType().IsBranch() {
+				u.pushedBranchInCurrentCycle = true
+			}
+			if runner.Runner.InstructionType().IsConditionalBranch() {
+				u.pendingConditionalBranch = true
+			}
+		} else {
 			u.pendings.Push(runner)
 			u.skippedInCurrentCycle = append(u.skippedInCurrentCycle, runner)
 		}
@@ -99,7 +115,11 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 }
 
 func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, runner *risc.InstructionRunnerPc) (push, stop bool) {
-	if runner.Runner.InstructionType() == risc.Ret && !u.outBus.IsEmpty() {
+	if runner.Runner.InstructionType().IsBranch() && u.pushedBranchInCurrentCycle {
+		return false, true
+	}
+
+	if runner.Runner.InstructionType() == risc.Ret && (!u.outBus.IsEmpty() || u.pendingConditionalBranch) {
 		return false, true
 	}
 
@@ -201,6 +221,14 @@ func (u *controlUnit) shouldUseForwarding(runner *risc.InstructionRunnerPc, haza
 	return false, nil, risc.Zero
 }
 
+func (u *controlUnit) notifyInvalidConditionalBranchAssumption() {
+	u.pendingConditionalBranch = false
+}
+
+func (u *controlUnit) notifyValidConditionalBranchAssumption() {
+	u.pendingConditionalBranch = false
+}
+
 func (u *controlUnit) pushRunner(ctx *risc.Context, cycle int, runner *risc.InstructionRunnerPc) bool {
 	if !u.outBus.CanAdd() {
 		return false
@@ -215,6 +243,7 @@ func (u *controlUnit) pushRunner(ctx *risc.Context, cycle int, runner *risc.Inst
 func (u *controlUnit) flush() {
 	u.pendings = comp.NewQueue[risc.InstructionRunnerPc](pendingLength)
 	u.pushedRunnersInPreviousCycle = nil
+	u.pendingConditionalBranch = false
 }
 
 func (u *controlUnit) isEmpty() bool {

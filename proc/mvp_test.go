@@ -436,7 +436,7 @@ func testConditionalBranch(t *testing.T, factory func(int) virtualMachine, stats
 		require.NoError(t, err)
 		_, err = vm.Run(app)
 		require.NoError(t, err)
-		assert.Equal(t, int32(0), vm.Context().Registers[risc.T1])
+		assert.Equal(t, int32(2), vm.Context().Registers[risc.T1])
 	})
 }
 
@@ -516,7 +516,8 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   450937,
 		"MVP-5":   400864,
 		"MVP-6.0": 400824,
-		"MVP-6.1": 400823,
+		"MVP-6.1": 350748,
+		"MVP-6.2": 350748,
 	}
 	sumsExpected := map[string]int{
 		"MVP-1":   1921287,
@@ -525,7 +526,8 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   267356,
 		"MVP-5":   263261,
 		"MVP-6.0": 74854,
-		"MVP-6.1": 66405,
+		"MVP-6.1": 62565,
+		"MVP-6.2": 62565,
 	}
 	copyExpected := map[string]int{
 		"MVP-1":   5826769,
@@ -535,6 +537,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-5":   1135105,
 		"MVP-6.0": 664073,
 		"MVP-6.1": 643494,
+		"MVP-6.2": 643494,
 	}
 	lengthExpected := map[string]int{
 		"MVP-1":   3707344,
@@ -543,7 +546,8 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   612961,
 		"MVP-5":   602722,
 		"MVP-6.0": 131695,
-		"MVP-6.1": 111049,
+		"MVP-6.1": 100969,
+		"MVP-6.2": 100969,
 	}
 	bubbleExpected := map[string]int{
 		"MVP-1":   29792552,
@@ -552,7 +556,8 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-4":   4620336,
 		"MVP-5":   4580537,
 		"MVP-6.0": 780642,
-		"MVP-6.1": 760540,
+		"MVP-6.1": 720740,
+		"MVP-6.2": 720740,
 	}
 
 	tableRow := map[string]int{
@@ -563,6 +568,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-5":   4,
 		"MVP-6.0": 5,
 		"MVP-6.1": 6,
+		"MVP-6.2": 7,
 	}
 
 	vms := map[string]func(m int) virtualMachine{
@@ -587,6 +593,9 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-6.1": func(m int) virtualMachine {
 			return mvp6_1.NewCPU(false, m, 2, 2)
 		},
+		//"MVP-6.2": func(m int) virtualMachine {
+		//	return mvp6_2.NewCPU(false, m, 2, 2)
+		//},
 	}
 
 	primeOutput := make([]string, len(tableRow))

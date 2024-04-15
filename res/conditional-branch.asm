@@ -1,6 +1,9 @@
 main:
   lw t0, 0(zero)
-  beqz t0, end
+  beqz t0, 2
   li t1, 1
-end:
+1:
+  ret
+2:
+  li t1, 2
   ret
