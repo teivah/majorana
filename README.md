@@ -113,11 +113,17 @@ div t2, t0, t1   # Read from t1
 
 Instruction 1 writes to `T1`, while instruction 2 reads from `T2`. Therefore, instruction 2 has to wait for `ADDI` to write the result to `T1` before it gets executed, hence slowing down the execution. With forwarding, we can alleviate the effects of this problem: the result of the `ADDI` instruction is fed directly back into the ALU's input port. `DIV` doesn't have to wait for the execution of `ADDI` to be written in `T1` anymore.
 
-// TODO
+// TODO Vulnerable to branch condition tests initially as the CU allows more instructions
 
-With branch-heavy applications, MVP-5.1 performs the same as MVP-4 (MVP-5.0 was performing worse). With non-branch-heavy applications, MVP-5.1 performs a bit better than MVP-5.0 (about 3% faster).
+```asm
+main:
+    lw t0, 0(zero) # memory[0] = 0
+    beqz t0, end   # Branch should be taken
+    li t1, 1       # Because of speculative instruction this instruction is executed
+end:
+    ret            # t1 = 1 instead of 0
+```
 
-MVP-5.1 is not a huge revolution, but it's an evolution nonetheless.
 
 ## Benchmarks
 
