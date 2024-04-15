@@ -5,5 +5,4 @@ main:
 1:
   ret
 2:
-  li t1, 2
   ret

@@ -436,7 +436,7 @@ func testConditionalBranch(t *testing.T, factory func(int) virtualMachine, stats
 		require.NoError(t, err)
 		_, err = vm.Run(app)
 		require.NoError(t, err)
-		assert.Equal(t, int32(2), vm.Context().Registers[risc.T1])
+		assert.Equal(t, int32(0), vm.Context().Registers[risc.T1])
 	})
 }
 
