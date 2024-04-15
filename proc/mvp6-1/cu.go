@@ -221,11 +221,7 @@ func (u *controlUnit) shouldUseForwarding(runner *risc.InstructionRunnerPc, haza
 	return false, nil, risc.Zero
 }
 
-func (u *controlUnit) notifyInvalidConditionalBranchAssumption() {
-	u.pendingConditionalBranch = false
-}
-
-func (u *controlUnit) notifyValidConditionalBranchAssumption() {
+func (u *controlUnit) notifyUnconditionalBranch() {
 	u.pendingConditionalBranch = false
 }
 

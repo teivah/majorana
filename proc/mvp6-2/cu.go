@@ -229,6 +229,10 @@ func (u *controlUnit) notifyValidConditionalBranchAssumption() {
 	u.pendingConditionalBranch = false
 }
 
+func (u *controlUnit) notifyUnconditionalBranch() {
+	u.pendingConditionalBranch = false
+}
+
 func (u *controlUnit) pushRunner(ctx *risc.Context, cycle int, runner *risc.InstructionRunnerPc) bool {
 	if !u.outBus.CanAdd() {
 		return false

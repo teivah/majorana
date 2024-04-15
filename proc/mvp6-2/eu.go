@@ -163,8 +163,7 @@ func (u *executeUnit) run(r euReq) euResp {
 			u.bu.notifyUnconditionalJumpAddressResolved(u.runner.Pc, execution.NextPc)
 		}
 		if u.runner.Runner.InstructionType().IsConditionalBranch() {
-			// TODO Function
-			u.bu.cu.pendingConditionalBranch = false
+			u.bu.notifyUnconditionalBranch()
 		}
 		if execution.PcChange && u.bu.shouldFlushPipeline(execution.NextPc) {
 			log.Infoi(r.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "should be a flush")
