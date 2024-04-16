@@ -224,13 +224,6 @@ func (u *controlUnit) shouldUseForwarding(runner *risc.InstructionRunnerPc, haza
 	return false, nil, risc.Zero
 }
 
-func (u *controlUnit) shouldUseRenaming(runner *risc.InstructionRunnerPc, hazards []risc.Hazard, hazardTypes map[risc.HazardType]bool) (bool, *risc.InstructionRunnerPc, risc.RegisterType) {
-	if len(hazardTypes) > 1 || (!hazardTypes[risc.WriteAfterRead] && !hazardTypes[risc.WriteAfterWrite]) || len(hazards) > 1 {
-		return false, nil, risc.Zero
-	}
-	return false, nil, risc.Zero
-}
-
 func (u *controlUnit) notifyConditionalBranch() {
 	u.pendingConditionalBranch = false
 }
