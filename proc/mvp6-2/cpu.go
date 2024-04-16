@@ -54,7 +54,7 @@ func NewCPU(debug bool, memoryBytes int, eu, wu int) *CPU {
 	fu := newFetchUnit(ctx, mmu, decodeBus)
 	du := newDecodeUnit(ctx, decodeBus, controlBus)
 	cu := newControlUnit(ctx, controlBus, executeBus)
-	// TODO Not 0
+	// TODO How about local context per unit?
 	bu := newBTBBranchUnit(4, fu, du, cu, wus[0])
 
 	eus := make([]*executeUnit, 0, eu)
