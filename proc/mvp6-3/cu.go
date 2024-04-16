@@ -1,7 +1,6 @@
 package mvp6_3
 
 import (
-	"github.com/teivah/majorana/common/collections"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/common/obs"
 	"github.com/teivah/majorana/proc/comp"
@@ -158,6 +157,8 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, runner *risc.In
 		return true, true
 	}
 
+	// TODO Renaming
+
 	log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%+v, types=%+v", hazards, hazardTypes)
 	u.blockedDataHazard++
 
@@ -207,11 +208,6 @@ func (u *controlUnit) shouldUseForwarding(runner *risc.InstructionRunnerPc, haza
 		return false, nil, risc.Zero
 	}
 
-	hazardType, _, _ := collections.FirstMapElement(hazardTypes)
-	if hazardType != risc.ReadAfterWrite {
-		return false, nil, risc.Zero
-	}
-
 	// Can we use forwarding with an instruction pushed in the previous cycle
 	for previousRunner := range u.pushedRunnersInPreviousCycle {
 		for _, writeRegister := range previousRunner.Runner.WriteRegisters() {
@@ -224,6 +220,13 @@ func (u *controlUnit) shouldUseForwarding(runner *risc.InstructionRunnerPc, haza
 				}
 			}
 		}
+	}
+	return false, nil, risc.Zero
+}
+
+func (u *controlUnit) shouldUseRenaming(runner *risc.InstructionRunnerPc, hazards []risc.Hazard, hazardTypes map[risc.HazardType]bool) (bool, *risc.InstructionRunnerPc, risc.RegisterType) {
+	if len(hazardTypes) > 1 || (!hazardTypes[risc.WriteAfterRead] && !hazardTypes[risc.WriteAfterWrite]) || len(hazards) > 1 {
+		return false, nil, risc.Zero
 	}
 	return false, nil, risc.Zero
 }
