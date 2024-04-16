@@ -1,6 +1,7 @@
 package mvp6_2
 
 import (
+	"github.com/teivah/majorana/common/collections"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/common/obs"
 	"github.com/teivah/majorana/proc/comp"
@@ -203,6 +204,11 @@ func (u *controlUnit) isDataHazardWithSkippedRunners(runner *risc.InstructionRun
 
 func (u *controlUnit) shouldUseForwarding(runner *risc.InstructionRunnerPc, hazards []risc.Hazard, hazardTypes map[risc.HazardType]bool) (bool, *risc.InstructionRunnerPc, risc.RegisterType) {
 	if len(hazardTypes) > 1 || !hazardTypes[risc.ReadAfterWrite] || len(hazards) > 1 {
+		return false, nil, risc.Zero
+	}
+
+	hazardType, _, _ := collections.FirstMapElement(hazardTypes)
+	if hazardType != risc.ReadAfterWrite {
 		return false, nil, risc.Zero
 	}
 
