@@ -1,51 +1,54 @@
 package comp
 
-import (
-	"github.com/teivah/majorana/risc"
-)
-
 // RAT is the register allocation table
-type RAT struct {
+type RAT[K comparable, V any] struct {
 	length int
-	toVal  map[risc.RegisterType]int
-	// TODO Slice
-	toReg map[int]risc.RegisterType
-	data  []int32
-	next  int
+	toIdx  map[K]int
+	toReg  map[int]K
+	data   []V
+	next   int
 }
 
-func NewRAT(length int) *RAT {
-	return &RAT{
+func NewRAT[K comparable, V any](length int) *RAT[K, V] {
+	return &RAT[K, V]{
 		length: length,
-		toVal:  make(map[risc.RegisterType]int),
-		toReg:  make(map[int]risc.RegisterType),
-		data:   make([]int32, length),
+		toIdx:  make(map[K]int),
+		toReg:  make(map[int]K),
+		data:   make([]V, length),
 	}
 }
 
-func (r *RAT) Read(register risc.RegisterType) (int32, bool) {
-	v, exists := r.toVal[register]
+func (r *RAT[K, V]) Read(k K) (V, bool) {
+	var zero V
+	v, exists := r.toIdx[k]
 	if !exists {
-		return 0, false
+		return zero, false
 	}
 	return r.data[v], true
 }
 
-func (r *RAT) Write(register risc.RegisterType, value int32) {
+func (r *RAT[K, V]) Write(k K, value V) {
 	reg, exists := r.toReg[r.next]
-
 	if exists {
-		if r.toVal[reg] == r.next {
-			delete(r.toVal, reg)
+		if r.toIdx[reg] == r.next {
+			delete(r.toIdx, reg)
 		}
 	}
 
-	r.toVal[register] = r.next
-	r.toReg[r.next] = register
+	r.toIdx[k] = r.next
+	r.toReg[r.next] = k
 	r.data[r.next] = value
 
 	r.next++
 	if r.next == r.length {
 		r.next = 0
 	}
+}
+
+func (r *RAT[K, V]) Values() map[K]V {
+	m := make(map[K]V)
+	for k, v := range r.toIdx {
+		m[k] = r.data[v]
+	}
+	return m
 }
