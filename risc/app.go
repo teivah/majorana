@@ -17,6 +17,7 @@ type Application struct {
 
 type Context struct {
 	Registers             map[RegisterType]int32
+	Transaction           map[RegisterType]transactionUnit
 	PendingWriteRegisters map[RegisterType]int
 	PendingReadRegisters  map[RegisterType]int
 	Memory                []int8
@@ -26,9 +27,15 @@ type Context struct {
 	sequenceID int32
 }
 
+type transactionUnit struct {
+	sequenceID int32
+	value      int32
+}
+
 func NewContext(debug bool, memoryBytes int) *Context {
 	return &Context{
 		Registers:             make(map[RegisterType]int32),
+		Transaction:           make(map[RegisterType]transactionUnit),
 		PendingWriteRegisters: make(map[RegisterType]int),
 		PendingReadRegisters:  make(map[RegisterType]int),
 		Memory:                make([]int8, memoryBytes),
@@ -52,6 +59,27 @@ func (ctx *Context) IncSequenceID() {
 
 func (ctx *Context) WriteRegister(exe Execution) {
 	ctx.Registers[exe.Register] = exe.RegisterValue
+}
+
+func (ctx *Context) TransactionWriteRegister(exe Execution, sequenceID int32) {
+	ctx.Transaction[exe.Register] = transactionUnit{sequenceID, exe.RegisterValue}
+}
+
+func (ctx *Context) Commit() {
+	for register, tu := range ctx.Transaction {
+		ctx.Registers[register] = tu.value
+	}
+	ctx.Transaction = make(map[RegisterType]transactionUnit)
+}
+
+func (ctx *Context) Rollback(sequenceID int32) {
+	for register, tu := range ctx.Transaction {
+		if tu.sequenceID < sequenceID {
+			ctx.Registers[register] = tu.value
+		} else {
+		}
+	}
+	ctx.Transaction = make(map[RegisterType]transactionUnit)
 }
 
 func (ctx *Context) WriteMemory(exe Execution) {

@@ -21,6 +21,9 @@ func registerRead(ctx *Context, forward Forward, reg RegisterType) int32 {
 	if reg == forward.Register {
 		return forward.Value
 	}
+	if v, exists := ctx.Transaction[reg]; exists {
+		return v.value
+	}
 	return ctx.Registers[reg]
 }
 

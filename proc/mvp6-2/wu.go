@@ -13,13 +13,15 @@ type wuReq struct {
 }
 
 type writeUnit struct {
+	ctx *risc.Context
 	co.Coroutine[wuReq, error]
 	memoryWrite risc.ExecutionContext
 	inBus       *comp.BufferedBus[risc.ExecutionContext]
 }
 
-func newWriteUnit(inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
+func newWriteUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
 	wu := &writeUnit{
+		ctx:   ctx,
 		inBus: inBus,
 	}
 	wu.Coroutine = co.New(wu.start)
@@ -35,7 +37,7 @@ func (u *writeUnit) start(r wuReq) error {
 		return nil
 	}
 	if execution.Execution.RegisterChange {
-		r.ctx.WriteRegister(execution.Execution)
+		r.ctx.TransactionWriteRegister(execution.Execution, execution.SequenceID)
 		r.ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
 		log.Infoi(r.ctx, "WU", execution.InstructionType, execution.SequenceID, "write to register")
 	} else if execution.Execution.MemoryChange {
@@ -61,6 +63,14 @@ func (u *writeUnit) start(r wuReq) error {
 		log.Infoi(r.ctx, "WU", execution.InstructionType, execution.SequenceID, "cleaning")
 	}
 	return nil
+}
+
+func (u *writeUnit) commit() {
+	u.ctx.Commit()
+}
+
+func (u *writeUnit) rollback(sequenceID int32) {
+	u.ctx.Rollback(sequenceID)
 }
 
 func (u *writeUnit) isEmpty() bool {

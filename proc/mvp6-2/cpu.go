@@ -44,20 +44,22 @@ func NewCPU(debug bool, memoryBytes int, eu, wu int) *CPU {
 	writeBus := comp.NewBufferedBus[risc.ExecutionContext](busSize, busSize)
 
 	ctx := risc.NewContext(debug, memoryBytes)
+
+	wus := make([]*writeUnit, 0, wu)
+	for i := 0; i < wu; i++ {
+		wus = append(wus, newWriteUnit(ctx, writeBus))
+	}
+
 	mmu := newMemoryManagementUnit(ctx)
 	fu := newFetchUnit(ctx, mmu, decodeBus)
 	du := newDecodeUnit(decodeBus, controlBus)
 	cu := newControlUnit(controlBus, executeBus)
-	bu := newBTBBranchUnit(4, fu, du, cu)
+	// TODO Not 0
+	bu := newBTBBranchUnit(4, fu, du, cu, wus[0])
 
 	eus := make([]*executeUnit, 0, eu)
 	for i := 0; i < eu; i++ {
 		eus = append(eus, newExecuteUnit(bu, executeBus, writeBus, mmu))
-	}
-
-	wus := make([]*writeUnit, 0, wu)
-	for i := 0; i < wu; i++ {
-		wus = append(wus, newWriteUnit(writeBus))
 	}
 
 	return &CPU{
@@ -194,6 +196,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 	}
 	cycle += m.memoryManagementUnit.flush()
+	m.ctx.Commit()
 	return cycle, nil
 }
 

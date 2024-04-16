@@ -429,14 +429,31 @@ func testBubbleSort(t *testing.T, factory func(int) virtualMachine, stats bool) 
 }
 
 func testConditionalBranch(t *testing.T, factory func(int) virtualMachine, stats bool) {
-	t.Run("Conditional branch", func(t *testing.T) {
+	t.Run("Conditional branch 1", func(t *testing.T) {
 		vm := factory(40)
-		instructions := test.ReadFile(t, "../res/conditional-branch.asm")
+		instructions := test.ReadFile(t, "../res/conditional-branch-1.asm")
 		app, err := risc.Parse(instructions)
 		require.NoError(t, err)
 		_, err = vm.Run(app)
 		require.NoError(t, err)
 		assert.Equal(t, int32(0), vm.Context().Registers[risc.T1])
+		assert.Equal(t, int32(2), vm.Context().Registers[risc.T2])
+	})
+	t.Run("Conditional branch 2", func(t *testing.T) {
+		vm := factory(40)
+		bytes := risc.BytesFromLowBits(int32(2))
+		vm.Context().Memory[0] = bytes[0]
+		vm.Context().Memory[1] = bytes[1]
+		vm.Context().Memory[2] = bytes[2]
+		vm.Context().Memory[3] = bytes[3]
+		instructions := test.ReadFile(t, "../res/conditional-branch-2.asm")
+		app, err := risc.Parse(instructions)
+		require.NoError(t, err)
+		_, err = vm.Run(app)
+		require.NoError(t, err)
+		assert.Equal(t, int32(2), vm.Context().Registers[risc.T0])
+		assert.Equal(t, int32(1), vm.Context().Registers[risc.T1])
+		assert.Equal(t, int32(2), vm.Context().Registers[risc.T2])
 	})
 }
 
