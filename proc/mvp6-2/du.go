@@ -10,6 +10,7 @@ import (
 )
 
 type decodeUnit struct {
+	ctx                     *risc.Context
 	ret                     bool
 	pendingBranchResolution bool
 	log                     string
@@ -21,8 +22,9 @@ type decodeUnit struct {
 	blocked     *obs.Gauge
 }
 
-func newDecodeUnit(inBus *comp.BufferedBus[int32], outBus *comp.BufferedBus[risc.InstructionRunnerPc]) *decodeUnit {
+func newDecodeUnit(ctx *risc.Context, inBus *comp.BufferedBus[int32], outBus *comp.BufferedBus[risc.InstructionRunnerPc]) *decodeUnit {
 	return &decodeUnit{
+		ctx:         ctx,
 		inBus:       inBus,
 		outBus:      outBus,
 		pushed:      &obs.Gauge{},
@@ -31,7 +33,7 @@ func newDecodeUnit(inBus *comp.BufferedBus[int32], outBus *comp.BufferedBus[risc
 	}
 }
 
-func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
+func (u *decodeUnit) cycle(cycle int, app risc.Application) {
 	pushed := 0
 	defer func() {
 		u.pushed.Push(pushed)
@@ -46,13 +48,13 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		return
 	}
 	if u.pendingBranchResolution {
-		log.Infou(ctx, "DU", "blocked")
+		log.Infou(u.ctx, "DU", "blocked")
 		return
 	}
 
 	for {
 		if !u.outBus.CanAdd() {
-			log.Infou(ctx, "DU", "can't add")
+			log.Infou(u.ctx, "DU", "can't add")
 		}
 		pc, exists := u.inBus.Get()
 		if !exists {
@@ -64,18 +66,18 @@ func (u *decodeUnit) cycle(cycle int, app risc.Application, ctx *risc.Context) {
 		runner := app.Instructions[pc/4]
 		// Clear forward
 		runner.Forward(risc.Forward{})
-		log.Infoi(ctx, "DU", runner.InstructionType(), pc, "decoding")
+		log.Infoi(u.ctx, "DU", runner.InstructionType(), pc, "decoding")
 		jump := false
 		if runner.InstructionType().IsUnconditionalBranch() {
 			u.pendingBranchResolution = true
-			log.Infoi(ctx, "DU", runner.InstructionType(), pc, "pending branch resolution")
+			log.Infoi(u.ctx, "DU", runner.InstructionType(), pc, "pending branch resolution")
 			u.log = fmt.Sprintf("%v at %d", runner.InstructionType(), pc/4)
 			jump = true
 		}
 		u.outBus.Add(risc.InstructionRunnerPc{
 			Runner:     runner,
 			Pc:         pc,
-			SequenceID: ctx.SequenceID(pc),
+			SequenceID: u.ctx.SequenceID(pc),
 		}, cycle)
 		pushed++
 		if jump {

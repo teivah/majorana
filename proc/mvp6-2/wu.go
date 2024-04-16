@@ -8,7 +8,6 @@ import (
 )
 
 type wuReq struct {
-	ctx        *risc.Context
 	sequenceID int32
 }
 
@@ -37,30 +36,30 @@ func (u *writeUnit) start(r wuReq) error {
 		return nil
 	}
 	if execution.Execution.RegisterChange {
-		r.ctx.TransactionWriteRegister(execution.Execution, execution.SequenceID)
-		r.ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
-		log.Infoi(r.ctx, "WU", execution.InstructionType, execution.SequenceID, "write to register")
+		u.ctx.TransactionWriteRegister(execution.Execution, execution.SequenceID)
+		u.ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
+		log.Infoi(u.ctx, "WU", execution.InstructionType, execution.SequenceID, "write to register")
 	} else if execution.Execution.MemoryChange {
 		remainingCycle := cyclesMemoryAccess
-		log.Infoi(r.ctx, "WU", execution.InstructionType, execution.SequenceID, "pending memory write")
+		log.Infoi(u.ctx, "WU", execution.InstructionType, execution.SequenceID, "pending memory write")
 
 		u.Checkpoint(func(r wuReq) error {
 			if remainingCycle > 0 {
-				log.Infoi(r.ctx, "WU", u.memoryWrite.InstructionType, execution.SequenceID, "pending memory write")
+				log.Infoi(u.ctx, "WU", u.memoryWrite.InstructionType, execution.SequenceID, "pending memory write")
 				remainingCycle--
 				return nil
 			}
 			u.Reset()
-			r.ctx.WriteMemory(u.memoryWrite.Execution)
-			r.ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
-			log.Infoi(r.ctx, "WU", u.memoryWrite.InstructionType, execution.SequenceID, "write to memory")
+			u.ctx.WriteMemory(u.memoryWrite.Execution)
+			u.ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
+			log.Infoi(u.ctx, "WU", u.memoryWrite.InstructionType, execution.SequenceID, "write to memory")
 			return nil
 		})
 
 		u.memoryWrite = execution
 	} else {
-		r.ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
-		log.Infoi(r.ctx, "WU", execution.InstructionType, execution.SequenceID, "cleaning")
+		u.ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
+		log.Infoi(u.ctx, "WU", execution.InstructionType, execution.SequenceID, "cleaning")
 	}
 	return nil
 }

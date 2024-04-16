@@ -52,8 +52,8 @@ func NewCPU(debug bool, memoryBytes int, eu, wu int) *CPU {
 
 	mmu := newMemoryManagementUnit(ctx)
 	fu := newFetchUnit(ctx, mmu, decodeBus)
-	du := newDecodeUnit(decodeBus, controlBus)
-	cu := newControlUnit(controlBus, executeBus)
+	du := newDecodeUnit(ctx, decodeBus, controlBus)
+	cu := newControlUnit(ctx, controlBus, executeBus)
 	// TODO Not 0
 	bu := newBTBBranchUnit(4, fu, du, cu, wus[0])
 
@@ -96,13 +96,13 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		m.writeBus.Connect(cycle)
 
 		// Fetch
-		_ = m.fetchUnit.Cycle(fuReq{cycle, app, m.ctx})
+		_ = m.fetchUnit.Cycle(fuReq{cycle, app})
 
 		// Decode
-		m.decodeUnit.cycle(cycle, app, m.ctx)
+		m.decodeUnit.cycle(cycle, app)
 
 		// Control
-		m.controlUnit.cycle(cycle, m.ctx)
+		m.controlUnit.cycle(cycle)
 
 		// Execute
 		var (
@@ -128,7 +128,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 		// Write back
 		for _, wu := range m.writeUnits {
-			_ = wu.Cycle(wuReq{m.ctx, -1})
+			_ = wu.Cycle(wuReq{-1})
 		}
 		log.Info(m.ctx, "\tRegisters: %v", m.ctx.Registers)
 
@@ -138,7 +138,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			m.writeBus.Connect(cycle)
 			for !m.areWriteUnitsEmpty() || !m.writeBus.IsEmpty() {
 				for _, wu := range m.writeUnits {
-					_ = wu.Cycle(wuReq{m.ctx, -1})
+					_ = wu.Cycle(wuReq{-1})
 				}
 				cycle++
 				m.writeBus.Connect(cycle)
@@ -176,7 +176,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 				m.writeBus.Connect(cycle + 1)
 				for _, wu := range m.writeUnits {
 					for !wu.isEmpty() || !m.writeBus.IsEmpty() {
-						_ = wu.Cycle(wuReq{m.ctx, sequenceID})
+						_ = wu.Cycle(wuReq{sequenceID})
 					}
 				}
 				if isEmpty {

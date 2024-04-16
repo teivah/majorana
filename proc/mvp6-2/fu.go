@@ -10,11 +10,9 @@ import (
 type fuReq struct {
 	cycle int
 	app   risc.Application
-	ctx   *risc.Context
 }
 
 type fetchUnit struct {
-	// TODO Should be everywhere in struct
 	ctx *risc.Context
 	co.Coroutine[fuReq, error]
 	pc              int32
@@ -36,7 +34,7 @@ func newFetchUnit(ctx *risc.Context, mmu *memoryManagementUnit, outBus *comp.Buf
 		if fu.toCleanPending {
 			// The fetch unit may have sent to the bus wrong instruction, we make sure
 			// this is not the case by cleaning it
-			log.Infou(r.ctx, "FU", "cleaning output bus")
+			log.Infou(ctx, "FU", "cleaning output bus")
 			fu.outBus.Clean()
 			fu.toCleanPending = false
 		}
@@ -48,7 +46,7 @@ func newFetchUnit(ctx *risc.Context, mmu *memoryManagementUnit, outBus *comp.Buf
 func (u *fetchUnit) start(r fuReq) error {
 	for i := 0; i < u.outBus.OutLength(); i++ {
 		if !u.outBus.CanAdd() {
-			log.Infou(r.ctx, "FU", "can't add")
+			log.Infou(u.ctx, "FU", "can't add")
 			return nil
 		}
 
@@ -64,7 +62,7 @@ func (u *fetchUnit) start(r fuReq) error {
 			u.Checkpoint(func(fuReq) error { return nil })
 			u.complete = true
 		}
-		log.Infou(r.ctx, "FU", "pushing new element from pc %d", currentPc/4)
+		log.Infou(u.ctx, "FU", "pushing new element from pc %d", currentPc/4)
 		u.outBus.Add(currentPc, r.cycle)
 	}
 	return nil
@@ -72,7 +70,7 @@ func (u *fetchUnit) start(r fuReq) error {
 
 func (u *fetchUnit) memoryAccess(r fuReq) error {
 	if u.remainingCycles != 0 {
-		log.Infou(r.ctx, "FU", "pending memory access")
+		log.Infou(u.ctx, "FU", "pending memory access")
 		u.remainingCycles--
 		return nil
 	}
@@ -85,7 +83,7 @@ func (u *fetchUnit) memoryAccess(r fuReq) error {
 		u.Checkpoint(func(fuReq) error { return nil })
 		u.complete = true
 	}
-	log.Infou(r.ctx, "FU", "pushing new element from pc %d", currentPc/4)
+	log.Infou(u.ctx, "FU", "pushing new element from pc %d", currentPc/4)
 	u.outBus.Add(currentPc, r.cycle)
 	return nil
 

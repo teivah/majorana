@@ -165,11 +165,9 @@ func (u *executeUnit) run(r euReq) euResp {
 		if u.runner.Runner.InstructionType().IsConditionalBranch() {
 			if execution.PcChange {
 				// Branch taken (jump)
-				// TODO Rollback from
 				u.bu.notifyConditionalBranchTaken(u.runner.SequenceID)
 			} else {
 				// Branch not taken (next PC)
-				// TODO Commit
 				u.bu.notifyConditionalBranchNotTaken()
 			}
 		}

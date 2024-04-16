@@ -12,6 +12,7 @@ const (
 )
 
 type controlUnit struct {
+	ctx                          *risc.Context
 	inBus                        *comp.BufferedBus[risc.InstructionRunnerPc]
 	outBus                       *comp.BufferedBus[*risc.InstructionRunnerPc]
 	pendings                     *comp.Queue[risc.InstructionRunnerPc]
@@ -33,8 +34,9 @@ type controlUnit struct {
 	blockedDataHazard int
 }
 
-func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc]) *controlUnit {
+func newControlUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc]) *controlUnit {
 	return &controlUnit{
+		ctx:                          ctx,
 		inBus:                        inBus,
 		outBus:                       outBus,
 		pendings:                     comp.NewQueue[risc.InstructionRunnerPc](pendingLength),
@@ -47,7 +49,7 @@ func newControlUnit(inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *c
 	}
 }
 
-func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
+func (u *controlUnit) cycle(cycle int) {
 	u.pushedRunnersInCurrentCycle = make(map[*risc.InstructionRunnerPc]bool)
 	defer func() {
 		u.pushed.Push(len(u.pushedRunnersInCurrentCycle))
@@ -66,14 +68,14 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 
 	if !u.outBus.CanAdd() {
 		u.cantAdd++
-		log.Infou(ctx, "CU", "can't add")
+		log.Infou(u.ctx, "CU", "can't add")
 		return
 	}
 
 	for elem := range u.pendings.Iterator() {
 		runner := u.pendings.Value(elem)
 
-		push, stop := u.handleRunner(ctx, cycle, &runner)
+		push, stop := u.handleRunner(u.ctx, cycle, &runner)
 		if push {
 			u.pendings.Remove(elem)
 			if runner.Runner.InstructionType().IsBranch() {
@@ -96,7 +98,7 @@ func (u *controlUnit) cycle(cycle int, ctx *risc.Context) {
 			return
 		}
 
-		push, stop := u.handleRunner(ctx, cycle, &runner)
+		push, stop := u.handleRunner(u.ctx, cycle, &runner)
 		if push {
 			if runner.Runner.InstructionType().IsBranch() {
 				u.pushedBranchInCurrentCycle = true
@@ -152,7 +154,6 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, runner *risc.In
 		u.pushedRunnersInCurrentCycle[runner] = true
 		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "forward runner on %s (source %d)", register, previousRunner.Pc/4)
 		u.forwarding++
-		// TODO Return?
 		return true, true
 	}
 

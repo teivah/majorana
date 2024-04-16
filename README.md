@@ -124,6 +124,9 @@ end:
     ret            # t1 = 1 instead of 0
 ```
 
+#### MVP-6.2
+
+Commit / rollback conditional branches
 
 ## Benchmarks
 
