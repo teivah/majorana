@@ -1,7 +1,5 @@
 # Major
 
-- Context passed to structs
-
 - Register renaming to prevent war and waw
 - Spectre https://www.youtube.com/watch?v=q3-xCvzBjGs
 - TLB?
