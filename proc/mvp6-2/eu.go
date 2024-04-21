@@ -92,15 +92,12 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 
 	addrs := u.runner.Runner.MemoryRead(r.ctx)
 	if len(addrs) != 0 {
-		memory, pending, exists := u.mmu.getFromL1D(addrs)
+		memory, pending, exists := u.mmu.getFromL3(addrs)
 		if pending {
 			return euResp{}
 		} else if exists {
 			u.memory = memory
-			// As the coroutine is executed the next cycle, if a L1D access takes
-			// one cycle, we should be good to go during the next cycle
-			remainingCycles := latency.L1Access - 1
-
+			remainingCycles := latency.L3Access - 1
 			u.Checkpoint(func(r euReq) euResp {
 				if remainingCycles > 0 {
 					remainingCycles--
@@ -111,7 +108,6 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 			return euResp{}
 		} else {
 			remainingCycles := latency.MemoryAccess - 1
-
 			u.Checkpoint(func(r euReq) euResp {
 				if remainingCycles > 0 {
 					log.Infoi(r.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "pending memory access %d", remainingCycles)
@@ -119,8 +115,8 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 					return euResp{}
 				}
 				line := u.mmu.fetchCacheLine(addrs[0])
-				u.mmu.pushLineToL1D(addrs[0], line)
-				m, _, exists := u.mmu.getFromL1D(addrs)
+				u.mmu.pushLineToL3(addrs[0], line)
+				m, _, exists := u.mmu.getFromL3(addrs)
 				if !exists {
 					panic("cache line doesn't exist")
 				}
@@ -143,8 +139,8 @@ func (u *executeUnit) run(r euReq) euResp {
 		return euResp{isReturn: true}
 	}
 
-	if execution.MemoryChange && u.mmu.doesExecutionMemoryChangesExistsInL1D(execution) {
-		u.mmu.writeExecutionMemoryChangesToL1D(execution)
+	if execution.MemoryChange && u.mmu.doesExecutionMemoryChangesExistsInL3(execution) {
+		u.mmu.writeExecutionMemoryChangesToL3(execution)
 		r.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
 		return euResp{}
 	}

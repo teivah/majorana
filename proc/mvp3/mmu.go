@@ -17,8 +17,8 @@ type memoryManagementUnit struct {
 func newMemoryManagementUnit(ctx *risc.Context) *memoryManagementUnit {
 	return &memoryManagementUnit{
 		ctx: ctx,
-		l1i: comp.NewLRUCache(l1ICacheLineSize, liICacheSize),
-		l1d: comp.NewLRUCache(l1DCacheLineSize, liDCacheSize),
+		l1i: comp.NewLRUCache(l1ICacheLineSize, l1ICacheSize),
+		l1d: comp.NewLRUCache(l1DCacheLineSize, l1DCacheSize),
 	}
 }
 

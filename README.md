@@ -102,6 +102,8 @@ The control unit plays a pivotal role in coordinating the execution of multiple 
 
 One _small_ issue: MVP-5.0 is not always faster in all the benchmarks. Indeed, when an application is branch-heavy, it performed slightly worst that MVP-4. The main reason being that the control unit logic is very basic and because of that, on average it dispatches less than 0.6 instructions per cycle. Yet, if branches are scarce, it performs significantly better than MVP-4 (~40% in the string copy benchmark).
 
+// TODO: Slower? Because L3
+
 #### MVP-6.1
 
 For MVP-6.1, the microarchitecture is the same as MVP-6.1. The only difference lies in the control unit, where we started to implement a new concept called forwarding. Consider a data hazard mentioned previously:

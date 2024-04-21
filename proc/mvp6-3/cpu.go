@@ -12,9 +12,9 @@ const (
 	kilobytes = 1024
 
 	l1ICacheLineSize = 64 * bytes
-	liICacheSize     = 1 * kilobytes
-	l1DCacheLineSize = 64 * bytes
-	liDCacheSize     = 1 * kilobytes
+	l1ICacheSize     = 1 * kilobytes
+	l3CacheLineSize  = 64 * bytes
+	l3CacheSize      = 1 * kilobytes
 )
 
 type CPU struct {
@@ -82,7 +82,7 @@ func (m *CPU) Context() *risc.Context {
 func (m *CPU) Run(app risc.Application) (int, error) {
 	m.ctx.InitRAT()
 	defer func() {
-		log.Infou(m.ctx, "L1d", m.memoryManagementUnit.l1d.String())
+		log.Infou(m.ctx, "L3", m.memoryManagementUnit.l3.String())
 	}()
 	cycle := 0
 	for {

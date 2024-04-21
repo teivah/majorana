@@ -13,9 +13,9 @@ const (
 	bytes            = 1
 	kilobytes        = 1024
 	l1ICacheLineSize = 64 * bytes
-	liICacheSize     = 1 * kilobytes
+	l1ICacheSize     = 1 * kilobytes
 	l1DCacheLineSize = 64 * bytes
-	liDCacheSize     = 1 * kilobytes
+	l1DCacheSize     = 1 * kilobytes
 )
 
 type CPU struct {

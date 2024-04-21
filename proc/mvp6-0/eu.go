@@ -55,14 +55,12 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 
 	addrs := u.runner.Runner.MemoryRead(ctx)
 	if len(addrs) != 0 {
-		memory, pending, exists := u.mmu.getFromL1D(addrs)
+		memory, pending, exists := u.mmu.getFromL3(addrs)
 		if pending {
 			return false, 0, 0, false, nil
 		} else if exists {
 			u.memory = memory
-			// As the coroutine is executed the next cycle, if a L1D access takes
-			// one cycle, we should be good to go during the next cycle
-			remainingCycles := latency.L1Access - 1
+			remainingCycles := latency.L3Access - 1
 			u.coroutine = func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error) {
 				if remainingCycles > 0 {
 					remainingCycles--
@@ -73,15 +71,14 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 			return false, 0, 0, false, nil
 		} else {
 			remainingCycles := latency.MemoryAccess - 1
-
 			u.coroutine = func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error) {
 				if remainingCycles > 0 {
 					remainingCycles--
 					return false, 0, 0, false, nil
 				}
 				line := u.mmu.fetchCacheLine(addrs[0])
-				u.mmu.pushLineToL1D(addrs[0], line)
-				m, _, exists := u.mmu.getFromL1D(addrs)
+				u.mmu.pushLineToL3(addrs[0], line)
+				m, _, exists := u.mmu.getFromL3(addrs)
 				if !exists {
 					panic("cache line doesn't exist")
 				}
@@ -104,8 +101,8 @@ func (u *executeUnit) coRun(cycle int, ctx *risc.Context, app risc.Application) 
 		return false, 0, 0, true, nil
 	}
 
-	if execution.MemoryChange && u.mmu.doesExecutionMemoryChangesExistsInL1D(execution) {
-		u.mmu.writeExecutionMemoryChangesToL1D(execution)
+	if execution.MemoryChange && u.mmu.doesExecutionMemoryChangesExistsInL3(execution) {
+		u.mmu.writeExecutionMemoryChangesToL3(execution)
 		ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
 		return false, 0, 0, false, nil
 	}

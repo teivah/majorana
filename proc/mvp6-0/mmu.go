@@ -11,15 +11,15 @@ import (
 type memoryManagementUnit struct {
 	ctx      *risc.Context
 	l1i      *comp.LRUCache
-	l1d      *comp.LRUCache
+	l3       *comp.LRUCache
 	pendings [][2]int32
 }
 
 func newMemoryManagementUnit(ctx *risc.Context) *memoryManagementUnit {
 	return &memoryManagementUnit{
 		ctx: ctx,
-		l1i: comp.NewLRUCache(l1ICacheLineSize, liICacheSize),
-		l1d: comp.NewLRUCache(l1DCacheLineSize, liDCacheSize),
+		l1i: comp.NewLRUCache(l1ICacheLineSize, l1ICacheSize),
+		l3:  comp.NewLRUCache(l3CacheLineSize, l3CacheSize),
 	}
 }
 
@@ -39,11 +39,11 @@ func (u *memoryManagementUnit) pushLineToL1I(addr int32, line []int8) {
 	u.l1i.PushLine(addr, line)
 }
 
-// getFromL1D returns whether an address is pending request and present in L1D.
-func (u *memoryManagementUnit) getFromL1D(addrs []int32) ([]int8, bool, bool) {
+// getFromL3 returns whether an address is pending request and present in L3.
+func (u *memoryManagementUnit) getFromL3(addrs []int32) ([]int8, bool, bool) {
 	memory := make([]int8, 0, len(addrs))
 	for _, addr := range addrs {
-		v, exists := u.l1d.Get(addr)
+		v, exists := u.l3.Get(addr)
 		if !exists {
 			for _, pending := range u.pendings {
 				if pending[0] <= addr && addr < pending[1] {
@@ -51,7 +51,7 @@ func (u *memoryManagementUnit) getFromL1D(addrs []int32) ([]int8, bool, bool) {
 				}
 			}
 
-			u.pendings = append(u.pendings, [2]int32{addr, addr + l1DCacheLineSize + 1})
+			u.pendings = append(u.pendings, [2]int32{addr, addr + l3CacheLineSize + 1})
 			return nil, false, false
 		}
 		memory = append(memory, v)
@@ -59,16 +59,16 @@ func (u *memoryManagementUnit) getFromL1D(addrs []int32) ([]int8, bool, bool) {
 	return memory, false, true
 }
 
-func (u *memoryManagementUnit) doesExecutionMemoryChangesExistsInL1D(execution risc.Execution) bool {
+func (u *memoryManagementUnit) doesExecutionMemoryChangesExistsInL3(execution risc.Execution) bool {
 	addrs := make([]int32, 0, len(execution.MemoryChanges))
 	for addr := range execution.MemoryChanges {
 		addrs = append(addrs, addr)
 	}
-	_, _, exists := u.getFromL1D(addrs)
+	_, _, exists := u.getFromL3(addrs)
 	return exists
 }
 
-func (u *memoryManagementUnit) writeExecutionMemoryChangesToL1D(execution risc.Execution) {
+func (u *memoryManagementUnit) writeExecutionMemoryChangesToL3(execution risc.Execution) {
 	type change struct {
 		addr   int32
 		change int8
@@ -87,7 +87,7 @@ func (u *memoryManagementUnit) writeExecutionMemoryChangesToL1D(execution risc.E
 	for _, c := range changes {
 		data = append(data, c.change)
 	}
-	u.writeToL1D(changes[0].addr, data)
+	u.writeToL3(changes[0].addr, data)
 }
 
 func (u *memoryManagementUnit) getFromMemory(addrs []int32) []int8 {
@@ -99,8 +99,8 @@ func (u *memoryManagementUnit) getFromMemory(addrs []int32) []int8 {
 }
 
 func (u *memoryManagementUnit) fetchCacheLine(addr int32) []int8 {
-	memory := make([]int8, 0, l1DCacheLineSize)
-	for i := 0; i < l1DCacheLineSize; i++ {
+	memory := make([]int8, 0, l3CacheLineSize)
+	for i := 0; i < l3CacheLineSize; i++ {
 		if int(addr)+i >= len(u.ctx.Memory) {
 			memory = append(memory, 0)
 		} else {
@@ -110,8 +110,8 @@ func (u *memoryManagementUnit) fetchCacheLine(addr int32) []int8 {
 	return memory
 }
 
-func (u *memoryManagementUnit) pushLineToL1D(addr int32, line []int8) {
-	evicted := u.l1d.PushLine(addr, line)
+func (u *memoryManagementUnit) pushLineToL3(addr int32, line []int8) {
+	evicted := u.l3.PushLine(addr, line)
 	for i, pending := range u.pendings {
 		if pending[0] == addr {
 			if len(u.pendings) == 0 {
@@ -128,8 +128,8 @@ func (u *memoryManagementUnit) pushLineToL1D(addr int32, line []int8) {
 	u.writeToMemory(addr, line)
 }
 
-func (u *memoryManagementUnit) writeToL1D(addr int32, data []int8) {
-	u.l1d.Write(addr, data)
+func (u *memoryManagementUnit) writeToL3(addr int32, data []int8) {
+	u.l3.Write(addr, data)
 }
 
 func (u *memoryManagementUnit) writeToMemory(addr int32, data []int8) {
@@ -143,9 +143,9 @@ func (u *memoryManagementUnit) writeToMemory(addr int32, data []int8) {
 
 func (u *memoryManagementUnit) flush() int {
 	additionalCycles := 0
-	for _, line := range u.l1d.Lines() {
+	for _, line := range u.l3.Lines() {
 		additionalCycles += latency.MemoryAccess
-		for i := 0; i < l1DCacheLineSize; i++ {
+		for i := 0; i < l3CacheLineSize; i++ {
 			u.writeToMemory(line.Boundary[0], line.Data)
 		}
 	}
