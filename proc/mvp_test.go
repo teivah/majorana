@@ -216,11 +216,11 @@ func TestMvp6_1_3x3(t *testing.T) {
 	}
 	testPrime(t, factory, memory, testFrom, testTo, false)
 	testSums(t, factory, memory, testFrom, testTo, false)
-	// Not passing, fixed in MVP 6.3
+	// Not passing, fixed from MVP 6.3
 	//testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
-	// Not passing, fixed in MVP 6.3
+	// Not passing, fixed from MVP 6.2
 	//testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -246,8 +246,7 @@ func TestMvp6_2_3x3(t *testing.T) {
 	}
 	testPrime(t, factory, memory, testFrom, testTo, false)
 	testSums(t, factory, memory, testFrom, testTo, false)
-	// Not passing, fixed in MVP 6.3
-	//testStringLength(t, factory, 1024, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
 	testConditionalBranch(t, factory, false)
