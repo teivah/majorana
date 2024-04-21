@@ -19,33 +19,33 @@ func primeStats(cycles int) string {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1PrimeExecutionTime
-	return fmt.Sprintf("%.0f ns, %.1f%% slower", ns, slower)
+	return fmt.Sprintf("%.0f ns, %.1fx slower", ns, slower)
 }
 
 func sumStats(cycles int) string {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1SumsExecutionTime
-	return fmt.Sprintf("%.0f ns, %.1f%% slower", ns, slower)
+	return fmt.Sprintf("%.0f ns, %.1fx slower", ns, slower)
 }
 
 func stringCopyStats(cycles int) string {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1StringCopyExecutionTime
-	return fmt.Sprintf("%.0f ns, %.1f%% slower", ns, slower)
+	return fmt.Sprintf("%.0f ns, %.1fx slower", ns, slower)
 }
 
 func stringLengthStats(cycles int) string {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1StringLengthExecutionTime
-	return fmt.Sprintf("%.0f ns, %.1f%% slower", ns, slower)
+	return fmt.Sprintf("%.0f ns, %.1fx slower", ns, slower)
 }
 
 func bubbleSortStats(cycles int) string {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1BubbleSortExecutionTime
-	return fmt.Sprintf("%.0f ns, %.1f%% slower", ns, slower)
+	return fmt.Sprintf("%.0f ns, %.1fx slower", ns, slower)
 }
