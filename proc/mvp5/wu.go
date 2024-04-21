@@ -1,6 +1,7 @@
 package mvp5
 
 import (
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -29,7 +30,7 @@ func (wu *writeUnit) cycle(ctx *risc.Context, inBus *comp.SimpleBus[risc.Executi
 	} else if execution.Execution.MemoryChange {
 		// TODO Do after
 		wu.pendingMemoryWrite = true
-		wu.cycles = cyclesMemoryAccess
+		wu.cycles = latency.MemoryAccess
 		ctx.WriteMemory(execution.Execution)
 	}
 }

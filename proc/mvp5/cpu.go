@@ -3,19 +3,18 @@ package mvp5
 import (
 	"fmt"
 
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
 
 const (
-	cyclesMemoryAccess = 50
-	cyclesL1Access     = 1
-	bytes              = 1
-	kilobytes          = 1024
-	l1ICacheLineSize   = 64 * bytes
-	liICacheSize       = 1 * kilobytes
-	l1DCacheLineSize   = 64 * bytes
-	liDCacheSize       = 1 * kilobytes
+	bytes            = 1
+	kilobytes        = 1024
+	l1ICacheLineSize = 64 * bytes
+	liICacheSize     = 1 * kilobytes
+	l1DCacheLineSize = 64 * bytes
+	liDCacheSize     = 1 * kilobytes
 )
 
 type CPU struct {
@@ -36,7 +35,7 @@ type CPU struct {
 func NewCPU(debug bool, memoryBytes int) *CPU {
 	ctx := risc.NewContext(debug, memoryBytes, false)
 	mmu := newMemoryManagementUnit(ctx)
-	fu := newFetchUnit(mmu, cyclesMemoryAccess)
+	fu := newFetchUnit(mmu, latency.MemoryAccess)
 	du := &decodeUnit{}
 	bu := newBTBBranchUnit(4, fu, du)
 	return &CPU{

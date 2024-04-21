@@ -1,6 +1,7 @@
 package mvp6_0
 
 import (
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
@@ -49,7 +50,7 @@ func (u *fetchUnit) coFetch(cycle int, app risc.Application, ctx *risc.Context) 
 		}
 
 		if _, exists := u.mmu.getFromL1I([]int32{u.pc}); !exists {
-			u.remainingCycles = cyclesMemoryAccess - 1
+			u.remainingCycles = latency.MemoryAccess - 1
 			u.coroutine = func(cycle int, app risc.Application, ctx *risc.Context) {
 				if u.remainingCycles != 0 {
 					log.Infou(ctx, "FU", "pending memory access")

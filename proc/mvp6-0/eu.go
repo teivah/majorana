@@ -1,6 +1,7 @@
 package mvp6_0
 
 import (
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
@@ -61,7 +62,7 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 			u.memory = memory
 			// As the coroutine is executed the next cycle, if a L1D access takes
 			// one cycle, we should be good to go during the next cycle
-			remainingCycles := cycleL1DAccess - 1
+			remainingCycles := latency.L1Access - 1
 			u.coroutine = func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error) {
 				if remainingCycles > 0 {
 					remainingCycles--
@@ -71,7 +72,7 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 			}
 			return false, 0, 0, false, nil
 		} else {
-			remainingCycles := cyclesMemoryAccess - 1
+			remainingCycles := latency.MemoryAccess - 1
 
 			u.coroutine = func(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error) {
 				if remainingCycles > 0 {

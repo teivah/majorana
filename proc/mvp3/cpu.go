@@ -3,14 +3,12 @@ package mvp3
 import (
 	"fmt"
 
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/risc"
 )
 
 const (
-	cyclesL1Access       = 1
-	cyclesMemoryAccess   = 50 + cyclesL1Access
-	cyclesRegisterAccess = 1
-	cyclesDecode         = 1
+	cyclesDecode = 1
 
 	bytes            = 1
 	kilobytes        = 1024
@@ -61,14 +59,14 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			if m.ctx.Debug {
 				fmt.Println(ins, m.ctx.Registers)
 			}
-			m.cycle += cyclesRegisterAccess
+			m.cycle += latency.RegisterAccess
 		} else if exe.MemoryChange {
 			if m.mmu.doesExecutionMemoryChangesExistsInL1D(exe) {
 				m.mmu.writeExecutionMemoryChangesToL1D(exe)
-				m.cycle += cyclesL1Access
+				m.cycle += latency.L1Access
 			} else {
 				m.ctx.WriteMemory(exe)
-				m.cycle += cyclesMemoryAccess
+				m.cycle += latency.MemoryAccess
 			}
 		}
 	}
@@ -87,9 +85,9 @@ func (m *CPU) Stats() map[string]any {
 
 func (m *CPU) fetchInstruction(pc int32) int32 {
 	if _, exists := m.mmu.getFromL1I([]int32{pc}); exists {
-		m.cycle += cyclesL1Access
+		m.cycle += latency.L1Access
 	} else {
-		m.cycle += cyclesMemoryAccess
+		m.cycle += latency.MemoryAccess
 		m.mmu.pushLineToL1I(pc, make([]int8, l1ICacheLineSize))
 	}
 
@@ -106,11 +104,11 @@ func (m *CPU) execute(app risc.Application, r risc.InstructionRunner, pc int32) 
 	addrs := r.MemoryRead(m.ctx)
 	var memory []int8
 	if len(addrs) != 0 {
-		m.cycle += cyclesL1Access
+		m.cycle += latency.L1Access
 		if mem, exists := m.mmu.getFromL1D(addrs); exists {
 			memory = mem
 		} else {
-			m.cycle += cyclesMemoryAccess
+			m.cycle += latency.MemoryAccess
 			line := m.mmu.fetchCacheLine(addrs[0])
 			m.mmu.pushLineToL1D(addrs[0], line)
 			mem, exists := m.mmu.getFromL1D(addrs)

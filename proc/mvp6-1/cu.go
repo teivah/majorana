@@ -125,7 +125,7 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, runner *risc.In
 
 	if u.isDataHazardWithSkippedRunners(runner) {
 		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "hazard with skipped runner")
-		return false, false
+		return false, true
 	}
 
 	hazards, hazardTypes := ctx.IsDataHazard3(runner.Runner)

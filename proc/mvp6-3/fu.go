@@ -2,6 +2,7 @@ package mvp6_3
 
 import (
 	co "github.com/teivah/majorana/common/coroutine"
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
@@ -51,7 +52,7 @@ func (u *fetchUnit) start(r fuReq) error {
 		}
 
 		if _, exists := u.mmu.getFromL1I([]int32{u.pc}); !exists {
-			u.remainingCycles = cyclesMemoryAccess - 1
+			u.remainingCycles = latency.MemoryAccess - 1
 			u.Checkpoint(u.memoryAccess)
 			return nil
 		}

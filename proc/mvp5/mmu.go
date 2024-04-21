@@ -3,6 +3,7 @@ package mvp5
 import (
 	"sort"
 
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -124,7 +125,7 @@ func (u *memoryManagementUnit) writeToMemory(addr int32, data []int8) {
 func (u *memoryManagementUnit) flush() int {
 	additionalCycles := 0
 	for _, line := range u.l1d.Lines() {
-		additionalCycles += cyclesMemoryAccess
+		additionalCycles += latency.MemoryAccess
 		for i := 0; i < l1DCacheLineSize; i++ {
 			u.writeToMemory(line.Boundary[0], line.Data)
 		}

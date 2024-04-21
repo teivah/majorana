@@ -1,6 +1,7 @@
 package mvp6_0
 
 import (
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
@@ -36,7 +37,7 @@ func (u *writeUnit) cycle(ctx *risc.Context, before int32) {
 		ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
 		log.Infoi(ctx, "WU", execution.InstructionType, -1, "write to register")
 	} else if execution.Execution.MemoryChange {
-		remainingCycle := cyclesMemoryAccess
+		remainingCycle := latency.MemoryAccess
 		log.Infoi(ctx, "WU", execution.InstructionType, -1, "pending memory write")
 
 		u.coroutine = func(ctx *risc.Context) {

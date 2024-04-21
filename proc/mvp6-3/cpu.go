@@ -1,6 +1,7 @@
 package mvp6_3
 
 import (
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
@@ -9,10 +10,6 @@ import (
 const (
 	bytes     = 1
 	kilobytes = 1024
-
-	cyclesMemoryAccess = 50
-	cycleL1DAccess     = 1
-	flushCycles        = 1
 
 	l1ICacheLineSize = 64 * bytes
 	liICacheSize     = 1 * kilobytes
@@ -129,7 +126,12 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 		// Write back
 		for _, wu := range m.writeUnits {
-			_ = wu.Cycle(wuReq{-1})
+			if flush {
+				// In case of a flush, we shouldn't write pending-write instructions.
+				_ = wu.Cycle(wuReq{sequenceID})
+			} else {
+				_ = wu.Cycle(wuReq{-1})
+			}
 		}
 		log.Info(m.ctx, "\tRegisters: %v", m.ctx.Registers)
 
@@ -187,7 +189,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 
 			log.Info(m.ctx, "\t️⚠️ Flush to %d", pc/4)
 			m.flush(pc)
-			cycle += flushCycles
+			cycle += latency.Flush
 			log.Info(m.ctx, "\tRegisters: %v", m.ctx.Registers)
 			continue
 		}

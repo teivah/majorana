@@ -3,6 +3,7 @@ package mvp4
 import (
 	"fmt"
 
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -88,11 +89,11 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 		if m, exists := eu.mmu.getFromL1D(addrs); exists {
 			eu.memory = m
 			eu.pendingMemoryRead = true
-			eu.remainingCycles = cyclesL1Access
+			eu.remainingCycles = latency.L1Access
 		} else {
 			eu.addrs = addrs
 			eu.pendingMemoryRead = true
-			eu.remainingCycles = cyclesMemoryAccess
+			eu.remainingCycles = latency.MemoryAccess
 		}
 		return false, 0, false, nil
 	}

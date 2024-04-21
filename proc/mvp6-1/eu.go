@@ -2,6 +2,7 @@ package mvp6_1
 
 import (
 	co "github.com/teivah/majorana/common/coroutine"
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
@@ -98,7 +99,7 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 			u.memory = memory
 			// As the coroutine is executed the next cycle, if a L1D access takes
 			// one cycle, we should be good to go during the next cycle
-			remainingCycles := cycleL1DAccess - 1
+			remainingCycles := latency.L1Access - 1
 
 			u.Checkpoint(func(r euReq) euResp {
 				if remainingCycles > 0 {
@@ -109,7 +110,7 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 			})
 			return euResp{}
 		} else {
-			remainingCycles := cyclesMemoryAccess - 1
+			remainingCycles := latency.MemoryAccess - 1
 
 			u.Checkpoint(func(r euReq) euResp {
 				if remainingCycles > 0 {

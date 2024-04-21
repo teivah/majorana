@@ -1,7 +1,6 @@
 # Major
 
-- Register renaming to prevent war and waw
-- Spectre https://www.youtube.com/watch?v=q3-xCvzBjGs
+- Reorder buffer
 - TLB?
 - L1 should be per core
 - Multiple L1i, L1 is a multiplier of the cache line

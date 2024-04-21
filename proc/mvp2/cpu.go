@@ -3,15 +3,13 @@ package mvp2
 import (
 	"fmt"
 
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/risc"
 )
 
 const (
-	cyclesL1Access             = 1
-	cyclesMemoryAccess         = 50 + cyclesL1Access
-	cyclesRegisterAccess       = 1
-	cyclesDecode               = 1
-	l1iSize              int32 = 64
+	cyclesDecode       = 1
+	l1iSize      int32 = 64
 )
 
 type CPU struct {
@@ -57,10 +55,10 @@ loop:
 			if m.ctx.Debug {
 				fmt.Println(ins, m.ctx.Registers)
 			}
-			m.cycle += cyclesRegisterAccess
+			m.cycle += latency.RegisterAccess
 		} else if exe.MemoryChange {
 			m.ctx.WriteMemory(exe)
-			m.cycle += cyclesMemoryAccess
+			m.cycle += latency.MemoryAccess
 		}
 	}
 	if m.ctx.Registers[risc.Ra] != 0 {
@@ -78,7 +76,7 @@ func (m *CPU) Stats() map[string]any {
 
 func (m *CPU) fetchInstruction(pc int32) int32 {
 	if m.isPresentInL1i(pc) {
-		m.cycle += cyclesL1Access
+		m.cycle += latency.L1Access
 	} else {
 		m.fetchL1i(pc)
 	}
@@ -91,7 +89,7 @@ func (m *CPU) isPresentInL1i(pc int32) bool {
 }
 
 func (m *CPU) fetchL1i(pc int32) {
-	m.cycle += cyclesMemoryAccess
+	m.cycle += latency.MemoryAccess
 	m.l1iFrom = pc
 	m.l1iTo = pc + l1iSize
 }
@@ -109,7 +107,7 @@ func (m *CPU) execute(app risc.Application, r risc.InstructionRunner, pc int32) 
 		for _, addr := range addrs {
 			memory = append(memory, m.ctx.Memory[addr])
 		}
-		m.cycle += cyclesMemoryAccess
+		m.cycle += latency.MemoryAccess
 	}
 
 	exe, err := r.Run(m.ctx, app.Labels, pc, memory)
