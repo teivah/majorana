@@ -104,7 +104,7 @@ One _small_ issue: MVP-5.0 is not always faster in all the benchmarks. Indeed, w
 
 #### MVP-6.1
 
-For MVP-5.1, the microarchitecture is the same as MVP-5.1. The only difference lies in the control unit, where we started to implement a new concept called forwarding. Consider a data hazard mentioned previously:
+For MVP-6.1, the microarchitecture is the same as MVP-6.1. The only difference lies in the control unit, where we started to implement a new concept called forwarding. Consider a data hazard mentioned previously:
 
 ```asm
 addi t1, zero, 2 # Write to t1
@@ -113,7 +113,9 @@ div t2, t0, t1   # Read from t1
 
 Instruction 1 writes to `T1`, while instruction 2 reads from `T2`. Therefore, instruction 2 has to wait for `ADDI` to write the result to `T1` before it gets executed, hence slowing down the execution. With forwarding, we can alleviate the effects of this problem: the result of the `ADDI` instruction is fed directly back into the ALU's input port. `DIV` doesn't have to wait for the execution of `ADDI` to be written in `T1` anymore.
 
-// TODO Vulnerable to branch condition tests initially as the CU allows more instructions
+#### MVP-6.2
+
+// TODO MVP-6.1 was vulnerable to branch condition tests initially as the CU allows more instructions
 
 ```asm
 main:
@@ -124,9 +126,11 @@ end:
     ret            # t1 = 1 instead of 0
 ```
 
-#### MVP-6.2
+New feature: commit / rollback conditional branches
 
-Commit / rollback conditional branches
+#### MVP-6.3
+
+Register renaming to tackle waw and war
 
 ## Benchmarks
 
