@@ -424,7 +424,8 @@ func testStringCopy(t *testing.T, factory func(int) virtualMachine, memory int, 
 
 func testBubbleSort(t *testing.T, factory func(int) virtualMachine, stats bool) {
 	t.Run("Bubble sort", func(t *testing.T) {
-		data := 100
+		//data := 100
+		data := 151
 		vm := factory(data * 4)
 		for i := 0; i < data; i++ {
 			bytes := risc.BytesFromLowBits(int32(data - i))
@@ -554,100 +555,124 @@ func testSpectre(t *testing.T, factory func(int) virtualMachine, stats bool) {
 //}
 
 func TestBenchmarks(t *testing.T) {
-	primeExpected := map[string]int{
-		"MVP-1":   13120170,
-		"MVP-2":   851554,
-		"MVP-3":   851556,
-		"MVP-4":   450937,
-		"MVP-5":   400864,
-		"MVP-6.0": 400824,
-		"MVP-6.1": 350748,
-		"MVP-6.2": 350748,
+	versions := []string{
+		"MVP-1",
+		"MVP-2",
+		"MVP-3",
+		"MVP-4",
+		"MVP-5",
+		"MVP-6.0",
+		"MVP-6.1",
+		"MVP-6.2",
+		"MVP-6.3",
 	}
-	sumsExpected := map[string]int{
-		"MVP-1":   1921287,
-		"MVP-2":   520260,
-		"MVP-3":   329332,
-		"MVP-4":   267356,
-		"MVP-5":   263261,
-		"MVP-6.0": 74854,
-		"MVP-6.1": 62565,
-		"MVP-6.2": 62565,
-	}
-	copyExpected := map[string]int{
-		"MVP-1":   5826769,
-		"MVP-2":   1833023,
-		"MVP-3":   1329999,
-		"MVP-4":   1165822,
-		"MVP-5":   1135105,
-		"MVP-6.0": 664073,
-		"MVP-6.1": 643494,
-		"MVP-6.2": 643494,
-	}
-	lengthExpected := map[string]int{
-		"MVP-1":   3707344,
-		"MVP-2":   1208542,
-		"MVP-3":   705519,
-		"MVP-4":   612961,
-		"MVP-5":   602722,
-		"MVP-6.0": 131695,
-		"MVP-6.1": 100969,
-		"MVP-6.2": 100969,
-	}
-	bubbleExpected := map[string]int{
-		"MVP-1":   29792552,
-		"MVP-2":   11345853,
-		"MVP-3":   5377179,
-		"MVP-4":   4620336,
-		"MVP-5":   4580537,
-		"MVP-6.0": 780642,
-		"MVP-6.1": 720740,
-		"MVP-6.2": 720740,
+	const (
+		versionMVP1 = iota
+		versionMVP2
+		versionMVP3
+		versionMVP4
+		versionMVP5
+		versionMVP6_0
+		versionMVP6_1
+		versionMVP6_2
+		versionMVP6_3
+		totalVersions
+	)
+
+	expected := map[string][]int{
+		"Prime": {
+			versionMVP1:   13120170,
+			versionMVP2:   851554,
+			versionMVP3:   851556,
+			versionMVP4:   450937,
+			versionMVP5:   400864,
+			versionMVP6_0: 400824,
+			versionMVP6_1: 350748,
+			versionMVP6_2: 350748,
+			versionMVP6_3: 300674,
+		},
+		"Sum": {
+			versionMVP1:   1921287,
+			versionMVP2:   520260,
+			versionMVP3:   329332,
+			versionMVP4:   267356,
+			versionMVP5:   263261,
+			versionMVP6_0: 74854,
+			versionMVP6_1: 62565,
+			versionMVP6_2: 62565,
+			versionMVP6_3: 62565,
+		},
+		"String copy": {
+			versionMVP1:   5826769,
+			versionMVP2:   1833023,
+			versionMVP3:   1329999,
+			versionMVP4:   1165822,
+			versionMVP5:   1135105,
+			versionMVP6_0: 664073,
+			versionMVP6_1: 643494,
+			versionMVP6_2: 643494,
+			versionMVP6_3: 341314,
+		},
+		"String length": {
+			versionMVP1:   3707344,
+			versionMVP2:   1208542,
+			versionMVP3:   705519,
+			versionMVP4:   612961,
+			versionMVP5:   602722,
+			versionMVP6_0: 131695,
+			versionMVP6_1: 100969,
+			versionMVP6_2: 100969,
+			versionMVP6_3: 100969,
+		},
+		"Bubble sort": {
+			versionMVP1:   29792552,
+			versionMVP2:   11345853,
+			versionMVP3:   5377179,
+			versionMVP4:   4620336,
+			versionMVP5:   4580537,
+			versionMVP6_0: 780642,
+			versionMVP6_1: 720740,
+			versionMVP6_2: 720740,
+			versionMVP6_3: 720740,
+		},
 	}
 
-	tableRow := map[string]int{
-		"MVP-1":   0,
-		"MVP-2":   1,
-		"MVP-3":   2,
-		"MVP-4":   3,
-		"MVP-5":   4,
-		"MVP-6.0": 5,
-		"MVP-6.1": 6,
-		"MVP-6.2": 7,
-	}
-
-	vms := map[string]func(m int) virtualMachine{
-		"MVP-1": func(m int) virtualMachine {
+	vms := []func(m int) virtualMachine{
+		versionMVP1: func(m int) virtualMachine {
 			return mvp1.NewCPU(false, m)
 		},
-		"MVP-2": func(m int) virtualMachine {
+		versionMVP2: func(m int) virtualMachine {
 			return mvp2.NewCPU(false, m)
 		},
-		"MVP-3": func(m int) virtualMachine {
+		versionMVP3: func(m int) virtualMachine {
 			return mvp3.NewCPU(false, m)
 		},
-		"MVP-4": func(m int) virtualMachine {
+		versionMVP4: func(m int) virtualMachine {
 			return mvp4.NewCPU(false, m)
 		},
-		"MVP-5": func(m int) virtualMachine {
+		versionMVP5: func(m int) virtualMachine {
 			return mvp5.NewCPU(false, m)
 		},
-		"MVP-6.0": func(m int) virtualMachine {
+		versionMVP6_0: func(m int) virtualMachine {
 			return mvp6_0.NewCPU(false, m, 2, 2)
 		},
-		"MVP-6.1": func(m int) virtualMachine {
+		versionMVP6_1: func(m int) virtualMachine {
 			return mvp6_1.NewCPU(false, m, 2, 2)
 		},
-		//"MVP-6.2": func(m int) virtualMachine {
-		//	return mvp6_2.NewCPU(false, m, 2, 2)
-		//},
+		versionMVP6_2: func(m int) virtualMachine {
+			return mvp6_2.NewCPU(false, m, 2, 2)
+		},
+		versionMVP6_3: func(m int) virtualMachine {
+			return mvp6_3.NewCPU(false, m, 2, 2)
+		},
 	}
 
-	primeOutput := make([]string, len(tableRow))
+	primeOutput := make([]string, totalVersions)
 	t.Run("Prime", func(t *testing.T) {
-		for name, factory := range vms {
-			t.Run(name, func(t *testing.T) {
-				if _, exists := primeExpected[name]; !exists {
+		for idx, factory := range vms {
+			t.Run(versions[idx], func(t *testing.T) {
+				v := expected["Prime"][idx]
+				if v == -1 {
 					t.SkipNow()
 				}
 
@@ -667,17 +692,18 @@ func TestBenchmarks(t *testing.T) {
 				} else {
 					assert.Equal(t, int8(0), vm.Context().Memory[4])
 				}
-				assert.Equal(t, primeExpected[name], cycles)
-				primeOutput[tableRow[name]] = primeStats(cycles)
+				assert.Equal(t, v, cycles)
+				primeOutput[idx] = primeStats(cycles)
 			})
 		}
 	})
 
-	sumsOutput := make([]string, len(tableRow))
+	sumsOutput := make([]string, totalVersions)
 	t.Run("Sum", func(t *testing.T) {
-		for name, factory := range vms {
-			t.Run(name, func(t *testing.T) {
-				if _, exists := sumsExpected[name]; !exists {
+		for idx, factory := range vms {
+			t.Run(versions[idx], func(t *testing.T) {
+				v := expected["Sum"][idx]
+				if v == -1 {
 					t.SkipNow()
 				}
 
@@ -701,17 +727,18 @@ func TestBenchmarks(t *testing.T) {
 				}
 				assert.Equal(t, int32(sumArray(s)), vm.Context().Registers[risc.A0])
 
-				assert.Equal(t, sumsExpected[name], cycles)
-				sumsOutput[tableRow[name]] = sumStats(cycles)
+				assert.Equal(t, v, cycles)
+				sumsOutput[idx] = sumStats(cycles)
 			})
 		}
 	})
 
-	cpyOutput := make([]string, len(tableRow))
+	cpyOutput := make([]string, totalVersions)
 	t.Run("String copy", func(t *testing.T) {
-		for name, factory := range vms {
-			t.Run(name, func(t *testing.T) {
-				if _, exists := copyExpected[name]; !exists {
+		for idx, factory := range vms {
+			t.Run(versions[idx], func(t *testing.T) {
+				v := expected["String copy"][idx]
+				if v == -1 {
 					t.SkipNow()
 				}
 
@@ -734,17 +761,18 @@ func TestBenchmarks(t *testing.T) {
 					assert.Equal(t, int8('1'), v)
 				}
 				require.NoError(t, err)
-				assert.Equal(t, copyExpected[name], cycles)
-				cpyOutput[tableRow[name]] = stringCopyStats(cycles)
+				assert.Equal(t, v, cycles)
+				cpyOutput[idx] = stringCopyStats(cycles)
 			})
 		}
 	})
 
-	lengthOutput := make([]string, len(tableRow))
+	lengthOutput := make([]string, totalVersions)
 	t.Run("String length", func(t *testing.T) {
-		for name, factory := range vms {
-			t.Run(name, func(t *testing.T) {
-				if _, exists := lengthExpected[name]; !exists {
+		for idx, factory := range vms {
+			t.Run(versions[idx], func(t *testing.T) {
+				v := expected["String length"][idx]
+				if v == -1 {
 					t.SkipNow()
 				}
 
@@ -764,19 +792,21 @@ func TestBenchmarks(t *testing.T) {
 				got := risc.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
 				assert.Equal(t, int32(length), got)
 
-				assert.Equal(t, lengthExpected[name], cycles)
-				lengthOutput[tableRow[name]] = stringLengthStats(cycles)
+				assert.Equal(t, v, cycles)
+				lengthOutput[idx] = stringLengthStats(cycles)
 			})
 		}
 	})
 
-	bubbleOutput := make([]string, len(tableRow))
+	bubbleOutput := make([]string, totalVersions)
 	t.Run("Bubble sort", func(t *testing.T) {
-		for name, factory := range vms {
-			t.Run(name, func(t *testing.T) {
-				if _, exists := bubbleExpected[name]; !exists {
+		for idx, factory := range vms {
+			t.Run(versions[idx], func(t *testing.T) {
+				v := expected["Bubble sort"][idx]
+				if v == -1 {
 					t.SkipNow()
 				}
+
 				data := benchBubSort
 				vm := factory(data * 4)
 				for i := 0; i < data; i++ {
@@ -800,8 +830,8 @@ func TestBenchmarks(t *testing.T) {
 					require.Equal(t, int32(i+1), n)
 				}
 
-				assert.Equal(t, bubbleExpected[name], cycles)
-				bubbleOutput[tableRow[name]] = bubbleSortStats(cycles)
+				assert.Equal(t, v, cycles)
+				bubbleOutput[idx] = bubbleSortStats(cycles)
 			})
 		}
 	})
@@ -811,13 +841,12 @@ func TestBenchmarks(t *testing.T) {
 `
 	output += fmt.Sprintf("| Apple M1 | %.1f ns | %.1f ns | %.1f ns | %.1f ns | %.1f ns |\n", m1PrimeExecutionTime, m1SumsExecutionTime, m1StringCopyExecutionTime, m1StringLengthExecutionTime, m1BubbleSortExecutionTime)
 	var keys []string
-	for k := range tableRow {
+	for _, k := range versions {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	for _, mvp := range keys {
-		idx := tableRow[mvp]
-		output += fmt.Sprintf("| %s | %s | %s | %s | %s | %s |\n", mvp, primeOutput[idx], sumsOutput[idx], cpyOutput[idx], lengthOutput[idx], bubbleOutput[idx])
+	for idx := range keys {
+		output += fmt.Sprintf("| %s | %s | %s | %s | %s | %s |\n", versions[idx], primeOutput[idx], sumsOutput[idx], cpyOutput[idx], lengthOutput[idx], bubbleOutput[idx])
 	}
 	fmt.Println(output)
 }

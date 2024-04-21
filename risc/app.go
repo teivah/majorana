@@ -1,6 +1,10 @@
 package risc
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/teivah/majorana/proc/comp"
+)
 
 type ExecutionContext struct {
 	SequenceID      int32
@@ -24,7 +28,10 @@ type Context struct {
 	Debug                 bool
 	// SequenceID represents a monotonic ID for the sequence.
 	// It increments during a jump.
-	sequenceID int32
+	sequenceID     int32
+	committedRAT   *comp.RAT[RegisterType, int32]
+	transactionRAT *comp.RAT[RegisterType, transactionUnit]
+	rat            bool
 }
 
 type transactionUnit struct {
@@ -32,7 +39,9 @@ type transactionUnit struct {
 	value      int32
 }
 
-func NewContext(debug bool, memoryBytes int) *Context {
+const ratLength = 10
+
+func NewContext(debug bool, memoryBytes int, rat bool) *Context {
 	return &Context{
 		Registers:             make(map[RegisterType]int32),
 		Transaction:           make(map[RegisterType]transactionUnit),
@@ -40,6 +49,9 @@ func NewContext(debug bool, memoryBytes int) *Context {
 		PendingReadRegisters:  make(map[RegisterType]int),
 		Memory:                make([]int8, memoryBytes),
 		Debug:                 debug,
+		committedRAT:          comp.NewRAT[RegisterType, int32](ratLength),
+		transactionRAT:        comp.NewRAT[RegisterType, transactionUnit](ratLength),
+		rat:                   rat,
 	}
 }
 
@@ -76,10 +88,41 @@ func (ctx *Context) Rollback(sequenceID int32) {
 	for register, tu := range ctx.Transaction {
 		if tu.sequenceID < sequenceID {
 			ctx.Registers[register] = tu.value
-		} else {
 		}
 	}
 	ctx.Transaction = make(map[RegisterType]transactionUnit)
+}
+
+func (ctx *Context) InitRAT() {
+	for k, v := range ctx.Registers {
+		ctx.committedRAT.Write(k, v)
+	}
+}
+
+func (ctx *Context) TransactionRATWrite(exe Execution, sequenceID int32) {
+	ctx.transactionRAT.Write(exe.Register, transactionUnit{sequenceID, exe.RegisterValue})
+}
+
+func (ctx *Context) RATCommit() {
+	for register, tu := range ctx.transactionRAT.Values() {
+		ctx.committedRAT.Write(register, tu.value)
+	}
+	ctx.transactionRAT = comp.NewRAT[RegisterType, transactionUnit](ratLength)
+}
+
+func (ctx *Context) RATRollback(sequenceID int32) {
+	for register, tu := range ctx.transactionRAT.Values() {
+		if tu.sequenceID < sequenceID {
+			ctx.committedRAT.Write(register, tu.value)
+		}
+	}
+	ctx.transactionRAT = comp.NewRAT[RegisterType, transactionUnit](ratLength)
+}
+
+func (ctx *Context) RATFlush() {
+	for k, v := range ctx.committedRAT.Values() {
+		ctx.Registers[k] = v
+	}
 }
 
 func (ctx *Context) WriteMemory(exe Execution) {

@@ -43,7 +43,7 @@ func NewCPU(debug bool, memoryBytes int, eu, wu int) *CPU {
 	executeBus := comp.NewBufferedBus[*risc.InstructionRunnerPc](busSize, busSize)
 	writeBus := comp.NewBufferedBus[risc.ExecutionContext](busSize, busSize)
 
-	ctx := risc.NewContext(debug, memoryBytes)
+	ctx := risc.NewContext(debug, memoryBytes, true)
 
 	wus := make([]*writeUnit, 0, wu)
 	for i := 0; i < wu; i++ {
@@ -83,6 +83,7 @@ func (m *CPU) Context() *risc.Context {
 }
 
 func (m *CPU) Run(app risc.Application) (int, error) {
+	m.ctx.InitRAT()
 	defer func() {
 		log.Infou(m.ctx, "L1d", m.memoryManagementUnit.l1d.String())
 	}()
@@ -196,7 +197,9 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 	}
 	cycle += m.memoryManagementUnit.flush()
-	m.ctx.Commit()
+	m.ctx.RATCommit()
+	m.ctx.RATFlush()
+	log.Info(m.ctx, "Registers: %v", m.ctx.Registers)
 	return cycle, nil
 }
 

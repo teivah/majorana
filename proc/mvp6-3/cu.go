@@ -77,6 +77,7 @@ func (u *controlUnit) cycle(cycle int) {
 
 		push, stop := u.handleRunner(u.ctx, cycle, &runner)
 		if push {
+			u.pushedRunnersInCurrentCycle[&runner] = true
 			u.pendings.Remove(elem)
 			if runner.Runner.InstructionType().IsBranch() {
 				u.pushedBranchInCurrentCycle = true
@@ -100,6 +101,7 @@ func (u *controlUnit) cycle(cycle int) {
 
 		push, stop := u.handleRunner(u.ctx, cycle, &runner)
 		if push {
+			u.pushedRunnersInCurrentCycle[&runner] = true
 			if runner.Runner.InstructionType().IsBranch() {
 				u.pushedBranchInCurrentCycle = true
 			}
@@ -136,7 +138,6 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, runner *risc.In
 		if !pushed {
 			return false, true
 		}
-		u.pushedRunnersInCurrentCycle[runner] = true
 		return true, false
 	}
 
@@ -151,13 +152,19 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, runner *risc.In
 		if !pushed {
 			return false, true
 		}
-		u.pushedRunnersInCurrentCycle[runner] = true
 		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "forward runner on %s (source %d)", register, previousRunner.Pc/4)
 		u.forwarding++
 		return true, true
 	}
 
-	// TODO Renaming
+	if u.shouldUseRenaming(hazards, hazardTypes) {
+		pushed := u.pushRunner(ctx, cycle, runner)
+		if !pushed {
+			return false, true
+		}
+		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "renaming")
+		return true, false
+	}
 
 	log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%+v, types=%+v", hazards, hazardTypes)
 	u.blockedDataHazard++
@@ -222,6 +229,16 @@ func (u *controlUnit) shouldUseForwarding(runner *risc.InstructionRunnerPc, haza
 		}
 	}
 	return false, nil, risc.Zero
+}
+
+func (u *controlUnit) shouldUseRenaming(hazards []risc.Hazard, hazardTypes map[risc.HazardType]bool) bool {
+	if len(hazards) > 1 {
+		return false
+	}
+	if hazardTypes[risc.ReadAfterWrite] {
+		return false
+	}
+	return true
 }
 
 func (u *controlUnit) notifyConditionalBranch() {

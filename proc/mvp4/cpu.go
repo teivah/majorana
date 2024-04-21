@@ -33,7 +33,7 @@ type CPU struct {
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
 	bu := &simpleBranchUnit{}
-	ctx := risc.NewContext(debug, memoryBytes)
+	ctx := risc.NewContext(debug, memoryBytes, false)
 	mmu := newMemoryManagementUnit(ctx)
 	return &CPU{
 		ctx:                  ctx,

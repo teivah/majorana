@@ -43,7 +43,7 @@ func NewCPU(debug bool, memoryBytes int, eu, wu int) *CPU {
 	executeBus := comp.NewBufferedBus[*risc.InstructionRunnerPc](busSize, busSize)
 	writeBus := comp.NewBufferedBus[risc.ExecutionContext](busSize, busSize)
 
-	ctx := risc.NewContext(debug, memoryBytes)
+	ctx := risc.NewContext(debug, memoryBytes, false)
 
 	wus := make([]*writeUnit, 0, wu)
 	for i := 0; i < wu; i++ {

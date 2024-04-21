@@ -1,6 +1,8 @@
 package risc
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type InstructionRunnerPc struct {
 	Runner     InstructionRunner
@@ -21,6 +23,15 @@ func registerRead(ctx *Context, forward Forward, reg RegisterType) int32 {
 	if reg == forward.Register {
 		return forward.Value
 	}
+
+	if ctx.rat {
+		if v, exists := ctx.transactionRAT.Read(reg); exists {
+			return v.value
+		}
+		v, _ := ctx.committedRAT.Read(reg)
+		return v
+	}
+
 	if v, exists := ctx.Transaction[reg]; exists {
 		return v.value
 	}

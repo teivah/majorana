@@ -19,7 +19,7 @@ type CPU struct {
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
 	return &CPU{
-		ctx: risc.NewContext(debug, memoryBytes),
+		ctx: risc.NewContext(debug, memoryBytes, false),
 	}
 }
 

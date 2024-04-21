@@ -34,7 +34,7 @@ type CPU struct {
 }
 
 func NewCPU(debug bool, memoryBytes int) *CPU {
-	ctx := risc.NewContext(debug, memoryBytes)
+	ctx := risc.NewContext(debug, memoryBytes, false)
 	mmu := newMemoryManagementUnit(ctx)
 	fu := newFetchUnit(mmu, cyclesMemoryAccess)
 	du := &decodeUnit{}
@@ -130,10 +130,10 @@ func (m *CPU) flush(pc int32) {
 
 func (m *CPU) isComplete() bool {
 	return m.fetchUnit.isEmpty() &&
-			m.decodeUnit.isEmpty() &&
-			m.executeUnit.isEmpty() &&
-			m.writeUnit.isEmpty() &&
-			m.decodeBus.IsEmpty() &&
-			m.executeBus.IsEmpty() &&
-			m.writeBus.IsEmpty()
+		m.decodeUnit.isEmpty() &&
+		m.executeUnit.isEmpty() &&
+		m.writeUnit.isEmpty() &&
+		m.decodeBus.IsEmpty() &&
+		m.executeBus.IsEmpty() &&
+		m.writeBus.IsEmpty()
 }

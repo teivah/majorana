@@ -36,7 +36,7 @@ func (u *writeUnit) start(r wuReq) error {
 		return nil
 	}
 	if execution.Execution.RegisterChange {
-		u.ctx.TransactionWriteRegister(execution.Execution, execution.SequenceID)
+		u.ctx.TransactionRATWrite(execution.Execution, execution.SequenceID)
 		u.ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
 		log.Infoi(u.ctx, "WU", execution.InstructionType, execution.SequenceID, "write to register")
 	} else if execution.Execution.MemoryChange {
@@ -65,11 +65,11 @@ func (u *writeUnit) start(r wuReq) error {
 }
 
 func (u *writeUnit) commit() {
-	u.ctx.Commit()
+	u.ctx.RATCommit()
 }
 
 func (u *writeUnit) rollback(sequenceID int32) {
-	u.ctx.Rollback(sequenceID)
+	u.ctx.RATRollback(sequenceID)
 }
 
 func (u *writeUnit) isEmpty() bool {

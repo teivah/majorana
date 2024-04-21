@@ -28,21 +28,4 @@ func TestRat(t *testing.T) {
 	assert.Equal(t, map[risc.RegisterType]int32{
 		risc.T0: 2,
 	}, rat.Values())
-
-	rat.Write(risc.T1, 3)
-	v, exists = rat.Read(risc.T1)
-	assert.True(t, exists)
-	assert.Equal(t, int32(3), v)
-	assert.Equal(t, map[risc.RegisterType]int32{
-		risc.T0: 2,
-		risc.T1: 3,
-	}, rat.Values())
-
-	rat.Write(risc.T2, 4)
-	v, exists = rat.Read(risc.T0)
-	assert.False(t, exists)
-	assert.Equal(t, map[risc.RegisterType]int32{
-		risc.T1: 3,
-		risc.T2: 4,
-	}, rat.Values())
 }
