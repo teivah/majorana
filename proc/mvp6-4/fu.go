@@ -20,15 +20,15 @@ type fetchUnit struct {
 	toCleanPending  bool
 	outBus          *comp.BufferedBus[int32]
 	complete        bool
-	mmu             *memoryManagementUnit
 	remainingCycles int
+	l1i             *comp.LRUCache
 }
 
-func newFetchUnit(ctx *risc.Context, mmu *memoryManagementUnit, outBus *comp.BufferedBus[int32]) *fetchUnit {
+func newFetchUnit(ctx *risc.Context, outBus *comp.BufferedBus[int32]) *fetchUnit {
 	fu := &fetchUnit{
 		ctx:    ctx,
-		mmu:    mmu,
 		outBus: outBus,
+		l1i:    comp.NewLRUCache(l1ICacheLineSize, l1ICacheSize),
 	}
 	fu.Coroutine = co.New(fu.start)
 	fu.Coroutine.Pre(func(r fuReq) bool {
@@ -51,7 +51,7 @@ func (u *fetchUnit) start(r fuReq) error {
 			return nil
 		}
 
-		if _, exists := u.mmu.getFromL1I([]int32{u.pc}); !exists {
+		if _, exists := u.getFromL1I([]int32{u.pc}); !exists {
 			u.remainingCycles = latency.MemoryAccess - 1
 			u.Checkpoint(u.memoryAccess)
 			return nil
@@ -76,7 +76,7 @@ func (u *fetchUnit) memoryAccess(r fuReq) error {
 		return nil
 	}
 	u.Reset()
-	u.mmu.pushLineToL1I(u.pc, make([]int8, l1ICacheLineSize))
+	u.pushLineToL1I(u.pc, make([]int8, l1ICacheLineSize))
 
 	currentPc := u.pc
 	u.pc += 4
@@ -106,4 +106,20 @@ func (u *fetchUnit) flush(pc int32) {
 
 func (u *fetchUnit) isEmpty() bool {
 	return u.complete
+}
+
+func (u *fetchUnit) getFromL1I(addrs []int32) ([]int8, bool) {
+	memory := make([]int8, 0, len(addrs))
+	for _, addr := range addrs {
+		v, exists := u.l1i.Get(addr)
+		if !exists {
+			return nil, false
+		}
+		memory = append(memory, v)
+	}
+	return memory, true
+}
+
+func (u *fetchUnit) pushLineToL1I(addr int32, line []int8) {
+	u.l1i.PushLine(addr, line)
 }

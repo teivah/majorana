@@ -50,7 +50,7 @@ func NewCPU(debug bool, memoryBytes int, eu, wu int) *CPU {
 	}
 
 	mmu := newMemoryManagementUnit(ctx, eu)
-	fu := newFetchUnit(ctx, mmu, decodeBus)
+	fu := newFetchUnit(ctx, decodeBus)
 	du := newDecodeUnit(ctx, decodeBus, controlBus)
 	cu := newControlUnit(ctx, controlBus, executeBus)
 	// TODO How about local context per unit?
