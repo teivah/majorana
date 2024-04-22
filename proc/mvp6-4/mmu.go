@@ -12,14 +12,21 @@ type memoryManagementUnit struct {
 	ctx      *risc.Context
 	l1i      *comp.LRUCache
 	l3       *comp.LRUCache
+	l1ds     []*comp.LRUCache
 	pendings [][2]int32
 }
 
-func newMemoryManagementUnit(ctx *risc.Context) *memoryManagementUnit {
+func newMemoryManagementUnit(ctx *risc.Context, eu int) *memoryManagementUnit {
+	l1ds := make([]*comp.LRUCache, 0, eu)
+	for i := 0; i < eu; i++ {
+		l1ds = append(l1ds, comp.NewLRUCache(l1DCacheLineSize, l1DCacheSize))
+	}
+
 	return &memoryManagementUnit{
-		ctx: ctx,
-		l1i: comp.NewLRUCache(l1ICacheLineSize, l1ICacheSize),
-		l3:  comp.NewLRUCache(l3CacheLineSize, l3CacheSize),
+		ctx:  ctx,
+		l1i:  comp.NewLRUCache(l1ICacheLineSize, l1ICacheSize),
+		l3:   comp.NewLRUCache(l3CacheLineSize, l3CacheSize),
+		l1ds: l1ds,
 	}
 }
 
@@ -41,6 +48,7 @@ func (u *memoryManagementUnit) pushLineToL1I(addr int32, line []int8) {
 
 // getFromL3 returns whether an address is pending request and present in L3.
 func (u *memoryManagementUnit) getFromL3(addrs []int32) ([]int8, bool, bool) {
+	// TODO Shouldn't be in the MMU
 	memory := make([]int8, 0, len(addrs))
 	for _, addr := range addrs {
 		v, exists := u.l3.Get(addr)
@@ -99,12 +107,20 @@ func (u *memoryManagementUnit) getFromMemory(addrs []int32) []int8 {
 }
 
 func (u *memoryManagementUnit) fetchCacheLine(addr int32) []int8 {
+	// Starting address must be a multiple of the cache line length
+	var cacheLineAddr int32
+	if addr%l1DCacheLineSize == 0 {
+		cacheLineAddr = addr
+	} else {
+		cacheLineAddr = addr - (addr % l1DCacheLineSize)
+	}
+
 	memory := make([]int8, 0, l3CacheLineSize)
 	for i := 0; i < l3CacheLineSize; i++ {
-		if int(addr)+i >= len(u.ctx.Memory) {
+		if int(cacheLineAddr)+i >= len(u.ctx.Memory) {
 			memory = append(memory, 0)
 		} else {
-			memory = append(memory, u.ctx.Memory[int(addr)+i])
+			memory = append(memory, u.ctx.Memory[int(cacheLineAddr)+i])
 		}
 	}
 	return memory

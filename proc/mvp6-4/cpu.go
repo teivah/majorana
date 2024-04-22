@@ -13,6 +13,8 @@ const (
 
 	l1ICacheLineSize = 64 * bytes
 	l1ICacheSize     = 1 * kilobytes
+	l1DCacheLineSize = 64 * bytes
+	l1DCacheSize     = 1 * kilobytes
 	l3CacheLineSize  = 64 * bytes
 	l3CacheSize      = 1 * kilobytes
 )
@@ -47,7 +49,7 @@ func NewCPU(debug bool, memoryBytes int, eu, wu int) *CPU {
 		wus = append(wus, newWriteUnit(ctx, writeBus))
 	}
 
-	mmu := newMemoryManagementUnit(ctx)
+	mmu := newMemoryManagementUnit(ctx, eu)
 	fu := newFetchUnit(ctx, mmu, decodeBus)
 	du := newDecodeUnit(ctx, decodeBus, controlBus)
 	cu := newControlUnit(ctx, controlBus, executeBus)
@@ -56,7 +58,8 @@ func NewCPU(debug bool, memoryBytes int, eu, wu int) *CPU {
 
 	eus := make([]*executeUnit, 0, eu)
 	for i := 0; i < eu; i++ {
-		eus = append(eus, newExecuteUnit(bu, executeBus, writeBus, mmu))
+		cc := newCacheController(mmu)
+		eus = append(eus, newExecuteUnit(ctx, bu, executeBus, writeBus, mmu, cc))
 	}
 
 	return &CPU{
@@ -112,7 +115,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		for i, eu := range m.executeUnits {
 			log.Infou(m.ctx, "EU", "Execute unit %d", i)
 			eu.sequenceID = sequenceID
-			resp := eu.Cycle(euReq{cycle, m.ctx, app})
+			resp := eu.Cycle(euReq{cycle, app})
 			if resp.err != nil {
 				return 0, resp.err
 			}
@@ -163,7 +166,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 				for _, eu := range m.executeUnits {
 					if !eu.isEmpty() {
 						isEmpty = false
-						resp := eu.Cycle(euReq{fromCycle, m.ctx, app})
+						resp := eu.Cycle(euReq{fromCycle, app})
 						if resp.err != nil {
 							return 0, nil
 						}
