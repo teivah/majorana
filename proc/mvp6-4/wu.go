@@ -17,12 +17,14 @@ type writeUnit struct {
 	co.Coroutine[wuReq, error]
 	memoryWrite risc.ExecutionContext
 	inBus       *comp.BufferedBus[risc.ExecutionContext]
+	cc          *cacheController
 }
 
-func newWriteUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
+func newWriteUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.ExecutionContext], cc *cacheController) *writeUnit {
 	wu := &writeUnit{
 		ctx:   ctx,
 		inBus: inBus,
+		cc:    cc,
 	}
 	wu.Coroutine = co.New(wu.start)
 	return wu
@@ -41,6 +43,7 @@ func (u *writeUnit) start(r wuReq) error {
 		u.ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
 		log.Infoi(u.ctx, "WU", execution.InstructionType, execution.SequenceID, "write to register")
 	} else if execution.Execution.MemoryChange {
+		// TODO Why not writing to L1?
 		remainingCycle := latency.MemoryAccess
 		log.Infoi(u.ctx, "WU", execution.InstructionType, execution.SequenceID, "pending memory write")
 

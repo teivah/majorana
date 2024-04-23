@@ -1,6 +1,8 @@
 package mvp6_4
 
 import (
+	"sort"
+
 	co "github.com/teivah/majorana/common/coroutine"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
@@ -8,8 +10,9 @@ import (
 )
 
 type euReq struct {
-	cycle int
-	app   risc.Application
+	cycle         int
+	app           risc.Application
+	invalidations map[int32]bool
 }
 
 type euResp struct {
@@ -18,6 +21,9 @@ type euResp struct {
 	pc         int32
 	isReturn   bool
 	err        error
+
+	invalidation     bool
+	invalidationAddr int32
 }
 
 type executeUnit struct {
@@ -116,10 +122,91 @@ func (u *executeUnit) run(r euReq) euResp {
 		return euResp{isReturn: true}
 	}
 
-	if execution.MemoryChange && u.mmu.doesExecutionMemoryChangesExistsInL3(execution) {
-		u.mmu.writeExecutionMemoryChangesToL3(execution)
-		u.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
-		return euResp{}
+	if execution.MemoryChange && u.cc.doesExecutionMemoryChangesExistsInL1(execution) {
+		// TODO In a new function
+		type change struct {
+			addr   int32
+			change int8
+		}
+		var changes []change
+		for a, v := range execution.MemoryChanges {
+			changes = append(changes, change{
+				addr:   a,
+				change: v,
+			})
+		}
+		sort.Slice(changes, func(i, j int) bool {
+			return changes[i].addr < changes[j].addr
+		})
+
+		var addrs []int32
+		var memory []int8
+
+		for _, c := range changes {
+			addrs = append(addrs, c.addr)
+			memory = append(memory, c.change)
+		}
+
+		alignedAddr, listener, invalidation, err := u.cc.msiWrite(addrs, r.invalidations)
+		if err == nil {
+			var res euResp
+			if invalidation == nil {
+				res = euResp{}
+			} else {
+				res = euResp{
+					invalidation:     true,
+					invalidationAddr: invalidation.addr,
+				}
+			}
+
+			if listener == nil {
+				u.cc.writeToL1(addrs, memory)
+				u.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
+				return res
+			}
+
+			// In this case, we may have to wait for a write-back
+			u.Checkpoint(func(r euReq) euResp {
+				var instructions []instructionForNextInvalidate
+				conflict := false
+			loop:
+				for {
+					select {
+					// TODO Close?
+					case resp := <-listener.Ch():
+						conflict = conflict || resp.conflict
+						if resp.memoryChange != nil {
+							instructions = append(instructions, *resp.memoryChange)
+						}
+					default:
+						break loop
+					}
+				}
+
+				if conflict {
+					// We have to wait
+					return euResp{}
+				}
+				u.Reset()
+
+				// TODO Delay to write to L1
+				u.cc.writeToL1(addrs, memory)
+				for _, instruction := range instructions {
+					// Write-back other core changes
+					u.cc.writeToL1(instruction.addrs, instruction.memory)
+				}
+				u.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
+				return euResp{}
+			})
+
+			return res
+		} else {
+			// The core must write an update on a cache line that was already modified
+			// within the same cycle by another core.
+			// TODO???
+			u.cc.SetInstructionForInvalidateRequest(alignedAddr, addrs, memory)
+			return euResp{}
+		}
 	}
 
 	u.outBus.Add(risc.ExecutionContext{

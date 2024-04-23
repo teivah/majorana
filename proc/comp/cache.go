@@ -47,10 +47,29 @@ func (c *LRUCache) Get(addr int32) (int8, bool) {
 	for i, l := range c.lines {
 		if v, exists := l.get(addr); exists {
 			c.lines = append(append([]Line{l}, c.lines[:i]...), c.lines[i+1:]...)
-			return v, exists
+			return v, true
 		}
 	}
 	return 0, false
+}
+
+func (c *LRUCache) GetCacheLine(addr int32) ([]int8, bool) {
+	for _, l := range c.lines {
+		if _, exists := l.get(addr); exists {
+			return l.Data, true
+		}
+	}
+	return nil, false
+}
+
+func (c *LRUCache) EvictCacheLine(addr int32) ([]int8, bool) {
+	for i, l := range c.lines {
+		if _, exists := l.get(addr); exists {
+			c.lines = append(c.lines[:i], c.lines[i+1:]...)
+			return l.Data, true
+		}
+	}
+	return nil, false
 }
 
 func (c *LRUCache) Write(addr int32, data []int8) {
