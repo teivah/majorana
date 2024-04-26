@@ -92,11 +92,11 @@ func (cc *cacheController) snoop() bool {
 
 		state := cc.msi[event.addr]
 		if event.read {
-			if _, exists := cc.ctx.PendingWriteMemoryIntention[event.addr]; exists {
-				// The change is not written in L1 yet
-				event.response.Notify(busResponseEvent{true, nil})
-				continue
-			}
+			//if _, exists := cc.ctx.PendingWriteMemoryIntention[event.addr]; exists {
+			//	// The change is not written in L1 yet
+			//	event.response.Notify(busResponseEvent{true, nil})
+			//	continue
+			//}
 
 			switch state {
 			case invalid:
@@ -113,11 +113,11 @@ func (cc *cacheController) snoop() bool {
 			}
 			evt.Commit()
 		} else if event.write {
-			if _, exists := cc.ctx.PendingWriteMemoryIntention[event.addr]; exists {
-				// The change is not written in L1 yet
-				event.response.Notify(busResponseEvent{true, nil})
-				continue
-			}
+			//if _, exists := cc.ctx.PendingWriteMemoryIntention[event.addr]; exists {
+			//	// The change is not written in L1 yet
+			//	event.response.Notify(busResponseEvent{true, nil})
+			//	continue
+			//}
 
 			switch state {
 			case invalid:
@@ -170,10 +170,10 @@ func (cc *cacheController) snoop() bool {
 }
 
 func (cc *cacheController) coRead(r ccReq) ccResp {
-	if id, exists := cc.ctx.PendingWriteMemoryIntention[getAlignedMemoryAddress(r.addrs)]; exists && id != cc.id {
-		// A write is pending
-		return ccResp{}
-	}
+	//if id, exists := cc.ctx.PendingWriteMemoryIntention[getAlignedMemoryAddress(r.addrs)]; exists && id != cc.id {
+	//	// A write is pending
+	//	return ccResp{}
+	//}
 
 	exists := cc.isAddressInL1(r.addrs)
 	if exists {

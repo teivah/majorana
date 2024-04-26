@@ -136,7 +136,7 @@ func (u *executeUnit) run(r euReq) euResp {
 		addrs, _ := executionToMemoryChanges(execution)
 		// TODO Pending is because we are going to write to the line but we may need to read first from memory
 		// TODO Pending represent an intention
-		u.ctx.PendingWriteMemoryIntention[getAlignedMemoryAddress(addrs)] = u.cc.id
+		//u.ctx.PendingWriteMemoryIntention[getAlignedMemoryAddress(addrs)] = u.cc.id
 		u.execution = execution
 		if u.cc.isAddressInL1(addrs) {
 			return u.ExecuteWithReset(r, u.memoryChange)
@@ -237,7 +237,7 @@ func (u *executeUnit) memoryChange(r euReq) euResp {
 			// Core is this only owner of the line
 			u.cc.writeToL1(addrs, memory)
 			u.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
-			delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
+			//delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
 			return res
 		}
 
@@ -272,7 +272,7 @@ func (u *executeUnit) memoryChange(r euReq) euResp {
 				u.cc.writeToL1(instruction.addrs, instruction.memory)
 			}
 			u.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
-			delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
+			//delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
 			return euResp{}
 		})
 
@@ -282,7 +282,7 @@ func (u *executeUnit) memoryChange(r euReq) euResp {
 		// within the same cycle by another core.
 		// TODO???
 		u.cc.SetInstructionForInvalidateRequest(alignedAddr, addrs, memory)
-		delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
+		//delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
 		return euResp{}
 	}
 }
