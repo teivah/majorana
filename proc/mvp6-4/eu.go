@@ -99,7 +99,14 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 
 	log.Infoi(u.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "executing")
 
-	// TODO LW 5
+	// TODO xxx
+	// u.runner.Pc == 20
+	// 4 3 18 | 2 1  -- 29
+	// 4 3 18 | 18 1 -- 30
+	// 4 3 2  | 18 1 -- 31
+	// 4 3 2  | 18 18 -- 32 (theory)
+	// 4 3 2  | 18 2  -- 32 (practice, wrong)
+	// Problem is instruction 20 that loads into t4 2 instead of 18
 	addrs := u.runner.Runner.MemoryRead(u.ctx)
 	if len(addrs) != 0 {
 		return u.ExecuteWithCheckpoint(r, func(r euReq) euResp {
@@ -133,17 +140,17 @@ func (u *executeUnit) run(r euReq) euResp {
 	}
 
 	if execution.MemoryChange {
-		addrs, _ := executionToMemoryChanges(execution)
+		writeAddrs, _ := executionToMemoryChanges(execution)
 		// TODO Pending is because we are going to write to the line but we may need to read first from memory
 		// TODO Pending represent an intention
 		//u.ctx.PendingWriteMemoryIntention[getAlignedMemoryAddress(addrs)] = u.cc.id
 		u.execution = execution
-		if u.cc.isAddressInL1(addrs) {
+		if u.cc.isAddressInL1(writeAddrs) {
 			return u.ExecuteWithReset(r, u.memoryChange)
 		} else {
 			// We need first to fetch the instruction from memory
 			return u.ExecuteWithCheckpoint(r, func(r euReq) euResp {
-				resp := u.cc.Cycle(ccReq{addrs})
+				resp := u.cc.Cycle(ccReq{writeAddrs})
 				if !resp.done {
 					return euResp{}
 				}
