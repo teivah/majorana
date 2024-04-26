@@ -2,7 +2,7 @@ package mvp6_4
 
 import (
 	"errors"
-	"math"
+	"fmt"
 
 	"github.com/teivah/broadcast"
 	co "github.com/teivah/majorana/common/coroutine"
@@ -33,11 +33,13 @@ type busRequestEvent struct {
 }
 
 type busResponseEvent struct {
-	conflict     bool
+	// TODO To delete?
+	pendingWrite bool
 	memoryChange *instructionForNextInvalidate
 }
 
 type cacheController struct {
+	ctx *risc.Context
 	id  int
 	mmu *memoryManagementUnit
 	// msi implements the MSI protocol.
@@ -45,8 +47,7 @@ type cacheController struct {
 	msi map[int32]msiState
 	co.Coroutine[ccReq, ccResp]
 	l1d                           *comp.LRUCache
-	bus                           *broadcast.Relay[busRequestEvent]
-	listener                      *broadcast.Listener[busRequestEvent]
+	bus                           *comp.Broadcast[busRequestEvent]
 	instructionsForNextInvalidate map[int32]instructionForNextInvalidate
 }
 
@@ -56,17 +57,17 @@ type instructionForNextInvalidate struct {
 	memory []int8
 }
 
-func newCacheController(id int, mmu *memoryManagementUnit, bus *broadcast.Relay[busRequestEvent]) *cacheController {
+func newCacheController(id int, ctx *risc.Context, mmu *memoryManagementUnit, bus *comp.Broadcast[busRequestEvent]) *cacheController {
 	cc := &cacheController{
+		ctx:                           ctx,
 		id:                            id,
 		mmu:                           mmu,
 		msi:                           make(map[int32]msiState),
 		l1d:                           comp.NewLRUCache(l1DCacheLineSize, l1DCacheSize),
 		bus:                           bus,
-		listener:                      bus.Listener(maxCacheControllers),
 		instructionsForNextInvalidate: make(map[int32]instructionForNextInvalidate),
 	}
-	cc.Coroutine = co.New(cc.start)
+	cc.Coroutine = co.New(cc.coRead)
 	return cc
 }
 
@@ -80,85 +81,100 @@ type ccResp struct {
 }
 
 func (cc *cacheController) snoop() bool {
-	for {
-		select {
-		case event := <-cc.listener.Ch():
-			// Discard events from the same cache controller ID
-			if event.id == cc.id {
+	for _, evt := range cc.bus.Read(cc.id) {
+		event := evt.Data
+
+		// Discard events from the same cache controller ID
+		if event.id == cc.id {
+			evt.Commit()
+			continue
+		}
+
+		state := cc.msi[event.addr]
+		if event.read {
+			if _, exists := cc.ctx.PendingWriteMemoryIntention[event.addr]; exists {
+				// The change is not written in L1 yet
+				event.response.Notify(busResponseEvent{true, nil})
 				continue
 			}
-			state := cc.msi[event.addr]
-			if event.read {
-				switch state {
-				case invalid:
-					// Nothing
-				case modified:
-					// Write-back
-					// TODO Time to write
-					memory, exists := cc.l1d.GetCacheLine(event.addr)
-					if !exists {
-						panic("memory address should exist")
-					}
-					cc.mmu.writeToMemory(event.addr, memory)
-					cc.msi[event.addr] = shared
-					// TODO true
-					event.response.Notify(busResponseEvent{false, nil})
-				case shared:
-					// Nothing
+
+			switch state {
+			case invalid:
+			case modified:
+				// Write-back
+				// TODO Time to write
+				memory, exists := cc.l1d.GetCacheLine(event.addr)
+				if !exists {
+					panic("memory address should exist")
 				}
-			} else if event.write {
-				switch state {
-				case invalid:
-					// Nothing
-				case modified:
-					// Write-back
-					// TODO Time to write
-					memory, exists := cc.l1d.EvictCacheLine(event.addr)
-					if !exists {
-						panic("memory address should exist")
-					}
-					cc.mmu.writeToMemory(event.addr, memory)
-					cc.msi[event.addr] = invalid
-					// TODO true
-					event.response.Notify(busResponseEvent{false, nil})
-				case shared:
-					_, exists := cc.l1d.EvictCacheLine(event.addr)
-					if !exists {
-						panic("memory address should exist")
-					}
-					cc.msi[event.addr] = invalid
-				}
-			} else if event.invalidate {
-				if v, exists := cc.instructionsForNextInvalidate[event.addr]; exists {
-					event.response.Notify(busResponseEvent{false, &v})
-					delete(cc.instructionsForNextInvalidate, event.addr)
-				}
-				switch state {
-				case invalid:
-					// Nothing
-				case modified:
-					// Write-back
-					// TODO Time to write
-					memory, exists := cc.l1d.EvictCacheLine(event.addr)
-					if !exists {
-						panic("memory address should exist")
-					}
-					cc.mmu.writeToMemory(event.addr, memory)
-					cc.msi[event.addr] = invalid
-				case shared:
-					cc.l1d.EvictCacheLine(event.addr)
-					cc.msi[event.addr] = invalid
-				}
-			} else {
-				panic("unknown event type")
+				cc.mmu.writeToMemory(event.addr, memory)
+				cc.msi[event.addr] = shared
+			case shared:
 			}
-		default:
-			return false
+			evt.Commit()
+		} else if event.write {
+			if _, exists := cc.ctx.PendingWriteMemoryIntention[event.addr]; exists {
+				// The change is not written in L1 yet
+				event.response.Notify(busResponseEvent{true, nil})
+				continue
+			}
+
+			switch state {
+			case invalid:
+			case modified:
+				// Write-back
+				// TODO Time to write
+				memory, exists := cc.l1d.EvictCacheLine(event.addr)
+				if !exists {
+					panic("memory address should exist")
+				}
+				cc.mmu.writeToMemory(event.addr, memory)
+				cc.msi[event.addr] = invalid
+			case shared:
+				_, _ = cc.l1d.EvictCacheLine(event.addr)
+				// TODO Really?
+				//if !exists {
+				//	panic("memory address should exist")
+				//}
+				cc.msi[event.addr] = invalid
+			}
+			evt.Commit()
+		} else if event.invalidate {
+			if v, exists := cc.instructionsForNextInvalidate[event.addr]; exists {
+				event.response.Notify(busResponseEvent{false, &v})
+				delete(cc.instructionsForNextInvalidate, event.addr)
+			}
+			switch state {
+			case invalid:
+				// Nothing
+			case modified:
+				// Write-back
+				// TODO Time to write
+				memory, exists := cc.l1d.EvictCacheLine(event.addr)
+				if !exists {
+					panic("memory address should exist")
+				}
+				cc.mmu.writeToMemory(event.addr, memory)
+				cc.msi[event.addr] = invalid
+			case shared:
+				cc.l1d.EvictCacheLine(event.addr)
+				cc.msi[event.addr] = invalid
+			}
+			evt.Commit()
+		} else {
+			panic("unknown event type")
 		}
 	}
+
+	return false
 }
 
-func (cc *cacheController) start(r ccReq) ccResp {
+func (cc *cacheController) coRead(r ccReq) ccResp {
+	if id, exists := cc.ctx.PendingWriteMemoryIntention[getAlignedMemoryAddress(r.addrs)]; exists && id != cc.id {
+		// A write is pending
+		return ccResp{}
+	}
+
 	exists := cc.isAddressInL1(r.addrs)
 	if exists {
 		memory := cc.getFromL1(r.addrs)
@@ -189,31 +205,33 @@ func (cc *cacheController) start(r ccReq) ccResp {
 		}
 		if listener != nil {
 			// In this case, we may have to wait for a write-back
-			conflict := false
+			pending := false
 		loop:
 			for {
 				select {
 				// TODO Close?
 				case resp := <-listener.Ch():
-					conflict = conflict || resp.conflict
+					pending = pending || resp.pendingWrite
 				default:
 					break loop
 				}
 			}
-
-			if conflict {
-				// We have to wait
+			if pending {
 				return ccResp{}
 			}
 		}
 
 		cycles := latency.MemoryAccess
+		// TODO Shouldn't we read from L1?
 		memory := cc.mmu.getFromMemory(r.addrs)
 		return cc.ExecuteWithCheckpoint(r, func(r ccReq) ccResp {
 			if cycles > 0 {
 				cycles--
 				return ccResp{}
 			}
+			//if cc.ctx.PendingMemoryChange[r.addrs[0]/l1DCacheLineSize] {
+			//	return ccResp{}
+			//}
 			cc.Reset()
 			// TODO Delay
 			addr, line := cc.mmu.fetchCacheLine(r.addrs[0], l1DCacheLineSize)
@@ -237,13 +255,13 @@ func (cc *cacheController) pushLineToL1(addr int32, line []int8) {
 	cc.mmu.writeToMemory(addr, line)
 }
 
-func (cc *cacheController) getAlignedMemoryAddress(addrs []int32) int32 {
+func getAlignedMemoryAddress(addrs []int32) int32 {
 	addr := addrs[0]
 	return addr - (addr % l1DCacheLineSize)
 }
 
 func (cc *cacheController) msiRead(addrs []int32) (int32, *broadcast.Listener[busResponseEvent]) {
-	addr := cc.getAlignedMemoryAddress(addrs)
+	addr := getAlignedMemoryAddress(addrs)
 	state := cc.msi[addr]
 	switch state {
 	case invalid:
@@ -266,7 +284,7 @@ type invalidationEvent struct {
 }
 
 func (cc *cacheController) msiWrite(addrs []int32, invalidations map[int32]bool) (int32, *broadcast.Listener[busResponseEvent], *invalidationEvent, error) {
-	addr := cc.getAlignedMemoryAddress(addrs)
+	addr := getAlignedMemoryAddress(addrs)
 	state := cc.msi[addr]
 	switch state {
 	case invalid:
@@ -292,6 +310,7 @@ func (cc *cacheController) msiWrite(addrs []int32, invalidations map[int32]bool)
 }
 
 func (cc *cacheController) readRequest(addr int32) *broadcast.Listener[busResponseEvent] {
+	fmt.Println(cc.id, "read request", addr)
 	response := broadcast.NewRelay[busResponseEvent]()
 	cc.bus.Notify(busRequestEvent{
 		id:       cc.id,
@@ -303,6 +322,7 @@ func (cc *cacheController) readRequest(addr int32) *broadcast.Listener[busRespon
 }
 
 func (cc *cacheController) writeRequest(addr int32) *broadcast.Listener[busResponseEvent] {
+	fmt.Println(cc.id, "write request", addr)
 	response := broadcast.NewRelay[busResponseEvent]()
 	cc.bus.Notify(busRequestEvent{
 		id:       cc.id,
@@ -314,6 +334,7 @@ func (cc *cacheController) writeRequest(addr int32) *broadcast.Listener[busRespo
 }
 
 func (cc *cacheController) invalidationRequest(addr int32) *broadcast.Listener[busResponseEvent] {
+	fmt.Println(cc.id, "invalidation request", addr)
 	response := broadcast.NewRelay[busResponseEvent]()
 	cc.bus.Notify(busRequestEvent{
 		id:         cc.id,
@@ -341,16 +362,23 @@ func (cc *cacheController) getFromL1(addrs []int32) []int8 {
 	return memory
 }
 
-func (cc *cacheController) doesExecutionMemoryChangesExistsInL1(execution risc.Execution) bool {
-	var minAddr int32 = math.MaxInt32
-	for addr := range execution.MemoryChanges {
-		minAddr = min(minAddr, addr)
-	}
-	return cc.isAddressInL1([]int32{minAddr})
-}
+var delta = -1
 
 func (cc *cacheController) writeToL1(addrs []int32, data []int8) {
 	cc.l1d.Write(addrs[0], data)
+	delta++
+	fmt.Println(delta)
+	fmt.Printf("write, id=%d, addr=%d, data=%d\n", cc.id, addrs[0], risc.I32FromBytes(data[0], data[1], data[2], data[3]))
+	for _, line := range cc.l1d.Lines() {
+		if line.Boundary[0] <= addrs[0] && addrs[0] < line.Boundary[1] {
+			fmt.Printf("%v: ", line.Boundary)
+			for i := 0; i < len(line.Data); i += 4 {
+				fmt.Printf("%v ", line.Data[i])
+			}
+			fmt.Println()
+		}
+	}
+	fmt.Println()
 }
 
 func (cc *cacheController) flush() int {

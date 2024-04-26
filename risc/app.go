@@ -20,12 +20,13 @@ type Application struct {
 }
 
 type Context struct {
-	Registers             map[RegisterType]int32
-	Transaction           map[RegisterType]transactionUnit
-	PendingWriteRegisters map[RegisterType]int
-	PendingReadRegisters  map[RegisterType]int
-	Memory                []int8
-	Debug                 bool
+	Registers                   map[RegisterType]int32
+	Transaction                 map[RegisterType]transactionUnit
+	PendingWriteRegisters       map[RegisterType]int
+	PendingReadRegisters        map[RegisterType]int
+	PendingWriteMemoryIntention map[int32]int
+	Memory                      []int8
+	Debug                       bool
 	// SequenceID represents a monotonic ID for the sequence.
 	// It increments during a jump.
 	sequenceID     int32
@@ -43,21 +44,23 @@ const ratLength = 10
 
 func NewContext(debug bool, memoryBytes int, rat bool) *Context {
 	return &Context{
-		Registers:             make(map[RegisterType]int32),
-		Transaction:           make(map[RegisterType]transactionUnit),
-		PendingWriteRegisters: make(map[RegisterType]int),
-		PendingReadRegisters:  make(map[RegisterType]int),
-		Memory:                make([]int8, memoryBytes),
-		Debug:                 debug,
-		committedRAT:          comp.NewRAT[RegisterType, int32](ratLength),
-		transactionRAT:        comp.NewRAT[RegisterType, transactionUnit](ratLength),
-		rat:                   rat,
+		Registers:                   make(map[RegisterType]int32),
+		Transaction:                 make(map[RegisterType]transactionUnit),
+		PendingWriteRegisters:       make(map[RegisterType]int),
+		PendingReadRegisters:        make(map[RegisterType]int),
+		PendingWriteMemoryIntention: make(map[int32]int),
+		Memory:                      make([]int8, memoryBytes),
+		Debug:                       debug,
+		committedRAT:                comp.NewRAT[RegisterType, int32](ratLength),
+		transactionRAT:              comp.NewRAT[RegisterType, transactionUnit](ratLength),
+		rat:                         rat,
 	}
 }
 
 func (ctx *Context) Flush() {
 	ctx.PendingWriteRegisters = make(map[RegisterType]int)
 	ctx.PendingReadRegisters = make(map[RegisterType]int)
+	ctx.PendingWriteMemoryIntention = make(map[int32]int)
 }
 
 func (ctx *Context) SequenceID(pc int32) int32 {

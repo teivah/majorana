@@ -39,6 +39,7 @@ type executeUnit struct {
 	memory     []int8
 	runner     risc.InstructionRunnerPc
 	sequenceID int32
+	execution  risc.Execution
 }
 
 func newExecuteUnit(ctx *risc.Context, bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext], mmu *memoryManagementUnit, cc *cacheController) *executeUnit {
@@ -98,6 +99,7 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 
 	log.Infoi(u.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "executing")
 
+	// TODO LW 5
 	addrs := u.runner.Runner.MemoryRead(u.ctx)
 	if len(addrs) != 0 {
 		return u.ExecuteWithCheckpoint(r, func(r euReq) euResp {
@@ -113,6 +115,14 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 }
 
 func (u *executeUnit) run(r euReq) euResp {
+	// TODO SW 9
+	if u.runner.Pc == -1 {
+		//fmt.Println(r.cycle)
+	}
+	// TODO LW 5
+	if u.runner.Pc == -1 {
+		//fmt.Println(r.cycle)
+	}
 	execution, err := u.runner.Runner.Run(u.ctx, r.app.Labels, u.runner.Pc, u.memory)
 	if err != nil {
 		return euResp{err: err}
@@ -122,93 +132,27 @@ func (u *executeUnit) run(r euReq) euResp {
 		return euResp{isReturn: true}
 	}
 
-	if execution.MemoryChange && u.cc.doesExecutionMemoryChangesExistsInL1(execution) {
-		// TODO In a new function
-		type change struct {
-			addr   int32
-			change int8
-		}
-		var changes []change
-		for a, v := range execution.MemoryChanges {
-			changes = append(changes, change{
-				addr:   a,
-				change: v,
-			})
-		}
-		sort.Slice(changes, func(i, j int) bool {
-			return changes[i].addr < changes[j].addr
-		})
-
-		var addrs []int32
-		var memory []int8
-
-		for _, c := range changes {
-			addrs = append(addrs, c.addr)
-			memory = append(memory, c.change)
-		}
-
-		alignedAddr, listener, invalidation, err := u.cc.msiWrite(addrs, r.invalidations)
-		if err == nil {
-			var res euResp
-			if invalidation == nil {
-				res = euResp{}
-			} else {
-				res = euResp{
-					invalidation:     true,
-					invalidationAddr: invalidation.addr,
-				}
-			}
-
-			if listener == nil {
-				u.cc.writeToL1(addrs, memory)
-				u.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
-				return res
-			}
-
-			// In this case, we may have to wait for a write-back
-			u.Checkpoint(func(r euReq) euResp {
-				var instructions []instructionForNextInvalidate
-				conflict := false
-			loop:
-				for {
-					select {
-					// TODO Close?
-					case resp := <-listener.Ch():
-						conflict = conflict || resp.conflict
-						if resp.memoryChange != nil {
-							instructions = append(instructions, *resp.memoryChange)
-						}
-					default:
-						break loop
-					}
-				}
-
-				if conflict {
-					// We have to wait
+	if execution.MemoryChange {
+		addrs, _ := executionToMemoryChanges(execution)
+		// TODO Pending is because we are going to write to the line but we may need to read first from memory
+		// TODO Pending represent an intention
+		u.ctx.PendingWriteMemoryIntention[getAlignedMemoryAddress(addrs)] = u.cc.id
+		u.execution = execution
+		if u.cc.isAddressInL1(addrs) {
+			return u.ExecuteWithReset(r, u.memoryChange)
+		} else {
+			// We need first to fetch the instruction from memory
+			return u.ExecuteWithCheckpoint(r, func(r euReq) euResp {
+				resp := u.cc.Cycle(ccReq{addrs})
+				if !resp.done {
 					return euResp{}
 				}
-				u.Reset()
-
-				// TODO Delay to write to L1
-				u.cc.writeToL1(addrs, memory)
-				for _, instruction := range instructions {
-					// Write-back other core changes
-					u.cc.writeToL1(instruction.addrs, instruction.memory)
-				}
-				u.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
-				return euResp{}
+				return u.ExecuteWithReset(r, u.memoryChange)
 			})
-
-			return res
-		} else {
-			// The core must write an update on a cache line that was already modified
-			// within the same cycle by another core.
-			// TODO???
-			u.cc.SetInstructionForInvalidateRequest(alignedAddr, addrs, memory)
-			return euResp{}
 		}
 	}
 
+	// TODO We shouldn't write in memory if the cache line is present in another core
 	u.outBus.Add(risc.ExecutionContext{
 		SequenceID:      u.runner.SequenceID,
 		Execution:       execution,
@@ -245,6 +189,102 @@ func (u *executeUnit) run(r euReq) euResp {
 	}
 
 	return euResp{}
+}
+
+func executionToMemoryChanges(execution risc.Execution) ([]int32, []int8) {
+	type change struct {
+		addr   int32
+		change int8
+	}
+	var changes []change
+	for a, v := range execution.MemoryChanges {
+		changes = append(changes, change{
+			addr:   a,
+			change: v,
+		})
+	}
+	sort.Slice(changes, func(i, j int) bool {
+		return changes[i].addr < changes[j].addr
+	})
+
+	var addrs []int32
+	var memory []int8
+
+	for _, c := range changes {
+		addrs = append(addrs, c.addr)
+		memory = append(memory, c.change)
+	}
+
+	return addrs, memory
+}
+
+func (u *executeUnit) memoryChange(r euReq) euResp {
+	addrs, memory := executionToMemoryChanges(u.execution)
+
+	alignedAddr, listener, invalidation, err := u.cc.msiWrite(addrs, r.invalidations)
+	if err == nil {
+		var res euResp
+		if invalidation == nil {
+			res = euResp{}
+		} else {
+			res = euResp{
+				invalidation:     true,
+				invalidationAddr: invalidation.addr,
+			}
+		}
+
+		if listener == nil {
+			// Core is this only owner of the line
+			u.cc.writeToL1(addrs, memory)
+			u.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
+			delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
+			return res
+		}
+
+		// In this case, we may have to wait for a write-back
+		u.Checkpoint(func(r euReq) euResp {
+			var instructions []instructionForNextInvalidate
+			pendingWrite := false
+		loop:
+			for {
+				select {
+				// TODO Close?
+				case resp := <-listener.Ch():
+					pendingWrite = pendingWrite || resp.pendingWrite
+					if resp.memoryChange != nil {
+						instructions = append(instructions, *resp.memoryChange)
+					}
+				default:
+					break loop
+				}
+			}
+
+			if pendingWrite {
+				// We have to wait
+				return euResp{}
+			}
+			u.Reset()
+
+			// TODO Delay to write to L1
+			u.cc.writeToL1(addrs, memory)
+			for _, instruction := range instructions {
+				// Write-back other core changes
+				u.cc.writeToL1(instruction.addrs, instruction.memory)
+			}
+			u.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
+			delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
+			return euResp{}
+		})
+
+		return res
+	} else {
+		// The core must write an update on a cache line that was already modified
+		// within the same cycle by another core.
+		// TODO???
+		u.cc.SetInstructionForInvalidateRequest(alignedAddr, addrs, memory)
+		delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
+		return euResp{}
+	}
 }
 
 func (u *executeUnit) flush() {
