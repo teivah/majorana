@@ -56,10 +56,11 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 	eus := make([]*executeUnit, 0, parallelism)
 	wus := make([]*writeUnit, 0, parallelism)
 	ccs := make([]*cacheController, 0, parallelism)
+	bus := comp.NewBroadcast[busRequestEvent](parallelism)
 	for i := 0; i < parallelism; i++ {
-		cc := newCacheController(i, ctx, mmu)
+		cc := newCacheController(i, ctx, mmu, bus)
 		ccs = append(ccs, cc)
-		eus = append(eus, newExecuteUnit(ctx, bu, executeBus, writeBus, mmu))
+		eus = append(eus, newExecuteUnit(ctx, bu, executeBus, writeBus, mmu, cc))
 		wus = append(wus, newWriteUnit(ctx, writeBus))
 	}
 
@@ -107,6 +108,10 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		// Control
 		m.controlUnit.cycle(cycle)
 
+		for _, cc := range m.cacheControllers {
+			cc.snoop.Cycle(struct{}{})
+		}
+
 		// Execute
 		var (
 			flush      bool
@@ -117,7 +122,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		for i, eu := range m.executeUnits {
 			log.Infou(m.ctx, "EU", "Execute unit %d", i)
 			eu.sequenceID = sequenceID
-			resp := eu.Cycle(euReq{cycle, m.ctx, app})
+			resp := eu.Cycle(euReq{cycle, app})
 			if resp.err != nil {
 				return 0, resp.err
 			}
@@ -168,7 +173,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 				for _, eu := range m.executeUnits {
 					if !eu.isEmpty() {
 						isEmpty = false
-						resp := eu.Cycle(euReq{fromCycle, m.ctx, app})
+						resp := eu.Cycle(euReq{fromCycle, app})
 						if resp.err != nil {
 							return 0, nil
 						}
@@ -204,10 +209,39 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 	}
 
-	for _, c := range m.cacheControllers {
-		cycle += c.flush()
+	for {
+		cycle++
+		empty := true
+		for _, eu := range m.executeUnits {
+			if eu.isEmpty() {
+				continue
+			}
+			empty = false
+			eu.Cycle(euReq{cycle, app})
+		}
+		if empty {
+			break
+		}
 	}
-	cycle += m.memoryManagementUnit.flush()
+
+	//cycle++
+	//for {
+	//	empty := true
+	//	for _, eu := range m.executeUnits {
+	//		if eu.isEmpty() {
+	//			continue
+	//		}
+	//		empty = false
+	//		eu.Cycle(euReq{cycle, app})
+	//	}
+	//	if empty {
+	//		break
+	//	}
+	//}
+
+	for _, cc := range m.cacheControllers {
+		cycle += cc.flush()
+	}
 
 	m.ctx.RATCommit()
 	m.ctx.RATFlush()

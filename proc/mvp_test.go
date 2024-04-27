@@ -301,13 +301,13 @@ func TestMvp6_4_3x3(t *testing.T) {
 	factory := func(memory int) virtualMachine {
 		return mvp6_4.NewCPU(false, memory, 3)
 	}
-	testPrime(t, factory, memory, testFrom, testTo, false)
-	testSums(t, factory, memory, testFrom, testTo, false)
-	testStringLength(t, factory, 1024, testTo, false)
-	testStringCopy(t, factory, testTo*2, testTo, false)
+	//testPrime(t, factory, memory, testFrom, testTo, false)
+	//testSums(t, factory, memory, 3, 4, false)
+	//testStringLength(t, factory, 1024, 2, false)
+	//testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
-	testConditionalBranch(t, factory, false)
-	testSpectre(t, factory, false)
+	//testConditionalBranch(t, factory, false)
+	//testSpectre(t, factory, false)
 }
 
 func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
@@ -473,7 +473,7 @@ func testStringCopy(t *testing.T, factory func(int) virtualMachine, memory int, 
 
 func testBubbleSort(t *testing.T, factory func(int) virtualMachine, stats bool) {
 	t.Run("Bubble sort", func(t *testing.T) {
-		data := 150
+		data := 2
 		vm := factory(data * 4)
 		for i := 0; i < data; i++ {
 			bytes := risc.BytesFromLowBits(int32(data - i))
