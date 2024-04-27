@@ -45,7 +45,7 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 
 	ctx := risc.NewContext(debug, memoryBytes, true)
 
-	mmu := newMemoryManagementUnit(ctx, parallelism)
+	mmu := newMemoryManagementUnit(ctx)
 	fu := newFetchUnit(ctx, decodeBus)
 	du := newDecodeUnit(ctx, decodeBus, controlBus)
 	cu := newControlUnit(ctx, controlBus, executeBus)
@@ -56,12 +56,11 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 	eus := make([]*executeUnit, 0, parallelism)
 	wus := make([]*writeUnit, 0, parallelism)
 	ccs := make([]*cacheController, 0, parallelism)
-	bus := comp.NewBroadcast[busRequestEvent](parallelism)
 	for i := 0; i < parallelism; i++ {
-		cc := newCacheController(i, ctx, mmu, bus)
+		cc := newCacheController(i, ctx, mmu)
 		ccs = append(ccs, cc)
-		eus = append(eus, newExecuteUnit(ctx, bu, executeBus, writeBus, mmu, cc))
-		wus = append(wus, newWriteUnit(ctx, writeBus, cc))
+		eus = append(eus, newExecuteUnit(ctx, bu, executeBus, writeBus, mmu))
+		wus = append(wus, newWriteUnit(ctx, writeBus))
 	}
 
 	// TODO Absolutely ugly
@@ -94,8 +93,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	for {
 		cycle++
 		log.Info(m.ctx, "Cycle %d", cycle)
-		// TODO Current problem: a SW first read then write; wait if it's on 2 different lines?
-		//fmt.Println(cycle)
 		m.decodeBus.Connect(cycle)
 		m.controlBus.Connect(cycle)
 		m.executeBus.Connect(cycle)
@@ -110,27 +107,19 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		// Control
 		m.controlUnit.cycle(cycle)
 
-		for _, cc := range m.cacheControllers {
-			cc.snoop()
-		}
-
 		// Execute
 		var (
-			flush         bool
-			sequenceID    int32
-			pc            int32
-			ret           bool
-			invalidations = make(map[int32]bool)
+			flush      bool
+			sequenceID int32
+			pc         int32
+			ret        bool
 		)
 		for i, eu := range m.executeUnits {
 			log.Infou(m.ctx, "EU", "Execute unit %d", i)
 			eu.sequenceID = sequenceID
-			resp := eu.Cycle(euReq{cycle, app, invalidations})
+			resp := eu.Cycle(euReq{cycle, m.ctx, app})
 			if resp.err != nil {
 				return 0, resp.err
-			}
-			if resp.invalidation {
-				invalidations[resp.invalidationAddr] = true
 			}
 			if resp.flush {
 				sequenceID = resp.sequenceID
@@ -176,21 +165,12 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			for {
 				isEmpty := true
 				cycle++
-				invalidations = make(map[int32]bool)
-
-				for _, cc := range m.cacheControllers {
-					cc.snoop()
-				}
-
 				for _, eu := range m.executeUnits {
 					if !eu.isEmpty() {
 						isEmpty = false
-						resp := eu.Cycle(euReq{fromCycle, app, invalidations})
+						resp := eu.Cycle(euReq{fromCycle, m.ctx, app})
 						if resp.err != nil {
 							return 0, nil
-						}
-						if resp.invalidation {
-							invalidations[resp.invalidationAddr] = true
 						}
 						if resp.flush {
 							log.Info(m.ctx, "\t️⚠️️⚠️ Proposition of an inner flush")
@@ -227,6 +207,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	for _, c := range m.cacheControllers {
 		cycle += c.flush()
 	}
+	cycle += m.memoryManagementUnit.flush()
 
 	m.ctx.RATCommit()
 	m.ctx.RATFlush()

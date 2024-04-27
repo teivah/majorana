@@ -2,6 +2,7 @@ package mvp6_4
 
 import (
 	co "github.com/teivah/majorana/common/coroutine"
+	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
@@ -16,14 +17,12 @@ type writeUnit struct {
 	co.Coroutine[wuReq, error]
 	memoryWrite risc.ExecutionContext
 	inBus       *comp.BufferedBus[risc.ExecutionContext]
-	cc          *cacheController
 }
 
-func newWriteUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.ExecutionContext], cc *cacheController) *writeUnit {
+func newWriteUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
 	wu := &writeUnit{
 		ctx:   ctx,
 		inBus: inBus,
-		cc:    cc,
 	}
 	wu.Coroutine = co.New(wu.start)
 	return wu
@@ -42,7 +41,23 @@ func (u *writeUnit) start(r wuReq) error {
 		u.ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
 		log.Infoi(u.ctx, "WU", execution.InstructionType, execution.SequenceID, "write to register")
 	} else if execution.Execution.MemoryChange {
-		panic("From MVP 6.4, memory changes are written via L1 cache eviction solely")
+		remainingCycle := latency.MemoryAccess
+		log.Infoi(u.ctx, "WU", execution.InstructionType, execution.SequenceID, "pending memory write")
+
+		u.Checkpoint(func(r wuReq) error {
+			if remainingCycle > 0 {
+				log.Infoi(u.ctx, "WU", u.memoryWrite.InstructionType, execution.SequenceID, "pending memory write")
+				remainingCycle--
+				return nil
+			}
+			u.Reset()
+			u.ctx.WriteMemory(u.memoryWrite.Execution)
+			u.ctx.DeletePendingRegisters(u.memoryWrite.ReadRegisters, u.memoryWrite.WriteRegisters)
+			log.Infoi(u.ctx, "WU", u.memoryWrite.InstructionType, execution.SequenceID, "write to memory")
+			return nil
+		})
+
+		u.memoryWrite = execution
 	} else {
 		u.ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
 		log.Infoi(u.ctx, "WU", execution.InstructionType, execution.SequenceID, "cleaning")

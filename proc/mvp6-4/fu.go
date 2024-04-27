@@ -20,6 +20,7 @@ type fetchUnit struct {
 	toCleanPending  bool
 	outBus          *comp.BufferedBus[int32]
 	complete        bool
+	mmu             *memoryManagementUnit
 	remainingCycles int
 	l1i             *comp.LRUCache
 }
