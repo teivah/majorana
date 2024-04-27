@@ -100,13 +100,22 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 	log.Infoi(u.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "executing")
 
 	// TODO xxx
-	// u.runner.Pc == 20
 	// 4 3 18 | 2 1  -- 29
 	// 4 3 18 | 18 1 -- 30
 	// 4 3 2  | 18 1 -- 31
 	// 4 3 2  | 18 18 -- 32 (theory)
 	// 4 3 2  | 18 2  -- 32 (practice, wrong)
-	// Problem is instruction 20 that loads into t4 2 instead of 18
+	// Problem is instruction 20 that loads into t4 2 instead of 18 (delta=29)
+	// 2 read request 64
+	// u.runner.Pc == 20 && addrs[0] == 64 && delta == 29
+	// Problem: read from memory 2, someone is writing to 64
+	//
+	// New problem
+	// Delta 33
+	// Write addr 64
+	// 4 3 2 | 1 18 (theory)
+	// 4 3 2 | 1 1 (practice)
+	//           -- wrong, should stay 18
 	addrs := u.runner.Runner.MemoryRead(u.ctx)
 	if len(addrs) != 0 {
 		return u.ExecuteWithCheckpoint(r, func(r euReq) euResp {
@@ -143,7 +152,7 @@ func (u *executeUnit) run(r euReq) euResp {
 		writeAddrs, _ := executionToMemoryChanges(execution)
 		// TODO Pending is because we are going to write to the line but we may need to read first from memory
 		// TODO Pending represent an intention
-		//u.ctx.PendingWriteMemoryIntention[getAlignedMemoryAddress(addrs)] = u.cc.id
+		u.ctx.PendingWriteMemoryIntention[getAlignedMemoryAddress(writeAddrs)] = u.cc.id
 		u.execution = execution
 		if u.cc.isAddressInL1(writeAddrs) {
 			return u.ExecuteWithReset(r, u.memoryChange)
@@ -244,7 +253,7 @@ func (u *executeUnit) memoryChange(r euReq) euResp {
 			// Core is this only owner of the line
 			u.cc.writeToL1(addrs, memory)
 			u.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
-			//delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
+			delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
 			return res
 		}
 
@@ -279,7 +288,7 @@ func (u *executeUnit) memoryChange(r euReq) euResp {
 				u.cc.writeToL1(instruction.addrs, instruction.memory)
 			}
 			u.ctx.DeletePendingRegisters(u.runner.Runner.ReadRegisters(), u.runner.Runner.WriteRegisters())
-			//delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
+			delete(u.ctx.PendingWriteMemoryIntention, getAlignedMemoryAddress(addrs))
 			return euResp{}
 		})
 

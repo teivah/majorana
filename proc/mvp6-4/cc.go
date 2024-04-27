@@ -92,32 +92,39 @@ func (cc *cacheController) snoop() bool {
 
 		state := cc.msi[event.addr]
 		if event.read {
-			//if _, exists := cc.ctx.PendingWriteMemoryIntention[event.addr]; exists {
-			//	// The change is not written in L1 yet
-			//	event.response.Notify(busResponseEvent{true, nil})
-			//	continue
-			//}
-
 			switch state {
 			case invalid:
 			case modified:
+				if _, exists := cc.ctx.PendingWriteMemoryIntention[event.addr]; exists {
+					// A change is not written in L1 yet
+					event.response.Notify(busResponseEvent{true, nil})
+					continue
+				}
+
+				if _, exists := cc.ctx.PendingWriteMemoryIntention[event.addr]; exists {
+					// The change is not written in L1 yet
+					event.response.Notify(busResponseEvent{true, nil})
+					continue
+				}
+
 				// Write-back
-				// TODO Time to write
 				memory, exists := cc.l1d.GetCacheLine(event.addr)
 				if !exists {
 					panic("memory address should exist")
 				}
+				// TODO Time to write
 				cc.mmu.writeToMemory(event.addr, memory)
 				cc.msi[event.addr] = shared
+				fmt.Println(cc.id, "snoop", "read", "modified to shared", event.addr, memory)
 			case shared:
 			}
 			evt.Commit()
 		} else if event.write {
-			//if _, exists := cc.ctx.PendingWriteMemoryIntention[event.addr]; exists {
-			//	// The change is not written in L1 yet
-			//	event.response.Notify(busResponseEvent{true, nil})
-			//	continue
-			//}
+			if _, exists := cc.ctx.PendingWriteMemoryIntention[event.addr]; exists {
+				// A change is not written in L1 yet
+				event.response.Notify(busResponseEvent{true, nil})
+				continue
+			}
 
 			switch state {
 			case invalid:
@@ -130,6 +137,7 @@ func (cc *cacheController) snoop() bool {
 				}
 				cc.mmu.writeToMemory(event.addr, memory)
 				cc.msi[event.addr] = invalid
+				fmt.Println(cc.id, "snoop", "write", "modified to invalid", event.addr, memory)
 			case shared:
 				_, _ = cc.l1d.EvictCacheLine(event.addr)
 				// TODO Really?
@@ -137,9 +145,11 @@ func (cc *cacheController) snoop() bool {
 				//	panic("memory address should exist")
 				//}
 				cc.msi[event.addr] = invalid
+				fmt.Println(cc.id, "snoop", "write", "shared to invalid", event.addr)
 			}
 			evt.Commit()
 		} else if event.invalidate {
+			// TODO I should see the invalidation request at delta 32
 			if v, exists := cc.instructionsForNextInvalidate[event.addr]; exists {
 				event.response.Notify(busResponseEvent{false, &v})
 				delete(cc.instructionsForNextInvalidate, event.addr)
@@ -193,16 +203,12 @@ func (cc *cacheController) coRead(r ccReq) ccResp {
 		})
 	}
 
-	// Read from memory
-	alignedAddr, listener := cc.msiRead(r.addrs)
+	return cc.ExecuteWithCheckpoint(r, cc.coTryRead)
+}
+
+func (cc *cacheController) coTryRead(r ccReq) ccResp {
+	_, listener := cc.msiRead(r.addrs)
 	cc.Checkpoint(func(r ccReq) ccResp {
-		if cc.msi[alignedAddr] != shared {
-			// Cache line isn't readable any more.
-			// This can happen if there was an invalidation before having fetched the
-			// cache line.
-			cc.Reset()
-			return ccResp{}
-		}
 		if listener != nil {
 			// In this case, we may have to wait for a write-back
 			pending := false
@@ -223,22 +229,26 @@ func (cc *cacheController) coRead(r ccReq) ccResp {
 
 		cycles := latency.MemoryAccess
 		// TODO Shouldn't we read from L1?
-		memory := cc.mmu.getFromMemory(r.addrs)
+		addr, line := cc.mmu.fetchCacheLine(r.addrs[0], l1DCacheLineSize)
 		return cc.ExecuteWithCheckpoint(r, func(r ccReq) ccResp {
 			if cycles > 0 {
 				cycles--
 				return ccResp{}
 			}
-			//if cc.ctx.PendingMemoryChange[r.addrs[0]/l1DCacheLineSize] {
-			//	return ccResp{}
-			//}
+
+			if cc.msi[addr] != shared {
+				// Cache line is stale (another core modified it)
+				// We have to read again
+				fmt.Println(cc.id, "stale", addr)
+				return cc.ExecuteWithCheckpoint(r, cc.coTryRead)
+			}
+
 			cc.Reset()
-			// TODO Delay
-			addr, line := cc.mmu.fetchCacheLine(r.addrs[0], l1DCacheLineSize)
 			cc.pushLineToL1(addr, line)
+			data := cc.getFromL1(r.addrs)
 
 			return ccResp{
-				memory: memory,
+				memory: data,
 				done:   true,
 			}
 		})
