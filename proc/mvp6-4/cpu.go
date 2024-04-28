@@ -57,8 +57,9 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 	wus := make([]*writeUnit, 0, parallelism)
 	ccs := make([]*cacheController, 0, parallelism)
 	bus := comp.NewBroadcast[busRequestEvent](parallelism)
+	lock := newMSI()
 	for i := 0; i < parallelism; i++ {
-		cc := newCacheController(i, ctx, mmu, bus)
+		cc := newCacheController(i, ctx, mmu, bus, lock)
 		ccs = append(ccs, cc)
 		eus = append(eus, newExecuteUnit(ctx, bu, executeBus, writeBus, mmu, cc))
 		wus = append(wus, newWriteUnit(ctx, writeBus))
@@ -218,6 +219,10 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		cycle++
 		empty := true
 		for _, cc := range m.cacheControllers {
+			if cc.snoop.IsStart() {
+				continue
+			}
+			empty = false
 			cc.snoop.Cycle(struct{}{})
 		}
 		for _, eu := range m.executeUnits {
@@ -231,21 +236,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			break
 		}
 	}
-
-	//cycle++
-	//for {
-	//	empty := true
-	//	for _, eu := range m.executeUnits {
-	//		if eu.isEmpty() {
-	//			continue
-	//		}
-	//		empty = false
-	//		eu.Cycle(euReq{cycle, app})
-	//	}
-	//	if empty {
-	//		break
-	//	}
-	//}
 
 	for _, cc := range m.cacheControllers {
 		cycle += cc.flush()
