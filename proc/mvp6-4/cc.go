@@ -3,6 +3,7 @@ package mvp6_4
 import (
 	"fmt"
 	"slices"
+	"sync"
 
 	"github.com/teivah/broadcast"
 	co "github.com/teivah/majorana/common/coroutine"
@@ -56,6 +57,9 @@ type cacheController struct {
 	pending   map[int32]map[actionType]pendingState
 }
 
+// TODO
+var invalidationLocks = make(map[int32]*sync.Mutex)
+
 type actionType int32
 
 const (
@@ -99,6 +103,15 @@ func newCacheController(id int, ctx *risc.Context, mmu *memoryManagementUnit, bu
 	return cc
 }
 
+func (cc *cacheController) getInvalidationLock(alignedAddr int32) *sync.Mutex {
+	v, exists := invalidationLocks[alignedAddr]
+	if !exists {
+		v = &sync.Mutex{}
+		invalidationLocks[alignedAddr] = v
+	}
+	return v
+}
+
 // Constraint: when adding a coroutine, the event has to be committed.
 func (cc *cacheController) coSnoop(struct{}) bool {
 	cc.snoops = slices.DeleteFunc(cc.snoops, func(snoop co.Coroutine[struct{}, bool]) bool {
@@ -138,6 +151,7 @@ func (cc *cacheController) coSnoop(struct{}) bool {
 				// Write back
 				cc.snoopBusy[event.alignedAddr] = true
 				cycles := latency.MemoryAccess
+				event.response.Notify(busResponseEvent{true})
 				cc.snoops = append(cc.snoops, co.New(func(struct{}) bool {
 					if cycles > 0 {
 						cycles--
@@ -147,11 +161,14 @@ func (cc *cacheController) coSnoop(struct{}) bool {
 
 					memory, exists := cc.l1d.GetCacheLine(event.alignedAddr)
 					if !exists {
+						// TODO
+						return false
 						panic("memory address should exist")
 					}
 					cc.mmu.writeToMemory(event.alignedAddr, memory)
 
 					cc.msi[event.alignedAddr] = invalid
+					fmt.Println("transition", cc.id, "invalid")
 					cc.snoopBusy[event.alignedAddr] = false
 					return false
 				}))
@@ -175,6 +192,7 @@ func (cc *cacheController) coSnoop(struct{}) bool {
 				// Write back
 				cc.snoopBusy[event.alignedAddr] = true
 				cycles := latency.MemoryAccess
+				event.response.Notify(busResponseEvent{true})
 				cc.snoops = append(cc.snoops, co.New(func(struct{}) bool {
 					if cycles > 0 {
 						cycles--
@@ -189,6 +207,8 @@ func (cc *cacheController) coSnoop(struct{}) bool {
 					cc.mmu.writeToMemory(event.alignedAddr, memory)
 
 					cc.msi[event.alignedAddr] = invalid
+					cc.l1d.EvictCacheLine(event.alignedAddr)
+					fmt.Println("transition", cc.id, "invalid")
 					cc.snoopBusy[event.alignedAddr] = false
 					return false
 				}))
@@ -202,6 +222,7 @@ func (cc *cacheController) coSnoop(struct{}) bool {
 					panic("invalid state")
 				}
 				cc.msi[event.alignedAddr] = invalid
+				fmt.Println("transition", cc.id, "invalid")
 				evt.Commit()
 			}
 		} else if event.invalidate {
@@ -221,6 +242,7 @@ func (cc *cacheController) coSnoop(struct{}) bool {
 				// Write back
 				cc.snoopBusy[event.alignedAddr] = true
 				cycles := latency.MemoryAccess
+				event.response.Notify(busResponseEvent{true})
 				cc.snoops = append(cc.snoops, co.New(func(struct{}) bool {
 					if cycles > 0 {
 						cycles--
@@ -235,6 +257,8 @@ func (cc *cacheController) coSnoop(struct{}) bool {
 					cc.mmu.writeToMemory(event.alignedAddr, memory)
 
 					cc.msi[event.alignedAddr] = invalid
+					cc.l1d.EvictCacheLine(event.alignedAddr)
+					fmt.Println("transition", cc.id, "invalid")
 					cc.snoopBusy[event.alignedAddr] = false
 					return false
 				}))
@@ -251,6 +275,7 @@ func (cc *cacheController) coSnoop(struct{}) bool {
 					panic("invalid state")
 				}
 				cc.msi[event.alignedAddr] = invalid
+				fmt.Println("transition", cc.id, "invalid")
 				evt.Commit()
 			}
 		} else {
@@ -391,6 +416,7 @@ func (cc *cacheController) coMemoryRead(r ccReadReq) ccReadResp {
 
 				cc.read.Reset()
 				cc.msi[alignedAddr] = shared
+				fmt.Println("transition", cc.id, "shared")
 				cc.deletePendingIntention(alignedAddr, readAction)
 				return ccReadResp{
 					data: data,
@@ -425,7 +451,7 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 			return ccWriteResp{done: true}
 		})
 	case shared:
-		return cc.coInvalidationRequest(r)
+		return cc.write.ExecuteWithCheckpoint(r, cc.coInvalidationRequest)
 	default:
 		panic(state)
 	}
@@ -478,6 +504,7 @@ func (cc *cacheController) coWriteRequest(r ccWriteReq) ccWriteResp {
 					}
 
 					cc.writeToL1(r.addrs, r.data)
+					fmt.Println("transition", cc.id, "modified")
 					cc.msi[alignedAddr] = modified
 					cc.write.Reset()
 					cc.deletePendingIntention(alignedAddr, writeAction)
@@ -491,6 +518,15 @@ func (cc *cacheController) coWriteRequest(r ccWriteReq) ccWriteResp {
 
 func (cc *cacheController) coInvalidationRequest(r ccWriteReq) ccWriteResp {
 	alignedAddr := getAlignedMemoryAddress(r.addrs)
+
+	lock := cc.getInvalidationLock(alignedAddr)
+	if !lock.TryLock() {
+		// There's another invalidation request happening at the moment
+		return ccWriteResp{
+			done: false,
+		}
+	}
+
 	fmt.Println(cc.id, "invalidation request", alignedAddr)
 	response := broadcast.NewRelay[busResponseEvent]()
 	cc.bus.Notify(busRequestEvent{
@@ -506,6 +542,50 @@ func (cc *cacheController) coInvalidationRequest(r ccWriteReq) ccWriteResp {
 			return ccWriteResp{}
 		}
 
+		// At this stage, the core may have lost its shared state if an invalidation
+		// happened at the same cycle
+		if cc.msi[alignedAddr] != shared {
+			cycles := latency.MemoryAccess
+			addr, line := cc.mmu.fetchCacheLine(r.addrs[0], l1DCacheLineSize)
+			cc.addPendingIntention(alignedAddr, writeAction, pendingFetchCacheLineFromMemory)
+			return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
+				if cycles > 0 {
+					cycles--
+					return ccWriteResp{}
+				}
+
+				cycles = latency.L1Access
+				evicted := cc.l1d.PushLine(addr, line)
+				if len(evicted) != 0 {
+					panic("not handled")
+				}
+				cc.addPendingIntention(alignedAddr, writeAction, pendingL1Access)
+				return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
+					if cycles > 0 {
+						cycles--
+						return ccWriteResp{}
+					}
+
+					cycles = latency.L1Access
+					cc.addPendingIntention(alignedAddr, writeAction, pendingL1Access)
+					return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
+						if cycles > 0 {
+							cycles--
+							return ccWriteResp{}
+						}
+
+						cc.writeToL1(r.addrs, r.data)
+						cc.msi[alignedAddr] = modified
+						fmt.Println("transition", cc.id, "modified")
+						cc.write.Reset()
+						cc.deletePendingIntention(alignedAddr, writeAction)
+						lock.Unlock()
+						return ccWriteResp{done: true}
+					})
+				})
+			})
+		}
+
 		cycles := latency.L1Access
 		cc.addPendingIntention(alignedAddr, writeAction, pendingL1Access)
 		return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
@@ -516,8 +596,10 @@ func (cc *cacheController) coInvalidationRequest(r ccWriteReq) ccWriteResp {
 
 			cc.writeToL1(r.addrs, r.data)
 			cc.msi[alignedAddr] = modified
+			fmt.Println("transition", cc.id, "modified")
 			cc.write.Reset()
 			cc.deletePendingIntention(alignedAddr, writeAction)
+			lock.Unlock()
 			return ccWriteResp{done: true}
 		})
 	})
@@ -525,6 +607,10 @@ func (cc *cacheController) coInvalidationRequest(r ccWriteReq) ccWriteResp {
 }
 
 func (cc *cacheController) pushLineToL1(addr int32, line []int8) {
+	if cc.isAddressInL1([]int32{addr}) {
+		// TODO No need to wait if it was already in L1
+		return
+	}
 	evicted := cc.l1d.PushLine(addr, line)
 	if len(evicted) == 0 {
 		return
@@ -554,7 +640,7 @@ var delta = -1
 
 func (cc *cacheController) writeToL1(addrs []int32, data []int8) {
 	delta++
-	fmt.Println(delta)
+	fmt.Println("delta", delta)
 	fmt.Printf("write, id=%d, addr=%d, data=%d\n", cc.id, addrs[0], risc.I32FromBytes(data[0], data[1], data[2], data[3]))
 	cc.l1d.Write(addrs[0], data)
 	for _, line := range cc.l1d.Lines() {
