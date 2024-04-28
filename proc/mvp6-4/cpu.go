@@ -170,6 +170,11 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			for {
 				isEmpty := true
 				cycle++
+
+				for _, cc := range m.cacheControllers {
+					cc.snoop.Cycle(struct{}{})
+				}
+
 				for _, eu := range m.executeUnits {
 					if !eu.isEmpty() {
 						isEmpty = false
@@ -212,6 +217,9 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	for {
 		cycle++
 		empty := true
+		for _, cc := range m.cacheControllers {
+			cc.snoop.Cycle(struct{}{})
+		}
 		for _, eu := range m.executeUnits {
 			if eu.isEmpty() {
 				continue

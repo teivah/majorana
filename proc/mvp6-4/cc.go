@@ -2,6 +2,7 @@ package mvp6_4
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/teivah/broadcast"
 	co "github.com/teivah/majorana/common/coroutine"
@@ -31,6 +32,7 @@ type ccReadResp struct {
 }
 
 type ccWriteReq struct {
+	cycle int
 	addrs []int32
 	data  []int8
 }
@@ -48,7 +50,8 @@ type cacheController struct {
 	msi       map[int32]msiState
 	read      co.Coroutine[ccReadReq, ccReadResp]
 	write     co.Coroutine[ccWriteReq, ccWriteResp]
-	snoop     co.Coroutine[struct{}, struct{}]
+	snoop     co.Coroutine[struct{}, bool]
+	snoops    []co.Coroutine[struct{}, bool]
 	snoopBusy map[int32]bool
 	pending   map[int32]map[actionType]pendingState
 }
@@ -96,7 +99,17 @@ func newCacheController(id int, ctx *risc.Context, mmu *memoryManagementUnit, bu
 	return cc
 }
 
-func (cc *cacheController) coSnoop(struct{}) struct{} {
+// Constraint: when adding a coroutine, the event has to be committed.
+func (cc *cacheController) coSnoop(struct{}) bool {
+	cc.snoops = slices.DeleteFunc(cc.snoops, func(snoop co.Coroutine[struct{}, bool]) bool {
+		//return !snoop.Cycle(struct{}{})
+		v := snoop.Cycle(struct{}{})
+		if !v {
+			return true
+		}
+		return false
+	})
+
 	for _, evt := range cc.bus.Read(cc.id) {
 		event := evt.Data
 
@@ -117,6 +130,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 			case modified:
 				if writePending != none {
 					// Write is ongoing, we should wait before write-back
+					event.response.Notify(busResponseEvent{true})
 					continue
 				}
 
@@ -124,11 +138,11 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				// Write back
 				cc.snoopBusy[event.alignedAddr] = true
 				cycles := latency.MemoryAccess
-				// TODO Without return?
-				return cc.snoop.ExecuteWithCheckpoint(struct{}{}, func(struct{}) struct{} {
+				cc.snoops = append(cc.snoops, co.New(func(struct{}) bool {
 					if cycles > 0 {
 						cycles--
-						return struct{}{}
+						event.response.Notify(busResponseEvent{true})
+						return true
 					}
 
 					memory, exists := cc.l1d.GetCacheLine(event.alignedAddr)
@@ -137,11 +151,10 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 					}
 					cc.mmu.writeToMemory(event.alignedAddr, memory)
 
-					cc.snoop.Reset()
 					cc.msi[event.alignedAddr] = invalid
 					cc.snoopBusy[event.alignedAddr] = false
-					return struct{}{}
-				})
+					return false
+				}))
 			case shared:
 				// Nothing
 				evt.Commit()
@@ -152,8 +165,9 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				// Nothing
 				evt.Commit()
 			case modified:
-				if writePending != none {
+				if readPending != none || writePending != none {
 					// Write is ongoing, we should wait before write-back
+					event.response.Notify(busResponseEvent{true})
 					continue
 				}
 
@@ -161,11 +175,11 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				// Write back
 				cc.snoopBusy[event.alignedAddr] = true
 				cycles := latency.MemoryAccess
-				// TODO Without return?
-				return cc.snoop.ExecuteWithCheckpoint(struct{}{}, func(struct{}) struct{} {
+				cc.snoops = append(cc.snoops, co.New(func(struct{}) bool {
 					if cycles > 0 {
 						cycles--
-						return struct{}{}
+						event.response.Notify(busResponseEvent{true})
+						return true
 					}
 
 					memory, exists := cc.l1d.GetCacheLine(event.alignedAddr)
@@ -174,13 +188,12 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 					}
 					cc.mmu.writeToMemory(event.alignedAddr, memory)
 
-					cc.snoop.Reset()
 					cc.msi[event.alignedAddr] = invalid
 					cc.snoopBusy[event.alignedAddr] = false
-					return struct{}{}
-				})
+					return false
+				}))
 			case shared:
-				if readPending != none {
+				if readPending != none || writePending != none {
 					continue
 				}
 
@@ -198,8 +211,9 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				// Nothing
 				evt.Commit()
 			case modified:
-				if writePending != none {
+				if readPending != none || writePending != none {
 					// Write is ongoing, we should wait before write-back
+					event.response.Notify(busResponseEvent{true})
 					continue
 				}
 
@@ -207,11 +221,11 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				// Write back
 				cc.snoopBusy[event.alignedAddr] = true
 				cycles := latency.MemoryAccess
-				// TODO Without return?
-				return cc.snoop.ExecuteWithCheckpoint(struct{}{}, func(struct{}) struct{} {
+				cc.snoops = append(cc.snoops, co.New(func(struct{}) bool {
 					if cycles > 0 {
 						cycles--
-						return struct{}{}
+						event.response.Notify(busResponseEvent{true})
+						return true
 					}
 
 					memory, exists := cc.l1d.GetCacheLine(event.alignedAddr)
@@ -220,14 +234,14 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 					}
 					cc.mmu.writeToMemory(event.alignedAddr, memory)
 
-					cc.snoop.Reset()
 					cc.msi[event.alignedAddr] = invalid
 					cc.snoopBusy[event.alignedAddr] = false
-					return struct{}{}
-				})
+					return false
+				}))
 			case shared:
-				if readPending != none {
+				if readPending != none || writePending != none {
 					// Write is ongoing, we should wait before write-back
+					event.response.Notify(busResponseEvent{true})
 					continue
 				}
 
@@ -244,7 +258,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 		}
 	}
 
-	return struct{}{}
+	return false
 }
 
 func getAlignedMemoryAddress(addrs []int32) int32 {
@@ -539,10 +553,10 @@ func (cc *cacheController) getFromL1(addrs []int32) []int8 {
 var delta = -1
 
 func (cc *cacheController) writeToL1(addrs []int32, data []int8) {
-	cc.l1d.Write(addrs[0], data)
 	delta++
 	fmt.Println(delta)
 	fmt.Printf("write, id=%d, addr=%d, data=%d\n", cc.id, addrs[0], risc.I32FromBytes(data[0], data[1], data[2], data[3]))
+	cc.l1d.Write(addrs[0], data)
 	for _, line := range cc.l1d.Lines() {
 		if line.Boundary[0] <= addrs[0] && addrs[0] < line.Boundary[1] {
 			fmt.Printf("%v: ", line.Boundary)

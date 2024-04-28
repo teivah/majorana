@@ -124,7 +124,7 @@ func (u *executeUnit) run(r euReq) euResp {
 		u.execution = execution
 
 		return u.ExecuteWithCheckpoint(r, func(r euReq) euResp {
-			resp := u.cc.write.Cycle(ccWriteReq{writeAddrs, data})
+			resp := u.cc.write.Cycle(ccWriteReq{r.cycle, writeAddrs, data})
 			if resp.done {
 				u.Reset()
 			}
