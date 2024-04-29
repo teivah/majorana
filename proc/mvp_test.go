@@ -3,7 +3,6 @@ package proc
 import (
 	"fmt"
 	"sort"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -595,9 +594,6 @@ func testSpectre(t *testing.T, factory func(int) virtualMachine, stats bool) {
 //}
 
 func TestBenchmarks(t *testing.T) {
-	t.Parallel()
-
-	wg := sync.WaitGroup{}
 	versions := []string{
 		"MVP-1",
 		"MVP-2",
@@ -721,11 +717,10 @@ func TestBenchmarks(t *testing.T) {
 	}
 
 	primeOutput := make([]string, totalVersions)
-	wg.Add(1)
 	t.Run("Prime", func(t *testing.T) {
-		t.Parallel()
 		for idx, factory := range vms {
 			t.Run(versions[idx], func(t *testing.T) {
+				t.Parallel()
 				v := expected["Prime"][idx]
 				if v == 0 {
 					t.SkipNow()
@@ -754,11 +749,10 @@ func TestBenchmarks(t *testing.T) {
 	})
 
 	sumsOutput := make([]string, totalVersions)
-	wg.Add(1)
 	t.Run("Sum", func(t *testing.T) {
-		t.Parallel()
 		for idx, factory := range vms {
 			t.Run(versions[idx], func(t *testing.T) {
+				t.Parallel()
 				v := expected["Sum"][idx]
 				if v == 0 {
 					t.SkipNow()
@@ -791,11 +785,10 @@ func TestBenchmarks(t *testing.T) {
 	})
 
 	cpyOutput := make([]string, totalVersions)
-	wg.Add(1)
 	t.Run("String copy", func(t *testing.T) {
-		t.Parallel()
 		for idx, factory := range vms {
 			t.Run(versions[idx], func(t *testing.T) {
+				t.Parallel()
 				v := expected["String copy"][idx]
 				if v == 0 {
 					t.SkipNow()
@@ -827,11 +820,10 @@ func TestBenchmarks(t *testing.T) {
 	})
 
 	lengthOutput := make([]string, totalVersions)
-	wg.Add(1)
 	t.Run("String length", func(t *testing.T) {
-		t.Parallel()
 		for idx, factory := range vms {
 			t.Run(versions[idx], func(t *testing.T) {
+				t.Parallel()
 				v := expected["String length"][idx]
 				if v == 0 {
 					t.SkipNow()
@@ -860,11 +852,10 @@ func TestBenchmarks(t *testing.T) {
 	})
 
 	bubbleOutput := make([]string, totalVersions)
-	wg.Add(1)
 	t.Run("Bubble sort", func(t *testing.T) {
-		t.Parallel()
 		for idx, factory := range vms {
 			t.Run(versions[idx], func(t *testing.T) {
+				t.Parallel()
 				v := expected["Bubble sort"][idx]
 				if v == 0 {
 					t.SkipNow()

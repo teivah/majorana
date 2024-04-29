@@ -110,7 +110,7 @@ func (u *controlUnit) handleRunner(ctx *risc.Context, cycle int, pushed int, run
 		u.pushRunner(ctx, cycle, &runner)
 		return true, false
 	} else {
-		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%s", hazards)
+		log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "data hazard: reason=%v", hazards)
 		u.blockedDataHazard++
 		return false, true
 	}
