@@ -1,6 +1,8 @@
 package mvp6_4
 
 import (
+	"fmt"
+
 	"github.com/teivah/majorana/proc/comp"
 )
 
@@ -310,6 +312,34 @@ func (m *msi) lock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 	default:
 		panic(state)
 	}
+}
+
+func (m *msi) evict(id int, alignedAddr int32) *request {
+	entry := msiEntry{
+		id:          id,
+		alignedAddr: alignedAddr,
+	}
+	r := &request{
+		request:     evict,
+		alignedAddr: alignedAddr,
+		callback: func() {
+			m.states[entry] = invalid
+			delete(m.commands, entry)
+		},
+	}
+	var pending *request
+	if v, exists := m.commands[entry]; exists {
+		if r.request != v.request || r.alignedAddr != v.alignedAddr {
+			panic("invalid state")
+		}
+		pending = v
+		m.commands[entry] = v
+	} else {
+		pending = r
+		m.commands[entry] = r
+	}
+	fmt.Println("evict request")
+	return pending
 }
 
 func (m *msi) getSem(addrs []int32) *comp.Sem {

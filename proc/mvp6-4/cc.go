@@ -150,9 +150,29 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 						return ccReadResp{}
 					}
 					// TODO Working???
-					evicted := cc.pushLineToL1(lineAddr, data)
-					if len(evicted) != 0 {
-						// TODO ???
+					shouldEvict := cc.pushLineToL1(lineAddr, data)
+					if shouldEvict != nil {
+						pending := cc.msi.evict(cc.id, shouldEvict.Boundary[0])
+						cc.read.Checkpoint(func(r ccReadReq) ccReadResp {
+							if !pending.isDone() {
+								return ccReadResp{}
+							}
+							//fmt.Println("done")
+
+							data = cc.getFromL1(r.addrs)
+							cycles = latency.L1Access
+							return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
+								if cycles > 0 {
+									cycles--
+									return ccReadResp{}
+								}
+								post()
+								cc.read.Reset()
+								delete(cc.rlockSem, getAlignedMemoryAddress(r.addrs))
+								return ccReadResp{data, true}
+							})
+						})
+						return ccReadResp{}
 					}
 
 					data = cc.getFromL1(r.addrs)
@@ -212,11 +232,37 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 					return ccWriteResp{}
 				}
 
-				cycles = latency.L1Access
-				evicted := cc.l1d.PushLine(addr, line)
-				if len(evicted) != 0 {
-					panic("not handled")
+				shouldEvict := cc.pushLineToL1(addr, line)
+				if shouldEvict != nil {
+					pending := cc.msi.evict(cc.id, shouldEvict.Boundary[0])
+					cycles = latency.L1Access
+					cc.write.Checkpoint(func(r ccWriteReq) ccWriteResp {
+						if !pending.isDone() {
+							return ccWriteResp{}
+						}
+
+						if cycles > 0 {
+							cycles--
+							return ccWriteResp{}
+						}
+
+						cycles = latency.L1Access
+						return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
+							if cycles > 0 {
+								cycles--
+								return ccWriteResp{}
+							}
+
+							cc.writeToL1(r.addrs, r.data)
+							post()
+							cc.write.Reset()
+							delete(cc.lockSem, getAlignedMemoryAddress(r.addrs))
+							return ccWriteResp{done: true}
+						})
+					})
+					return ccWriteResp{}
 				}
+
 				return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
 					if cycles > 0 {
 						cycles--
@@ -258,12 +304,12 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 	})
 }
 
-func (cc *cacheController) pushLineToL1(addr int32, line []int8) []int8 {
+func (cc *cacheController) pushLineToL1(addr int32, line []int8) *comp.Line {
 	if cc.isAddressInL1([]int32{addr}) {
 		// TODO No need to wait if it was already in L1
 		return nil
 	}
-	return cc.l1d.PushLine(addr, line)
+	return cc.l1d.PushLineWithEvictionWarning(addr, line)
 }
 
 func (cc *cacheController) isAddressInL1(addrs []int32) bool {
@@ -283,23 +329,8 @@ func (cc *cacheController) getFromL1(addrs []int32) []int8 {
 	return memory
 }
 
-var delta = -1
-
 func (cc *cacheController) writeToL1(addrs []int32, data []int8) {
-	delta++
-	//fmt.Println("delta", delta)
-	//fmt.Printf("write, id=%d, addr=%d, data=%d\n", cc.id, addrs[0], risc.I32FromBytes(data[0], data[1], data[2], data[3]))
 	cc.l1d.Write(addrs[0], data)
-	for _, line := range cc.l1d.Lines() {
-		if line.Boundary[0] <= addrs[0] && addrs[0] < line.Boundary[1] {
-			//fmt.Printf("%v: ", line.Boundary)
-			for i := 0; i < len(line.Data); i += 4 {
-				//fmt.Printf("%v ", line.Data[i])
-			}
-			//fmt.Println()
-		}
-	}
-	//fmt.Println()
 }
 
 func (cc *cacheController) flush() {
