@@ -200,6 +200,7 @@ func executionToMemoryChanges(execution risc.Execution) ([]int32, []int8) {
 func (u *executeUnit) flush() {
 	u.Reset()
 	u.sequenceID = 0
+	u.cc.flush()
 }
 
 func (u *executeUnit) isEmpty() bool {

@@ -219,14 +219,13 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		cycle++
 		empty := true
 		for _, cc := range m.cacheControllers {
-			if cc.snoop.IsStart() {
-				continue
+			if !cc.snoop.IsStart() {
+				empty = false
 			}
-			empty = false
 			cc.snoop.Cycle(struct{}{})
 		}
-		for _, eu := range m.executeUnits {
-			if eu.isEmpty() {
+		for i, eu := range m.executeUnits {
+			if eu.isEmpty() && m.cacheControllers[i].read.IsStart() && m.cacheControllers[i].write.IsStart() {
 				continue
 			}
 			empty = false
@@ -238,7 +237,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	}
 
 	for _, cc := range m.cacheControllers {
-		cycle += cc.flush()
+		cycle += cc.export()
 	}
 
 	m.ctx.RATCommit()

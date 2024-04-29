@@ -287,12 +287,12 @@ func TestMvp6_4_2x2(t *testing.T) {
 	factory := func(memory int) virtualMachine {
 		return mvp6_4.NewCPU(false, memory, 2)
 	}
-	//testPrime(t, factory, memory, testFrom, testTo, false)
-	//testSums(t, factory, memory, testFrom, testTo, false)
-	//testStringLength(t, factory, 1024, testTo, false)
-	//testStringCopy(t, factory, testTo*2, testTo, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, factory, false)
-	//testConditionalBranch(t, factory, false)
+	testConditionalBranch(t, factory, false)
 	//testSpectre(t, factory, false)
 }
 
@@ -301,12 +301,12 @@ func TestMvp6_4_3x3(t *testing.T) {
 	factory := func(memory int) virtualMachine {
 		return mvp6_4.NewCPU(false, memory, 3)
 	}
-	//testPrime(t, factory, memory, testFrom, testTo, false)
-	//testSums(t, factory, memory, testFrom, testTo, false)
-	//testStringLength(t, factory, 1024, 1, false)
-	//testStringCopy(t, factory, testTo*2, testTo, false)
-	//testBubbleSort(t, factory, false)
-	//testConditionalBranch(t, factory, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, factory, false)
+	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
 

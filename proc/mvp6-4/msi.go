@@ -80,14 +80,14 @@ func (m *msi) requests(id int) []*request {
 // pendings: pre
 // msiResponse: action
 // callback: post
-func (m *msi) rLock(id int, addrs []int32) (msiResponse, func()) {
+func (m *msi) rLock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 	alignedAddr := getAlignedMemoryAddress(addrs)
 	state := m.getState(id, addrs)
 	var pendings []*request
 	switch state {
 	case invalid:
 		if !m.getSem(addrs).RLock() {
-			return msiResponse{wait: true}, noop
+			return msiResponse{wait: true}, noop, nil
 		}
 
 		// Read request
@@ -137,21 +137,21 @@ func (m *msi) rLock(id int, addrs []int32) (msiResponse, func()) {
 			}, func() {
 				m.setState(id, addrs, shared)
 				m.getSem(addrs).RUnlock()
-			}
+			}, m.getSem(addrs)
 	case modified:
 		if !m.getSem(addrs).Lock() {
-			return msiResponse{wait: true}, noop
+			return msiResponse{wait: true}, noop, nil
 		}
 		return msiResponse{readFromL1: true}, func() {
 			m.getSem(addrs).Unlock()
-		}
+		}, m.getSem(addrs)
 	case shared:
 		if !m.getSem(addrs).RLock() {
-			return msiResponse{wait: true}, noop
+			return msiResponse{wait: true}, noop, nil
 		}
 		return msiResponse{readFromL1: true}, func() {
 			m.getSem(addrs).RUnlock()
-		}
+		}, m.getSem(addrs)
 	default:
 		panic(state)
 	}
@@ -160,14 +160,14 @@ func (m *msi) rLock(id int, addrs []int32) (msiResponse, func()) {
 // pendings: pre
 // msiResponse: action
 // callback: post
-func (m *msi) lock(id int, addrs []int32) (msiResponse, func()) {
+func (m *msi) lock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 	alignedAddr := getAlignedMemoryAddress(addrs)
 	state := m.getState(id, addrs)
 	var pendings []*request
 	switch state {
 	case invalid:
 		if !m.getSem(addrs).Lock() {
-			return msiResponse{wait: true}, noop
+			return msiResponse{wait: true}, noop, nil
 		}
 
 		// Write request
@@ -240,17 +240,17 @@ func (m *msi) lock(id int, addrs []int32) (msiResponse, func()) {
 			}, func() {
 				m.setState(id, addrs, modified)
 				m.getSem(addrs).Unlock()
-			}
+			}, m.getSem(addrs)
 	case modified:
 		if !m.getSem(addrs).Lock() {
-			return msiResponse{wait: true}, noop
+			return msiResponse{wait: true}, noop, nil
 		}
 		return msiResponse{writeToL1: true}, func() {
 			m.getSem(addrs).Unlock()
-		}
+		}, m.getSem(addrs)
 	case shared:
 		if !m.getSem(addrs).Lock() {
-			return msiResponse{wait: true}, noop
+			return msiResponse{wait: true}, noop, nil
 		}
 
 		// Invalidation request
@@ -306,7 +306,7 @@ func (m *msi) lock(id int, addrs []int32) (msiResponse, func()) {
 			}, func() {
 				m.setState(id, addrs, modified)
 				m.getSem(addrs).Unlock()
-			}
+			}, m.getSem(addrs)
 	default:
 		panic(state)
 	}
@@ -336,12 +336,12 @@ func (m *msi) setState(id int, addrs []int32, state msiState) {
 		alignedAddr: getAlignedMemoryAddress(addrs),
 	}
 	m.states[e] = state
-	//switch state {
-	//case invalid:
-	//	fmt.Println("transition", e.id, "invalid")
-	//case shared:
-	//	fmt.Println("transition", e.id, "shared")
-	//case modified:
-	//	fmt.Println("transition", e.id, "modified")
-	//}
+	switch state {
+	case invalid:
+		//fmt.Println("transition", e.id, "invalid")
+	case shared:
+		//fmt.Println("transition", e.id, "shared")
+	case modified:
+		//fmt.Println("transition", e.id, "modified")
+	}
 }
