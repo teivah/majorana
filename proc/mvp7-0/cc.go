@@ -60,23 +60,17 @@ func newCacheController(id int, ctx *risc.Context, mmu *memoryManagementUnit, bu
 }
 
 func (cc *cacheController) coSnoop(struct{}) struct{} {
-	requests := cc.msi.requests(cc.id)
+	requests := cc.msi.getPendingRequestsToCore(cc.id)
 	if len(requests) == 0 {
 		return struct{}{}
 	}
 
-	for _, req := range requests {
+	for req, info := range requests {
 		switch req.request {
 		case evict:
 			cc.snoop.Append(func(struct{}) bool {
-				_, evicted := cc.l1d.EvictCacheLine(req.alignedAddr)
-				if !evicted {
-					//panic("invalid state")
-					//req.done()
-					// TODO Should we call done?
-				}
-				req.done()
-				//fmt.Println(cc.id, "evict", req.alignedAddr)
+				_, _ = cc.l1d.EvictCacheLine(req.alignedAddr)
+				info.done()
 				return true
 			})
 		case writeBack:
@@ -96,8 +90,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				if !evicted {
 					panic("invalid state")
 				}
-				req.done()
-				//fmt.Println(cc.id, "write-back", req.alignedAddr)
+				info.done()
 				return true
 			})
 		default:
@@ -119,7 +112,6 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 		return ccReadResp{}
 	}
 	cc.rlockSem[getAlignedMemoryAddress(r.addrs)] = sem
-	//fmt.Println("coread", cc.id, r.addrs)
 	return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
 		for _, pending := range resp.pendings {
 			if !pending.isDone() {
@@ -160,7 +152,6 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 							if pending != nil && !pending.isDone() {
 								return ccReadResp{}
 							}
-							//fmt.Println("done")
 
 							data = cc.getFromL1(r.addrs)
 							cycles = latency.L1Access
@@ -218,7 +209,6 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 		return ccWriteResp{}
 	}
 	cc.lockSem[getAlignedMemoryAddress(r.addrs)] = sem
-	//fmt.Println("cowrite", cc.id, r.addrs)
 	return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
 		for _, pending := range resp.pendings {
 			if !pending.isDone() {

@@ -205,5 +205,4 @@ func (u *executeUnit) flush() {
 
 func (u *executeUnit) isEmpty() bool {
 	return u.IsStart()
-	//return u.IsStart() && u.cc.isEmpty()
 }
