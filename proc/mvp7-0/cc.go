@@ -38,6 +38,7 @@ type cacheController struct {
 	msi       *msi
 	rlockSems map[comp.AlignedAddress]*comp.Sem
 	lockSems  map[comp.AlignedAddress]*comp.Sem
+
 	// Transient
 	post func()
 }
@@ -121,18 +122,8 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 
 		return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
 			if resp.readFromL1 {
-				memory := cc.getFromL1(r.addrs)
-				cycles := latency.L1Access
-				return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
-					if cycles > 0 {
-						cycles--
-						return ccReadResp{}
-					}
-					post()
-					cc.read.Reset()
-					delete(cc.rlockSems, getAlignedMemoryAddress(r.addrs))
-					return ccReadResp{memory, true}
-				})
+				cc.post = post
+				return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
 			} else if resp.fetchFromMemory {
 				if _, exists := cc.l1d.GetCacheLine(getAlignedMemoryAddress(r.addrs)); exists {
 					panic("invalid state")
@@ -152,39 +143,34 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 								return ccReadResp{}
 							}
 
-							data = cc.getFromL1(r.addrs)
-							cycles = latency.L1Access
-							return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
-								if cycles > 0 {
-									cycles--
-									return ccReadResp{}
-								}
-								post()
-								cc.read.Reset()
-								delete(cc.rlockSems, getAlignedMemoryAddress(r.addrs))
-								return ccReadResp{data, true}
-							})
+							cc.post = post
+							return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
 						})
 						return ccReadResp{}
 					}
-
-					data = cc.getFromL1(r.addrs)
-					cycles = latency.L1Access
-					return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
-						if cycles > 0 {
-							cycles--
-							return ccReadResp{}
-						}
-						post()
-						cc.read.Reset()
-						delete(cc.rlockSems, getAlignedMemoryAddress(r.addrs))
-						return ccReadResp{data, true}
-					})
+					cc.post = post
+					return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
 				})
 			} else {
 				panic("invalid state")
 			}
 		})
+	})
+}
+
+func (cc *cacheController) coReadFromL1(r ccReadReq) ccReadResp {
+	data := cc.getFromL1(r.addrs)
+	cycles := latency.L1Access
+	return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
+		if cycles > 0 {
+			cycles--
+			return ccReadResp{}
+		}
+		cc.post()
+		cc.post = nil
+		cc.read.Reset()
+		delete(cc.rlockSems, getAlignedMemoryAddress(r.addrs))
+		return ccReadResp{data, true}
 	})
 }
 
