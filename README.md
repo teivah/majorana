@@ -134,6 +134,12 @@ New feature: commit / rollback conditional branches
 
 Register renaming to tackle waw and war
 
+### MVP-7
+
+#### MVP-7.0
+
+L1D per core, MSI protocol implementation; yet, lots of "false sharing"
+
 ## Benchmarks
 
 All the benchmarks are executed at a fixed CPU clock frequency of 3.2 GHz.

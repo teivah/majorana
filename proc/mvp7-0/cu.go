@@ -1,4 +1,4 @@
-package mvp6_4
+package mvp7_0
 
 import (
 	"github.com/teivah/majorana/common/log"

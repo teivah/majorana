@@ -13,11 +13,11 @@ import (
 	"github.com/teivah/majorana/proc/mvp3"
 	"github.com/teivah/majorana/proc/mvp4"
 	"github.com/teivah/majorana/proc/mvp5"
-	mvp6_0 "github.com/teivah/majorana/proc/mvp6-0"
-	mvp6_1 "github.com/teivah/majorana/proc/mvp6-1"
-	mvp6_2 "github.com/teivah/majorana/proc/mvp6-2"
-	mvp6_3 "github.com/teivah/majorana/proc/mvp6-3"
-	mvp6_4 "github.com/teivah/majorana/proc/mvp6-4"
+	"github.com/teivah/majorana/proc/mvp6-0"
+	"github.com/teivah/majorana/proc/mvp6-1"
+	"github.com/teivah/majorana/proc/mvp6-2"
+	"github.com/teivah/majorana/proc/mvp6-3"
+	"github.com/teivah/majorana/proc/mvp7-0"
 	"github.com/teivah/majorana/risc"
 	"github.com/teivah/majorana/test"
 )
@@ -31,6 +31,7 @@ const (
 	benchBubSort      = 200
 	testFrom          = 2
 	testTo            = 200
+	testBubSort       = 100
 )
 
 func execute(t *testing.T, vm virtualMachine, instructions string) (int, error) {
@@ -107,7 +108,7 @@ func TestMvp1(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -121,7 +122,7 @@ func TestMvp2(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -135,7 +136,7 @@ func TestMvp3(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -149,7 +150,7 @@ func TestMvp4(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -163,7 +164,7 @@ func TestMvp5(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -177,7 +178,7 @@ func TestMvp6_0_2x2(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -191,7 +192,7 @@ func TestMvp6_0_3x3(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -205,7 +206,7 @@ func TestMvp6_1_2x2(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -220,7 +221,7 @@ func TestMvp6_1_3x3(t *testing.T) {
 	// Not passing, fixed from MVP 6.3
 	//testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	// Not passing, fixed from MVP 6.2
 	//testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
@@ -235,7 +236,7 @@ func TestMvp6_2_2x2(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -249,7 +250,7 @@ func TestMvp6_2_3x3(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -263,7 +264,7 @@ func TestMvp6_3_2x2(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -277,7 +278,7 @@ func TestMvp6_3_3x3(t *testing.T) {
 	testSums(t, factory, memory, testFrom, testTo, false)
 	testStringLength(t, factory, 1024, testTo, false)
 	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, false)
+	testBubbleSort(t, testBubSort, factory, false)
 	testConditionalBranch(t, factory, false)
 	testSpectre(t, factory, false)
 }
@@ -285,26 +286,29 @@ func TestMvp6_3_3x3(t *testing.T) {
 func TestMvp6_4_2x2(t *testing.T) {
 	t.Parallel()
 	factory := func(memory int) virtualMachine {
-		return mvp6_4.NewCPU(false, memory, 2)
+		return mvp7_0.NewCPU(false, memory, 2)
 	}
-	v := 514
-	testStringCopy(t, factory, v*2, v, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, testBubSort, factory, false)
+	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func TestMvp6_4_3x3(t *testing.T) {
 	t.Parallel()
 	factory := func(memory int) virtualMachine {
-		return mvp6_4.NewCPU(false, memory, 3)
+		return mvp7_0.NewCPU(false, memory, 3)
 	}
-	//testPrime(t, factory, memory, benchPrimeNumber, benchPrimeNumber+1, false)
-	//testSums(t, factory, memory, testFrom, testTo, false)
-	//testStringLength(t, factory, 1024, testTo, false)
-	//testStringCopy(t, factory, testTo*2, testTo, false)
-	v := 514
-	testStringCopy(t, factory, v*2, v, false)
-	//testBubbleSort(t, factory, false)
-	//testConditionalBranch(t, factory, false)
-	//testSpectre(t, factory, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, testBubSort, factory, false)
+	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
@@ -468,19 +472,18 @@ func testStringCopy(t *testing.T, factory func(int) virtualMachine, memory int, 
 	})
 }
 
-func testBubbleSort(t *testing.T, factory func(int) virtualMachine, stats bool) {
+func testBubbleSort(t *testing.T, length int, factory func(int) virtualMachine, stats bool) {
 	t.Run("Bubble sort", func(t *testing.T) {
-		data := 100
-		vm := factory(data * 4)
-		for i := 0; i < data; i++ {
-			bytes := risc.BytesFromLowBits(int32(data - i))
+		vm := factory(length * 4)
+		for i := 0; i < length; i++ {
+			bytes := risc.BytesFromLowBits(int32(length - i))
 			vm.Context().Memory[4*i+0] = bytes[0]
 			vm.Context().Memory[4*i+1] = bytes[1]
 			vm.Context().Memory[4*i+2] = bytes[2]
 			vm.Context().Memory[4*i+3] = bytes[3]
 		}
 		vm.Context().Registers[risc.A0] = 0
-		vm.Context().Registers[risc.A1] = int32(data)
+		vm.Context().Registers[risc.A1] = int32(length)
 
 		instructions := test.ReadFile(t, "../res/bubble-sort.asm")
 		app, err := risc.Parse(instructions)
@@ -488,7 +491,7 @@ func testBubbleSort(t *testing.T, factory func(int) virtualMachine, stats bool) 
 		cycle, err := vm.Run(app)
 		require.NoError(t, err)
 
-		for i := 0; i < data; i++ {
+		for i := 0; i < length; i++ {
 			n := risc.I32FromBytes(vm.Context().Memory[4*i], vm.Context().Memory[4*i+1], vm.Context().Memory[4*i+2], vm.Context().Memory[4*i+3])
 			require.Equal(t, int32(i+1), n)
 		}
@@ -605,7 +608,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-6.1",
 		"MVP-6.2",
 		"MVP-6.3",
-		"MVP-6.4",
+		"MVP-7.0",
 	}
 	const (
 		versionMVP1 = iota
@@ -617,7 +620,7 @@ func TestBenchmarks(t *testing.T) {
 		versionMVP6_1
 		versionMVP6_2
 		versionMVP6_3
-		versionMVP6_4
+		versionMVP7_0
 		totalVersions
 	)
 
@@ -632,7 +635,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_1: 351784,
 			versionMVP6_2: 351784,
 			versionMVP6_3: 301710,
-			versionMVP6_4: 301714,
+			versionMVP7_0: 301714,
 		},
 		"Sum": {
 			versionMVP1:   10409494,
@@ -644,7 +647,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_1: 321432,
 			versionMVP6_2: 321432,
 			versionMVP6_3: 321432,
-			versionMVP6_4: 137257,
+			versionMVP7_0: 137257,
 		},
 		"String copy": {
 			versionMVP1:   32349405,
@@ -656,7 +659,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_1: 3834899,
 			versionMVP6_2: 3834899,
 			versionMVP6_3: 1956067,
-			versionMVP6_4: 303003,
+			versionMVP7_0: 303003,
 		},
 		"String length": {
 			versionMVP1:   19622376,
@@ -668,7 +671,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_1: 641250,
 			versionMVP6_2: 641250,
 			versionMVP6_3: 641250,
-			versionMVP6_4: 163635,
+			versionMVP7_0: 163635,
 		},
 		"Bubble sort": {
 			versionMVP1:   158852511,
@@ -680,7 +683,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_1: 2677345,
 			versionMVP6_2: 2677345,
 			versionMVP6_3: 2677345,
-			versionMVP6_4: 24232735,
+			versionMVP7_0: 24232735,
 		},
 	}
 
@@ -712,8 +715,8 @@ func TestBenchmarks(t *testing.T) {
 		versionMVP6_3: func(m int) virtualMachine {
 			return mvp6_3.NewCPU(false, m, 2, 2)
 		},
-		versionMVP6_4: func(m int) virtualMachine {
-			return mvp6_4.NewCPU(false, m, 2)
+		versionMVP7_0: func(m int) virtualMachine {
+			return mvp7_0.NewCPU(false, m, 2)
 		},
 	}
 
