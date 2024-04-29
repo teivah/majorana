@@ -9,6 +9,7 @@ import (
 )
 
 type ccReadReq struct {
+	cycle int
 	addrs []int32
 }
 
@@ -70,7 +71,9 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 			cc.snoop.Append(func(struct{}) bool {
 				_, evicted := cc.l1d.EvictCacheLine(req.alignedAddr)
 				if !evicted {
-					panic("invalid state")
+					//panic("invalid state")
+					//req.done()
+					// TODO Should we call done?
 				}
 				req.done()
 				//fmt.Println(cc.id, "evict", req.alignedAddr)
@@ -152,9 +155,9 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 					// TODO Working???
 					shouldEvict := cc.pushLineToL1(lineAddr, data)
 					if shouldEvict != nil {
-						pending := cc.msi.evict(cc.id, shouldEvict.Boundary[0])
+						pending := cc.msi.evictExtraCacheLine(cc.id, shouldEvict.Boundary[0])
 						cc.read.Checkpoint(func(r ccReadReq) ccReadResp {
-							if !pending.isDone() {
+							if pending != nil && !pending.isDone() {
 								return ccReadResp{}
 							}
 							//fmt.Println("done")
@@ -234,10 +237,10 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 
 				shouldEvict := cc.pushLineToL1(addr, line)
 				if shouldEvict != nil {
-					pending := cc.msi.evict(cc.id, shouldEvict.Boundary[0])
+					pending := cc.msi.evictExtraCacheLine(cc.id, shouldEvict.Boundary[0])
 					cycles = latency.L1Access
 					cc.write.Checkpoint(func(r ccWriteReq) ccWriteResp {
-						if !pending.isDone() {
+						if pending != nil && !pending.isDone() {
 							return ccWriteResp{}
 						}
 

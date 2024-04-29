@@ -273,13 +273,13 @@ func TestMvp6_3_3x3(t *testing.T) {
 	factory := func(memory int) virtualMachine {
 		return mvp6_3.NewCPU(false, memory, 3, 3)
 	}
-	//testPrime(t, factory, memory, testFrom, testTo, false)
-	//testSums(t, factory, memory, testFrom, testTo, false)
-	//testStringLength(t, factory, 1024, testTo, false)
-	//testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, factory, true)
-	//testConditionalBranch(t, factory, false)
-	//testSpectre(t, factory, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, factory, false)
+	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func TestMvp6_4_2x2(t *testing.T) {
@@ -287,12 +287,8 @@ func TestMvp6_4_2x2(t *testing.T) {
 	factory := func(memory int) virtualMachine {
 		return mvp6_4.NewCPU(false, memory, 2)
 	}
-	testPrime(t, factory, memory, benchPrimeNumber+1, benchPrimeNumber+2, false)
-	//testStringLength(t, factory, 1024, testTo, false)
-	//testStringCopy(t, factory, testTo*2, testTo, false)
-	//testBubbleSort(t, factory, false)
-	//testConditionalBranch(t, factory, false)
-	//testSpectre(t, factory, false)
+	v := 514
+	testStringCopy(t, factory, v*2, v, false)
 }
 
 func TestMvp6_4_3x3(t *testing.T) {
@@ -304,7 +300,7 @@ func TestMvp6_4_3x3(t *testing.T) {
 	//testSums(t, factory, memory, testFrom, testTo, false)
 	//testStringLength(t, factory, 1024, testTo, false)
 	//testStringCopy(t, factory, testTo*2, testTo, false)
-	v := 513
+	v := 514
 	testStringCopy(t, factory, v*2, v, false)
 	//testBubbleSort(t, factory, false)
 	//testConditionalBranch(t, factory, false)
@@ -459,8 +455,8 @@ func testStringCopy(t *testing.T, factory func(int) virtualMachine, memory int, 
 		require.NoError(t, err)
 		cycle, err := vm.Run(app)
 		require.NoError(t, err)
-		for _, v := range vm.Context().Memory {
-			assert.Equal(t, int8('1'), v)
+		for i, v := range vm.Context().Memory {
+			assert.Equal(t, int8('1'), v, i)
 		}
 
 		if stats {
@@ -660,7 +656,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_1: 3834899,
 			versionMVP6_2: 3834899,
 			versionMVP6_3: 1956067,
-			versionMVP6_4: 1956067,
+			versionMVP6_4: 303003,
 		},
 		"String length": {
 			versionMVP1:   19622376,

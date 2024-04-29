@@ -1,8 +1,6 @@
 package mvp6_4
 
 import (
-	"fmt"
-
 	"github.com/teivah/majorana/proc/comp"
 )
 
@@ -14,18 +12,11 @@ const (
 	modified
 )
 
-type request struct {
-	request     requestType
-	alignedAddr int32
-	doneFlag    bool
-	callback    func()
-}
-
-func (r *request) isDone() bool {
+func (r *commandInfo) isDone() bool {
 	return r.doneFlag
 }
 
-func (r *request) done() {
+func (r *commandInfo) done() {
 	r.doneFlag = true
 	r.callback()
 }
@@ -39,7 +30,7 @@ const (
 )
 
 type msiResponse struct {
-	pendings []*request
+	pendings []*commandInfo
 	// Mutually exclusive
 	wait            bool
 	fetchFromMemory bool
@@ -52,24 +43,38 @@ type msiEntry struct {
 	alignedAddr int32
 }
 
+type commandRequest struct {
+	id          int
+	alignedAddr int32
+	request     requestType
+}
+
+// TODO Ugly
+type commandInfo struct {
+	doneFlag    bool
+	callback    func()
+	alignedAddr int32
+	request     requestType
+}
+
 type msi struct {
 	pendings map[int32]*comp.Sem
 	states   map[msiEntry]msiState
-	commands map[msiEntry]*request
+	commands map[commandRequest]*commandInfo
 }
 
 func newMSI() *msi {
 	return &msi{
 		pendings: make(map[int32]*comp.Sem),
 		states:   make(map[msiEntry]msiState),
-		commands: make(map[msiEntry]*request),
+		commands: make(map[commandRequest]*commandInfo),
 	}
 }
 
 var noop = func() {}
 
-func (m *msi) requests(id int) []*request {
-	var requests []*request
+func (m *msi) requests(id int) []*commandInfo {
+	var requests []*commandInfo
 	for e, req := range m.commands {
 		if e.id != id {
 			continue
@@ -85,7 +90,7 @@ func (m *msi) requests(id int) []*request {
 func (m *msi) rLock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 	alignedAddr := getAlignedMemoryAddress(addrs)
 	state := m.getState(id, addrs)
-	var pendings []*request
+	var pendings []*commandInfo
 	switch state {
 	case invalid:
 		if !m.getSem(addrs).RLock() {
@@ -104,30 +109,7 @@ func (m *msi) rLock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 			case invalid:
 				// Nothing
 			case modified:
-				entry := msiEntry{
-					id:          e.id,
-					alignedAddr: alignedAddr,
-				}
-				r := &request{
-					request:     writeBack,
-					alignedAddr: alignedAddr,
-					callback: func() {
-						m.states[entry] = invalid
-						//fmt.Println("transition", e.id, "invalid")
-						delete(m.commands, entry)
-					},
-				}
-				//fmt.Println("read-request", id, e.id)
-				if v, exists := m.commands[entry]; exists {
-					if r.request != v.request || r.alignedAddr != v.alignedAddr {
-						panic("invalid state")
-					}
-					pendings = append(pendings, v)
-					m.commands[entry] = v
-				} else {
-					pendings = append(pendings, r)
-					m.commands[entry] = r
-				}
+				pendings = append(pendings, m.addCommand(e.id, alignedAddr, writeBack))
 			case shared:
 				// Nothing
 			}
@@ -159,13 +141,43 @@ func (m *msi) rLock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 	}
 }
 
+func (m *msi) addCommand(id int, alignedAddr int32, request requestType) *commandInfo {
+	entry := msiEntry{
+		id:          id,
+		alignedAddr: alignedAddr,
+	}
+	commandEntry := commandRequest{
+		id:          id,
+		alignedAddr: alignedAddr,
+		request:     request,
+	}
+	r := &commandInfo{
+		callback: func() {
+			m.states[entry] = invalid
+			delete(m.commands, commandEntry)
+		},
+		alignedAddr: alignedAddr,
+		request:     request,
+	}
+	if v, exists := m.commands[commandEntry]; exists {
+		if v.alignedAddr != r.alignedAddr || v.request != r.request {
+			panic("invalid state")
+		}
+		m.commands[commandEntry] = v
+		return v
+	} else {
+		m.commands[commandEntry] = r
+		return r
+	}
+}
+
 // pendings: pre
 // msiResponse: action
 // callback: post
 func (m *msi) lock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 	alignedAddr := getAlignedMemoryAddress(addrs)
 	state := m.getState(id, addrs)
-	var pendings []*request
+	var pendings []*commandInfo
 	switch state {
 	case invalid:
 		if !m.getSem(addrs).Lock() {
@@ -184,55 +196,9 @@ func (m *msi) lock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 			case invalid:
 				// Nothing
 			case modified:
-				entry := msiEntry{
-					id:          e.id,
-					alignedAddr: alignedAddr,
-				}
-				r := &request{
-					request:     writeBack,
-					alignedAddr: alignedAddr,
-					callback: func() {
-						m.states[entry] = invalid
-						//fmt.Println("transition", e.id, "invalid")
-						delete(m.commands, entry)
-					},
-				}
-				//fmt.Println("write-request", id, e.id)
-				if v, exists := m.commands[entry]; exists {
-					if r.request != v.request || r.alignedAddr != v.alignedAddr {
-						panic("invalid state")
-					}
-					pendings = append(pendings, v)
-					m.commands[entry] = v
-				} else {
-					pendings = append(pendings, r)
-					m.commands[entry] = r
-				}
+				pendings = append(pendings, m.addCommand(e.id, alignedAddr, writeBack))
 			case shared:
-				entry := msiEntry{
-					id:          e.id,
-					alignedAddr: alignedAddr,
-				}
-				r := &request{
-					request:     evict,
-					alignedAddr: alignedAddr,
-					callback: func() {
-						m.states[entry] = invalid
-						//fmt.Println("transition", e.id, "invalid")
-						delete(m.commands, entry)
-					},
-				}
-				//fmt.Println("invalid-request", id, e.id)
-				if v, exists := m.commands[entry]; exists {
-					if r.request != v.request || r.alignedAddr != v.alignedAddr {
-						panic("invalid state")
-					}
-					pendings = append(pendings, v)
-					m.commands[entry] = v
-				} else {
-					pendings = append(pendings, r)
-					m.commands[entry] = r
-				}
+				pendings = append(pendings, m.addCommand(e.id, alignedAddr, evict))
 			}
 		}
 
@@ -267,38 +233,9 @@ func (m *msi) lock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 			case invalid:
 				// Nothing
 			case modified:
-				entry := msiEntry{
-					id:          e.id,
-					alignedAddr: alignedAddr,
-				}
-				r := &request{
-					request:     writeBack,
-					alignedAddr: alignedAddr,
-					callback: func() {
-						m.states[entry] = invalid
-						//fmt.Println("transition", e.id, "invalid")
-						delete(m.commands, entry)
-					},
-				}
-				pendings = append(pendings, r)
-				m.commands[entry] = r
+				pendings = append(pendings, m.addCommand(e.id, alignedAddr, writeBack))
 			case shared:
-				entry := msiEntry{
-					id:          e.id,
-					alignedAddr: alignedAddr,
-				}
-				r := &request{
-					request:     evict,
-					alignedAddr: alignedAddr,
-					callback: func() {
-						m.states[entry] = invalid
-						//fmt.Println("transition", e.id, "invalid")
-						delete(m.commands, entry)
-					},
-				}
-				//fmt.Println("invalid-request", id, e.id)
-				pendings = append(pendings, r)
-				m.commands[entry] = r
+				pendings = append(pendings, m.addCommand(e.id, alignedAddr, evict))
 			}
 		}
 
@@ -314,32 +251,19 @@ func (m *msi) lock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 	}
 }
 
-func (m *msi) evict(id int, alignedAddr int32) *request {
-	entry := msiEntry{
+func (m *msi) evictExtraCacheLine(id int, alignedAddr int32) *commandInfo {
+	state := m.states[msiEntry{
 		id:          id,
 		alignedAddr: alignedAddr,
+	}]
+	switch state {
+	case shared:
+		return m.addCommand(id, alignedAddr, evict)
+	case modified:
+		return m.addCommand(id, alignedAddr, writeBack)
+	default:
+		return nil
 	}
-	r := &request{
-		request:     evict,
-		alignedAddr: alignedAddr,
-		callback: func() {
-			m.states[entry] = invalid
-			delete(m.commands, entry)
-		},
-	}
-	var pending *request
-	if v, exists := m.commands[entry]; exists {
-		if r.request != v.request || r.alignedAddr != v.alignedAddr {
-			panic("invalid state")
-		}
-		pending = v
-		m.commands[entry] = v
-	} else {
-		pending = r
-		m.commands[entry] = r
-	}
-	fmt.Println("evict request")
-	return pending
 }
 
 func (m *msi) getSem(addrs []int32) *comp.Sem {

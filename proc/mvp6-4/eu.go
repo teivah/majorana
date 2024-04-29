@@ -98,7 +98,7 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 	addrs := u.runner.Runner.MemoryRead(u.ctx)
 	if len(addrs) != 0 {
 		return u.ExecuteWithCheckpoint(r, func(r euReq) euResp {
-			resp := u.cc.read.Cycle(ccReadReq{addrs})
+			resp := u.cc.read.Cycle(ccReadReq{r.cycle, addrs})
 			if !resp.done {
 				return euResp{}
 			}
