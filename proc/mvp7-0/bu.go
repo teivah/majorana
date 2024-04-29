@@ -5,22 +5,22 @@ import (
 )
 
 type btbBranchUnit struct {
+	ctx         *risc.Context
 	btb         *branchTargetBuffer
 	fu          *fetchUnit
 	du          *decodeUnit
 	cu          *controlUnit
-	wu          *writeUnit
 	toCheck     bool
 	expectation int32
 }
 
-func newBTBBranchUnit(btbSize int, fu *fetchUnit, du *decodeUnit, cu *controlUnit, wu *writeUnit) *btbBranchUnit {
+func newBTBBranchUnit(ctx *risc.Context, btbSize int, fu *fetchUnit, du *decodeUnit, cu *controlUnit) *btbBranchUnit {
 	return &btbBranchUnit{
+		ctx: ctx,
 		btb: newBranchTargetBuffer(btbSize),
 		fu:  fu,
 		du:  du,
 		cu:  cu,
-		wu:  wu,
 	}
 }
 
@@ -59,12 +59,12 @@ func (u *btbBranchUnit) shouldFlushPipeline(pc int32) bool {
 
 func (u *btbBranchUnit) notifyConditionalBranchTaken(sequenceID int32) {
 	u.cu.notifyConditionalBranch()
-	u.wu.rollback(sequenceID)
+	u.ctx.RATRollback(sequenceID)
 }
 
 func (u *btbBranchUnit) notifyConditionalBranchNotTaken() {
 	u.cu.notifyConditionalBranch()
-	u.wu.commit()
+	u.ctx.RATCommit()
 }
 
 func (u *btbBranchUnit) notifyUnconditionalJumpAddressResolved(pc, pcTo int32) {

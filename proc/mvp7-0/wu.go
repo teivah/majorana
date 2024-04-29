@@ -48,14 +48,6 @@ func (u *writeUnit) start(r wuReq) error {
 	return nil
 }
 
-func (u *writeUnit) commit() {
-	u.ctx.RATCommit()
-}
-
-func (u *writeUnit) rollback(sequenceID int32) {
-	u.ctx.RATRollback(sequenceID)
-}
-
 func (u *writeUnit) isEmpty() bool {
 	return u.IsStart()
 }

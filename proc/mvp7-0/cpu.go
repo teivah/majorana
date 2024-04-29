@@ -49,9 +49,7 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 	fu := newFetchUnit(ctx, decodeBus)
 	du := newDecodeUnit(ctx, decodeBus, controlBus)
 	cu := newControlUnit(ctx, controlBus, executeBus)
-
-	// TODO How about local context per unit?
-	bu := newBTBBranchUnit(4, fu, du, cu, nil)
+	bu := newBTBBranchUnit(ctx, 4, fu, du, cu)
 
 	eus := make([]*executeUnit, 0, parallelism)
 	wus := make([]*writeUnit, 0, parallelism)
@@ -63,9 +61,6 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 		eus = append(eus, newExecuteUnit(ctx, bu, executeBus, writeBus, mmu, cc))
 		wus = append(wus, newWriteUnit(ctx, writeBus))
 	}
-
-	// TODO Absolutely ugly
-	bu.wu = wus[0]
 
 	return &CPU{
 		ctx:                  ctx,
