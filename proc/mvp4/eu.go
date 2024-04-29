@@ -38,7 +38,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 			memory = eu.memory
 		} else {
 			line := eu.mmu.fetchCacheLine(eu.addrs[0])
-			eu.mmu.pushLineToL1D(eu.addrs[0], line)
+			eu.mmu.pushLineToL1D(comp.AlignedAddress(eu.addrs[0]), line)
 			m, exists := eu.mmu.getFromL1D(eu.addrs)
 			if !exists {
 				panic("cache line doesn't exist")

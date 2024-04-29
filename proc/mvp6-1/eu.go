@@ -115,7 +115,7 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 					return euResp{}
 				}
 				line := u.mmu.fetchCacheLine(addrs[0])
-				u.mmu.pushLineToL3(addrs[0], line)
+				u.mmu.pushLineToL3(comp.AlignedAddress(addrs[0]), line)
 				m, _, exists := u.mmu.getFromL3(addrs)
 				if !exists {
 					panic("cache line doesn't exist")

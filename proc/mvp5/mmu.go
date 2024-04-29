@@ -34,7 +34,7 @@ func (u *memoryManagementUnit) getFromL1I(addrs []int32) ([]int8, bool) {
 	return memory, true
 }
 
-func (u *memoryManagementUnit) pushLineToL1I(addr int32, line []int8) {
+func (u *memoryManagementUnit) pushLineToL1I(addr comp.AlignedAddress, line []int8) {
 	u.l1i.PushLine(addr, line)
 }
 
@@ -101,12 +101,12 @@ func (u *memoryManagementUnit) fetchCacheLine(addr int32) []int8 {
 	return memory
 }
 
-func (u *memoryManagementUnit) pushLineToL1D(addr int32, line []int8) {
+func (u *memoryManagementUnit) pushLineToL1D(addr comp.AlignedAddress, line []int8) {
 	evicted := u.l1d.PushLine(addr, line)
 	if len(evicted) == 0 {
 		return
 	}
-	u.writeToMemory(addr, line)
+	u.writeToMemory(int32(addr), line)
 }
 
 func (u *memoryManagementUnit) writeToL1D(addr int32, data []int8) {
@@ -127,7 +127,7 @@ func (u *memoryManagementUnit) flush() int {
 	for _, line := range u.l1d.Lines() {
 		additionalCycles += latency.MemoryAccess
 		for i := 0; i < l1DCacheLineSize; i++ {
-			u.writeToMemory(line.Boundary[0], line.Data)
+			u.writeToMemory(int32(line.Boundary[0]), line.Data)
 		}
 	}
 	return additionalCycles

@@ -35,7 +35,7 @@ func (u *memoryManagementUnit) getFromL1I(addrs []int32) ([]int8, bool) {
 	return memory, true
 }
 
-func (u *memoryManagementUnit) pushLineToL1I(addr int32, line []int8) {
+func (u *memoryManagementUnit) pushLineToL1I(addr comp.AlignedAddress, line []int8) {
 	u.l1i.PushLine(addr, line)
 }
 
@@ -110,10 +110,10 @@ func (u *memoryManagementUnit) fetchCacheLine(addr int32) []int8 {
 	return memory
 }
 
-func (u *memoryManagementUnit) pushLineToL3(addr int32, line []int8) {
+func (u *memoryManagementUnit) pushLineToL3(addr comp.AlignedAddress, line []int8) {
 	evicted := u.l3.PushLine(addr, line)
 	for i, pending := range u.pendings {
-		if pending[0] == addr {
+		if pending[0] == int32(addr) {
 			if len(u.pendings) == 0 {
 				u.pendings = nil
 			} else {
@@ -132,12 +132,12 @@ func (u *memoryManagementUnit) writeToL3(addr int32, data []int8) {
 	u.l3.Write(addr, data)
 }
 
-func (u *memoryManagementUnit) writeToMemory(addr int32, data []int8) {
+func (u *memoryManagementUnit) writeToMemory(addr comp.AlignedAddress, data []int8) {
 	for i, v := range data {
 		if int(addr)+i >= len(u.ctx.Memory) {
 			return
 		}
-		u.ctx.Memory[addr+int32(i)] = v
+		u.ctx.Memory[addr+comp.AlignedAddress(i)] = v
 	}
 }
 

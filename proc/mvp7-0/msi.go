@@ -39,20 +39,20 @@ type msiResponse struct {
 }
 
 type msi struct {
-	pendings map[int32]*comp.Sem
+	pendings map[comp.AlignedAddress]*comp.Sem
 	states   map[msiEntry]msiState
 	commands map[msiCommandRequest]*msiCommandInfo
 }
 
 type msiEntry struct {
 	id          int
-	alignedAddr int32
+	alignedAddr comp.AlignedAddress
 }
 
 // msiCommandRequest is a request to a specific core (snoop)
 type msiCommandRequest struct {
 	id          int
-	alignedAddr int32
+	alignedAddr comp.AlignedAddress
 	request     requestType
 }
 
@@ -76,7 +76,7 @@ func (r *msiCommandInfo) done() {
 
 func newMSI() *msi {
 	return &msi{
-		pendings: make(map[int32]*comp.Sem),
+		pendings: make(map[comp.AlignedAddress]*comp.Sem),
 		states:   make(map[msiEntry]msiState),
 		commands: make(map[msiCommandRequest]*msiCommandInfo),
 	}
@@ -137,7 +137,7 @@ func (m *msi) rLock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 }
 
 // readRequest means a core with an invalid line wants to read from it
-func (m *msi) readRequest(id int, alignedAddr int32) []*msiCommandInfo {
+func (m *msi) readRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommandInfo {
 	var pendings []*msiCommandInfo
 	for e, state := range m.states {
 		if id == e.id {
@@ -202,7 +202,7 @@ func (m *msi) lock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 }
 
 // writeRequest means a core with an invalid line wants to write to it
-func (m *msi) writeRequest(id int, alignedAddr int32) []*msiCommandInfo {
+func (m *msi) writeRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommandInfo {
 	var pendings []*msiCommandInfo
 	for e, state := range m.states {
 		if id == e.id {
@@ -222,7 +222,7 @@ func (m *msi) writeRequest(id int, alignedAddr int32) []*msiCommandInfo {
 }
 
 // invalidationRequest means a core with an shared line wants to write to it
-func (m *msi) invalidationRequest(id int, alignedAddr int32) []*msiCommandInfo {
+func (m *msi) invalidationRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommandInfo {
 	var pendings []*msiCommandInfo
 	for e, state := range m.states {
 		if id == e.id {
@@ -243,7 +243,7 @@ func (m *msi) invalidationRequest(id int, alignedAddr int32) []*msiCommandInfo {
 }
 
 // evictExtraCacheLine evicts a cache line when L1 is full
-func (m *msi) evictExtraCacheLine(id int, alignedAddr int32) *msiCommandInfo {
+func (m *msi) evictExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *msiCommandInfo {
 	state := m.states[msiEntry{
 		id:          id,
 		alignedAddr: alignedAddr,
@@ -285,7 +285,7 @@ func (m *msi) setState(id int, addrs []int32, state msiState) {
 }
 
 // sendNewMSICommand sends a new MSI command to a specific core (snoop)
-func (m *msi) sendNewMSICommand(id int, alignedAddr int32, request requestType) *msiCommandInfo {
+func (m *msi) sendNewMSICommand(id int, alignedAddr comp.AlignedAddress, request requestType) *msiCommandInfo {
 	cmdRequest := msiCommandRequest{
 		id:          id,
 		alignedAddr: alignedAddr,

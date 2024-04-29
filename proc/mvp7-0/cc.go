@@ -1,7 +1,6 @@
 package mvp7_0
 
 import (
-	"github.com/teivah/broadcast"
 	co "github.com/teivah/majorana/common/coroutine"
 	"github.com/teivah/majorana/common/latency"
 	"github.com/teivah/majorana/proc/comp"
@@ -29,29 +28,27 @@ type ccWriteResp struct {
 }
 
 type cacheController struct {
-	ctx      *risc.Context
-	id       int
-	mmu      *memoryManagementUnit
-	l1d      *comp.LRUCache
-	bus      *comp.Broadcast[busRequestEvent]
-	read     co.Coroutine[ccReadReq, ccReadResp]
-	write    co.Coroutine[ccWriteReq, ccWriteResp]
-	snoop    co.Coroutine[struct{}, struct{}]
-	msi      *msi
-	rlockSem map[int32]*comp.Sem
-	lockSem  map[int32]*comp.Sem
+	ctx       *risc.Context
+	id        int
+	mmu       *memoryManagementUnit
+	l1d       *comp.LRUCache
+	read      co.Coroutine[ccReadReq, ccReadResp]
+	write     co.Coroutine[ccWriteReq, ccWriteResp]
+	snoop     co.Coroutine[struct{}, struct{}]
+	msi       *msi
+	rlockSems map[comp.AlignedAddress]*comp.Sem
+	lockSems  map[comp.AlignedAddress]*comp.Sem
 }
 
-func newCacheController(id int, ctx *risc.Context, mmu *memoryManagementUnit, bus *comp.Broadcast[busRequestEvent], msi *msi) *cacheController {
+func newCacheController(id int, ctx *risc.Context, mmu *memoryManagementUnit, msi *msi) *cacheController {
 	cc := &cacheController{
-		ctx:      ctx,
-		id:       id,
-		mmu:      mmu,
-		l1d:      comp.NewLRUCache(l1DCacheLineSize, l1DCacheSize),
-		bus:      bus,
-		msi:      msi,
-		rlockSem: make(map[int32]*comp.Sem),
-		lockSem:  make(map[int32]*comp.Sem),
+		ctx:       ctx,
+		id:        id,
+		mmu:       mmu,
+		l1d:       comp.NewLRUCache(l1DCacheLineSize, l1DCacheSize),
+		msi:       msi,
+		rlockSems: make(map[comp.AlignedAddress]*comp.Sem),
+		lockSems:  make(map[comp.AlignedAddress]*comp.Sem),
 	}
 	cc.read = co.New(cc.coRead)
 	cc.write = co.New(cc.coWrite)
@@ -59,6 +56,8 @@ func newCacheController(id int, ctx *risc.Context, mmu *memoryManagementUnit, bu
 	return cc
 }
 
+// coSnoop is the coroutine executed *before* coRead and coWrite to execute
+// the requests sent by msi.
 func (cc *cacheController) coSnoop(struct{}) struct{} {
 	requests := cc.msi.getPendingRequestsToCore(cc.id)
 	if len(requests) == 0 {
@@ -100,10 +99,9 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 	return struct{}{}
 }
 
-func getAlignedMemoryAddress(addrs []int32) int32 {
+func getAlignedMemoryAddress(addrs []int32) comp.AlignedAddress {
 	addr := addrs[0]
-	// TODO Divide?
-	return addr - (addr % l1DCacheLineSize)
+	return comp.AlignedAddress(addr - (addr % l1DCacheLineSize))
 }
 
 func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
@@ -111,7 +109,7 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 	if resp.wait {
 		return ccReadResp{}
 	}
-	cc.rlockSem[getAlignedMemoryAddress(r.addrs)] = sem
+	cc.rlockSems[getAlignedMemoryAddress(r.addrs)] = sem
 	return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
 		for _, pending := range resp.pendings {
 			if !pending.isDone() {
@@ -130,11 +128,11 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 					}
 					post()
 					cc.read.Reset()
-					delete(cc.rlockSem, getAlignedMemoryAddress(r.addrs))
+					delete(cc.rlockSems, getAlignedMemoryAddress(r.addrs))
 					return ccReadResp{memory, true}
 				})
 			} else if resp.fetchFromMemory {
-				if _, exists := cc.l1d.GetCacheLine(r.addrs[0]); exists {
+				if _, exists := cc.l1d.GetCacheLine(getAlignedMemoryAddress(r.addrs)); exists {
 					panic("invalid state")
 				}
 				cycles := latency.MemoryAccess
@@ -162,7 +160,7 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 								}
 								post()
 								cc.read.Reset()
-								delete(cc.rlockSem, getAlignedMemoryAddress(r.addrs))
+								delete(cc.rlockSems, getAlignedMemoryAddress(r.addrs))
 								return ccReadResp{data, true}
 							})
 						})
@@ -178,7 +176,7 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 						}
 						post()
 						cc.read.Reset()
-						delete(cc.rlockSem, getAlignedMemoryAddress(r.addrs))
+						delete(cc.rlockSems, getAlignedMemoryAddress(r.addrs))
 						return ccReadResp{data, true}
 					})
 				})
@@ -189,26 +187,12 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 	})
 }
 
-type busRequestEvent struct {
-	id int
-	// Mutually exclusive
-	read        bool
-	write       bool
-	invalidate  bool
-	alignedAddr int32
-	response    *broadcast.Relay[busResponseEvent]
-}
-
-type busResponseEvent struct {
-	wait bool
-}
-
 func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 	resp, post, sem := cc.msi.lock(cc.id, r.addrs)
 	if resp.wait {
 		return ccWriteResp{}
 	}
-	cc.lockSem[getAlignedMemoryAddress(r.addrs)] = sem
+	cc.lockSems[getAlignedMemoryAddress(r.addrs)] = sem
 	return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
 		for _, pending := range resp.pendings {
 			if !pending.isDone() {
@@ -249,7 +233,7 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 							cc.writeToL1(r.addrs, r.data)
 							post()
 							cc.write.Reset()
-							delete(cc.lockSem, getAlignedMemoryAddress(r.addrs))
+							delete(cc.lockSems, getAlignedMemoryAddress(r.addrs))
 							return ccWriteResp{done: true}
 						})
 					})
@@ -272,7 +256,7 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 						cc.writeToL1(r.addrs, r.data)
 						post()
 						cc.write.Reset()
-						delete(cc.lockSem, getAlignedMemoryAddress(r.addrs))
+						delete(cc.lockSems, getAlignedMemoryAddress(r.addrs))
 						return ccWriteResp{done: true}
 					})
 				})
@@ -288,7 +272,7 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 				cc.writeToL1(r.addrs, r.data)
 				post()
 				cc.write.Reset()
-				delete(cc.lockSem, getAlignedMemoryAddress(r.addrs))
+				delete(cc.lockSems, getAlignedMemoryAddress(r.addrs))
 				return ccWriteResp{done: true}
 			})
 		} else {
@@ -297,8 +281,8 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 	})
 }
 
-func (cc *cacheController) pushLineToL1(addr int32, line []int8) *comp.Line {
-	if cc.isAddressInL1([]int32{addr}) {
+func (cc *cacheController) pushLineToL1(addr comp.AlignedAddress, line []int8) *comp.Line {
+	if cc.isAddressInL1([]int32{int32(addr)}) {
 		// TODO No need to wait if it was already in L1
 		return nil
 	}
@@ -329,13 +313,13 @@ func (cc *cacheController) writeToL1(addrs []int32, data []int8) {
 func (cc *cacheController) flush() {
 	cc.read.Reset()
 	cc.write.Reset()
-	for k, sem := range cc.rlockSem {
+	for k, sem := range cc.rlockSems {
 		sem.RUnlock()
-		delete(cc.rlockSem, k)
+		delete(cc.rlockSems, k)
 	}
-	for k, sem := range cc.lockSem {
+	for k, sem := range cc.lockSems {
 		sem.Unlock()
-		delete(cc.rlockSem, k)
+		delete(cc.rlockSems, k)
 	}
 }
 

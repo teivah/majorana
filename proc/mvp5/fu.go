@@ -50,7 +50,7 @@ func (fu *fetchUnit) cycle(app risc.Application, ctx *risc.Context, outBus *comp
 			fu.remainingCycles = 1
 		} else {
 			fu.remainingCycles = fu.cyclesMemoryAccess
-			fu.mmu.pushLineToL1I(fu.pc, make([]int8, l1ICacheLineSize))
+			fu.mmu.pushLineToL1I(comp.AlignedAddress(fu.pc), make([]int8, l1ICacheLineSize))
 		}
 	}
 

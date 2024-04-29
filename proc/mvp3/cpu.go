@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/teivah/majorana/common/latency"
+	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
 
@@ -88,7 +89,7 @@ func (m *CPU) fetchInstruction(pc int32) int32 {
 		m.cycle += latency.L1Access
 	} else {
 		m.cycle += latency.MemoryAccess
-		m.mmu.pushLineToL1I(pc, make([]int8, l1ICacheLineSize))
+		m.mmu.pushLineToL1I(comp.AlignedAddress(pc), make([]int8, l1ICacheLineSize))
 	}
 
 	return pc
@@ -110,7 +111,7 @@ func (m *CPU) execute(app risc.Application, r risc.InstructionRunner, pc int32) 
 		} else {
 			m.cycle += latency.MemoryAccess
 			line := m.mmu.fetchCacheLine(addrs[0])
-			m.mmu.pushLineToL1D(addrs[0], line)
+			m.mmu.pushLineToL1D(comp.AlignedAddress(addrs[0]), line)
 			mem, exists := m.mmu.getFromL1D(addrs)
 			if !exists {
 				panic("cache line doesn't exist")

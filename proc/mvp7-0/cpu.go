@@ -56,10 +56,9 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 	eus := make([]*executeUnit, 0, parallelism)
 	wus := make([]*writeUnit, 0, parallelism)
 	ccs := make([]*cacheController, 0, parallelism)
-	bus := comp.NewBroadcast[busRequestEvent](parallelism)
 	lock := newMSI()
 	for i := 0; i < parallelism; i++ {
-		cc := newCacheController(i, ctx, mmu, bus, lock)
+		cc := newCacheController(i, ctx, mmu, lock)
 		ccs = append(ccs, cc)
 		eus = append(eus, newExecuteUnit(ctx, bu, executeBus, writeBus, mmu, cc))
 		wus = append(wus, newWriteUnit(ctx, writeBus))

@@ -78,7 +78,7 @@ func (u *fetchUnit) memoryAccess(r fuReq) error {
 		return nil
 	}
 	u.Reset()
-	u.mmu.pushLineToL1I(u.pc, make([]int8, l1ICacheLineSize))
+	u.mmu.pushLineToL1I(comp.AlignedAddress(u.pc), make([]int8, l1ICacheLineSize))
 
 	currentPc := u.pc
 	u.pc += 4

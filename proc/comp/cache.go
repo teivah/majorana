@@ -5,6 +5,8 @@ import (
 	"strings"
 )
 
+type AlignedAddress int32
+
 type LRUCache struct {
 	numberOfLines int
 	lineLength    int
@@ -13,7 +15,7 @@ type LRUCache struct {
 }
 
 type Line struct {
-	Boundary [2]int32
+	Boundary [2]AlignedAddress
 	Data     []int8
 }
 
@@ -22,14 +24,14 @@ func (l Line) String() string {
 }
 
 func (l Line) get(addr int32) (int8, bool) {
-	if addr >= l.Boundary[0] && addr < l.Boundary[1] {
-		return l.Data[addr-l.Boundary[0]], true
+	if addr >= int32(l.Boundary[0]) && addr < int32(l.Boundary[1]) {
+		return l.Data[addr-int32(l.Boundary[0])], true
 	}
 	return 0, false
 }
 
 func (l Line) set(addr int32, value int8) {
-	l.Data[addr-l.Boundary[0]] = value
+	l.Data[addr-int32(l.Boundary[0])] = value
 }
 
 func NewLRUCache(lineLength int, cacheLength int) *LRUCache {
@@ -53,18 +55,18 @@ func (c *LRUCache) Get(addr int32) (int8, bool) {
 	return 0, false
 }
 
-func (c *LRUCache) GetCacheLine(addr int32) ([]int8, bool) {
+func (c *LRUCache) GetCacheLine(addr AlignedAddress) ([]int8, bool) {
 	for _, l := range c.lines {
-		if _, exists := l.get(addr); exists {
+		if _, exists := l.get(int32(addr)); exists {
 			return l.Data, true
 		}
 	}
 	return nil, false
 }
 
-func (c *LRUCache) EvictCacheLine(addr int32) ([]int8, bool) {
+func (c *LRUCache) EvictCacheLine(addr AlignedAddress) ([]int8, bool) {
 	for i, l := range c.lines {
-		if _, exists := l.get(addr); exists {
+		if _, exists := l.get(int32(addr)); exists {
 			c.lines = append(c.lines[:i], c.lines[i+1:]...)
 			return l.Data, true
 		}
@@ -84,9 +86,9 @@ func (c *LRUCache) Write(addr int32, data []int8) {
 	panic("cache line doesn't exist")
 }
 
-func (c *LRUCache) PushLine(addr int32, data []int8) []int8 {
+func (c *LRUCache) PushLine(addr AlignedAddress, data []int8) []int8 {
 	newLine := Line{
-		Boundary: [2]int32{addr, addr + int32(c.lineLength)},
+		Boundary: [2]AlignedAddress{addr, addr + AlignedAddress(c.lineLength)},
 		Data:     data,
 	}
 
@@ -99,9 +101,9 @@ func (c *LRUCache) PushLine(addr int32, data []int8) []int8 {
 	return nil
 }
 
-func (c *LRUCache) PushLineWithEvictionWarning(addr int32, data []int8) *Line {
+func (c *LRUCache) PushLineWithEvictionWarning(addr AlignedAddress, data []int8) *Line {
 	newLine := Line{
-		Boundary: [2]int32{addr, addr + int32(c.lineLength)},
+		Boundary: [2]AlignedAddress{addr, addr + AlignedAddress(c.lineLength)},
 		Data:     data,
 	}
 

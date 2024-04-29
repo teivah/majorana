@@ -77,7 +77,7 @@ func (u *fetchUnit) memoryAccess(r fuReq) error {
 		return nil
 	}
 	u.Reset()
-	u.pushLineToL1I(u.pc, make([]int8, l1ICacheLineSize))
+	u.pushLineToL1I(comp.AlignedAddress(u.pc), make([]int8, l1ICacheLineSize))
 
 	currentPc := u.pc
 	u.pc += 4
@@ -121,6 +121,6 @@ func (u *fetchUnit) getFromL1I(addrs []int32) ([]int8, bool) {
 	return memory, true
 }
 
-func (u *fetchUnit) pushLineToL1I(addr int32, line []int8) {
+func (u *fetchUnit) pushLineToL1I(addr comp.AlignedAddress, line []int8) {
 	u.l1i.PushLine(addr, line)
 }
