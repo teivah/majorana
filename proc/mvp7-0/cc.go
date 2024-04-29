@@ -38,6 +38,8 @@ type cacheController struct {
 	msi       *msi
 	rlockSems map[comp.AlignedAddress]*comp.Sem
 	lockSems  map[comp.AlignedAddress]*comp.Sem
+	// Transient
+	post func()
 }
 
 func newCacheController(id int, ctx *risc.Context, mmu *memoryManagementUnit, msi *msi) *cacheController {
@@ -142,7 +144,6 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 						cycles--
 						return ccReadResp{}
 					}
-					// TODO Working???
 					shouldEvict := cc.pushLineToL1(lineAddr, data)
 					if shouldEvict != nil {
 						pending := cc.msi.evictExtraCacheLine(cc.id, shouldEvict.Boundary[0])
@@ -239,51 +240,39 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 					})
 					return ccWriteResp{}
 				}
-
-				return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
-					if cycles > 0 {
-						cycles--
-						return ccWriteResp{}
-					}
-
-					cycles = latency.L1Access
-					return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
-						if cycles > 0 {
-							cycles--
-							return ccWriteResp{}
-						}
-
-						cc.writeToL1(r.addrs, r.data)
-						post()
-						cc.write.Reset()
-						delete(cc.lockSems, getAlignedMemoryAddress(r.addrs))
-						return ccWriteResp{done: true}
-					})
-				})
+				cc.post = post
+				return cc.write.ExecuteWithCheckpoint(r, cc.coWriteToL1)
 			})
 		} else if resp.writeToL1 {
-			cycles := latency.L1Access
-			return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
-				if cycles > 0 {
-					cycles--
-					return ccWriteResp{}
-				}
-
-				cc.writeToL1(r.addrs, r.data)
-				post()
-				cc.write.Reset()
-				delete(cc.lockSems, getAlignedMemoryAddress(r.addrs))
-				return ccWriteResp{done: true}
-			})
+			cc.post = post
+			return cc.write.ExecuteWithCheckpoint(r, cc.coWriteToL1)
 		} else {
 			panic("invalid state")
 		}
 	})
 }
 
+// coWriteToL1 is called only if the line is already fetched.
+func (cc *cacheController) coWriteToL1(r ccWriteReq) ccWriteResp {
+	cycles := latency.L1Access
+	return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
+		if cycles > 0 {
+			cycles--
+			return ccWriteResp{}
+		}
+
+		cc.writeToL1(r.addrs, r.data)
+		cc.post()
+		cc.post = nil
+		cc.write.Reset()
+		delete(cc.lockSems, getAlignedMemoryAddress(r.addrs))
+		return ccWriteResp{done: true}
+	})
+}
+
 func (cc *cacheController) pushLineToL1(addr comp.AlignedAddress, line []int8) *comp.Line {
 	if cc.isAddressInL1([]int32{int32(addr)}) {
-		// TODO No need to wait if it was already in L1
+		// No need to wait if it was already in L1
 		return nil
 	}
 	return cc.l1d.PushLineWithEvictionWarning(addr, line)
