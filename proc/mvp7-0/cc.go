@@ -218,25 +218,12 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 						if pending != nil && !pending.isDone() {
 							return ccWriteResp{}
 						}
-
 						if cycles > 0 {
 							cycles--
 							return ccWriteResp{}
 						}
-
-						cycles = latency.L1Access
-						return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
-							if cycles > 0 {
-								cycles--
-								return ccWriteResp{}
-							}
-
-							cc.writeToL1(r.addrs, r.data)
-							post()
-							cc.write.Reset()
-							delete(cc.lockSems, getAlignedMemoryAddress(r.addrs))
-							return ccWriteResp{done: true}
-						})
+						cc.post = post
+						return cc.write.ExecuteWithCheckpoint(r, cc.coWriteToL1)
 					})
 					return ccWriteResp{}
 				}
