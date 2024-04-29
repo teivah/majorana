@@ -20,13 +20,13 @@ type Application struct {
 }
 
 type Context struct {
-	Registers             map[RegisterType]int32
-	Transaction           map[RegisterType]transactionUnit
-	PendingWriteRegisters map[RegisterType]int
-	PendingReadRegisters  map[RegisterType]int
-	//PendingWriteMemoryIntention map[int32]int
-	Memory []int8
-	Debug  bool
+	Registers                   map[RegisterType]int32
+	Transaction                 map[RegisterType]transactionUnit
+	PendingWriteRegisters       map[RegisterType]int
+	PendingReadRegisters        map[RegisterType]int
+	pendingWriteMemoryIntention map[int32]map[int]struct{}
+	Memory                      []int8
+	Debug                       bool
 	// SequenceID represents a monotonic ID for the sequence.
 	// It increments during a jump.
 	sequenceID     int32
@@ -44,23 +44,23 @@ const ratLength = 10
 
 func NewContext(debug bool, memoryBytes int, rat bool) *Context {
 	return &Context{
-		Registers:             make(map[RegisterType]int32),
-		Transaction:           make(map[RegisterType]transactionUnit),
-		PendingWriteRegisters: make(map[RegisterType]int),
-		PendingReadRegisters:  make(map[RegisterType]int),
-		//PendingWriteMemoryIntention: make(map[int32]int),
-		Memory:         make([]int8, memoryBytes),
-		Debug:          debug,
-		committedRAT:   comp.NewRAT[RegisterType, int32](ratLength),
-		transactionRAT: comp.NewRAT[RegisterType, transactionUnit](ratLength),
-		rat:            rat,
+		Registers:                   make(map[RegisterType]int32),
+		Transaction:                 make(map[RegisterType]transactionUnit),
+		PendingWriteRegisters:       make(map[RegisterType]int),
+		PendingReadRegisters:        make(map[RegisterType]int),
+		pendingWriteMemoryIntention: make(map[int32]map[int]struct{}),
+		Memory:                      make([]int8, memoryBytes),
+		Debug:                       debug,
+		committedRAT:                comp.NewRAT[RegisterType, int32](ratLength),
+		transactionRAT:              comp.NewRAT[RegisterType, transactionUnit](ratLength),
+		rat:                         rat,
 	}
 }
 
 func (ctx *Context) Flush() {
 	ctx.PendingWriteRegisters = make(map[RegisterType]int)
 	ctx.PendingReadRegisters = make(map[RegisterType]int)
-	//ctx.PendingWriteMemoryIntention = make(map[int32]int)
+	ctx.pendingWriteMemoryIntention = make(map[int32]map[int]struct{})
 }
 
 func (ctx *Context) SequenceID(pc int32) int32 {
@@ -70,6 +70,37 @@ func (ctx *Context) SequenceID(pc int32) int32 {
 
 func (ctx *Context) IncSequenceID() {
 	ctx.sequenceID++
+}
+
+func (ctx *Context) AddPendingWriteMemoryIntention(alignedAddr int32, id int) {
+	v, exists := ctx.pendingWriteMemoryIntention[alignedAddr]
+	if !exists {
+		v = make(map[int]struct{})
+		ctx.pendingWriteMemoryIntention[alignedAddr] = v
+	}
+	v[id] = struct{}{}
+}
+
+func (ctx *Context) PendingWriteMemoryIntention(alignedAddr int32) bool {
+	v, exists := ctx.pendingWriteMemoryIntention[alignedAddr]
+	if !exists {
+		return false
+	}
+	return len(v) != 0
+}
+
+func (ctx *Context) DeletePendingWriteMemoryIntention(alignedAddr int32, id int) {
+	v, exists := ctx.pendingWriteMemoryIntention[alignedAddr]
+	if !exists {
+		panic(fmt.Sprintf("do not exist %v", alignedAddr))
+	}
+
+	_, exists = v[id]
+	if !exists {
+		panic(fmt.Sprintf("do not exist %v %v", alignedAddr, id))
+	}
+
+	delete(v, id)
 }
 
 func (ctx *Context) WriteRegister(exe Execution) {

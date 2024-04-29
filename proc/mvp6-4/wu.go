@@ -16,14 +16,12 @@ type writeUnit struct {
 	co.Coroutine[wuReq, error]
 	memoryWrite risc.ExecutionContext
 	inBus       *comp.BufferedBus[risc.ExecutionContext]
-	cc          *cacheController
 }
 
-func newWriteUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.ExecutionContext], cc *cacheController) *writeUnit {
+func newWriteUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.ExecutionContext]) *writeUnit {
 	wu := &writeUnit{
 		ctx:   ctx,
 		inBus: inBus,
-		cc:    cc,
 	}
 	wu.Coroutine = co.New(wu.start)
 	return wu

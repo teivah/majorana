@@ -8,29 +8,14 @@ type memoryManagementUnit struct {
 	ctx *risc.Context
 }
 
-func newMemoryManagementUnit(ctx *risc.Context, eu int) *memoryManagementUnit {
+func newMemoryManagementUnit(ctx *risc.Context) *memoryManagementUnit {
 	return &memoryManagementUnit{
 		ctx: ctx,
 	}
 }
 
-func (u *memoryManagementUnit) getFromMemory(addrs []int32) []int8 {
-	memory := make([]int8, 0, len(addrs))
-	for _, addr := range addrs {
-		memory = append(memory, u.ctx.Memory[addr])
-	}
-	return memory
-}
-
 func (u *memoryManagementUnit) fetchCacheLine(addr int32, cacheLineSize int32) (int32, []int8) {
-	// Starting address must be a multiple of the cache line length
-	var cacheLineAddr int32
-	if addr%cacheLineSize == 0 {
-		cacheLineAddr = addr
-	} else {
-		cacheLineAddr = addr - (addr % cacheLineSize)
-	}
-
+	cacheLineAddr := getAlignedMemoryAddress([]int32{addr})
 	memory := make([]int8, 0, cacheLineSize)
 	for i := 0; i < int(cacheLineSize); i++ {
 		if int(cacheLineAddr)+i >= len(u.ctx.Memory) {

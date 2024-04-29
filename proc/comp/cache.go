@@ -99,6 +99,20 @@ func (c *LRUCache) PushLine(addr int32, data []int8) []int8 {
 	return nil
 }
 
+func (c *LRUCache) PushLineWithEvictionWarning(addr int32, data []int8) *Line {
+	newLine := Line{
+		Boundary: [2]int32{addr, addr + int32(c.lineLength)},
+		Data:     data,
+	}
+
+	c.lines = append([]Line{newLine}, c.lines...)
+	if len(c.lines) > c.numberOfLines {
+		line := c.lines[len(c.lines)-1]
+		return &line
+	}
+	return nil
+}
+
 func (c *LRUCache) Lines() []Line {
 	return c.lines
 }
