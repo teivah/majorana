@@ -221,7 +221,7 @@ func (m *msi) writeRequest(id int, alignedAddr comp.AlignedAddress) []*msiComman
 	return pendings
 }
 
-// invalidationRequest means a core with an shared line wants to write to it
+// invalidationRequest means a core with a shared line wants to write to it
 func (m *msi) invalidationRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommandInfo {
 	var pendings []*msiCommandInfo
 	for e, state := range m.states {
