@@ -17,6 +17,7 @@ import (
 	"github.com/teivah/majorana/proc/mvp6-2"
 	"github.com/teivah/majorana/proc/mvp6-3"
 	"github.com/teivah/majorana/proc/mvp7-0"
+	mvp7_1 "github.com/teivah/majorana/proc/mvp7-1"
 	"github.com/teivah/majorana/risc"
 	"github.com/teivah/majorana/test"
 )
@@ -282,7 +283,7 @@ func TestMvp6_3_3x3(t *testing.T) {
 	testSpectre(t, factory, false)
 }
 
-func TestMvp6_4_2x2(t *testing.T) {
+func TestMvp7_0_2x2(t *testing.T) {
 	t.Parallel()
 	factory := func(memory int) virtualMachine {
 		return mvp7_0.NewCPU(false, memory, 2)
@@ -296,10 +297,38 @@ func TestMvp6_4_2x2(t *testing.T) {
 	testSpectre(t, factory, false)
 }
 
-func TestMvp6_4_3x3(t *testing.T) {
+func TestMvp7_0_3x3(t *testing.T) {
 	t.Parallel()
 	factory := func(memory int) virtualMachine {
 		return mvp7_0.NewCPU(false, memory, 3)
+	}
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, testBubSort, factory, false)
+	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
+}
+
+func TestMvp7_1_2x2(t *testing.T) {
+	t.Parallel()
+	factory := func(memory int) virtualMachine {
+		return mvp7_1.NewCPU(false, memory, 2)
+	}
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, testBubSort, factory, false)
+	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
+}
+
+func TestMvp7_1_3x3(t *testing.T) {
+	t.Parallel()
+	factory := func(memory int) virtualMachine {
+		return mvp7_1.NewCPU(false, memory, 3)
 	}
 	testPrime(t, factory, memory, testFrom, testTo, false)
 	testSums(t, factory, memory, testFrom, testTo, false)
