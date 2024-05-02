@@ -23,6 +23,7 @@ type euResp struct {
 }
 
 type executeUnit struct {
+	id  int
 	ctx *risc.Context
 	co.Coroutine[euReq, euResp]
 	bu     *btbBranchUnit
@@ -38,8 +39,9 @@ type executeUnit struct {
 	execution  risc.Execution
 }
 
-func newExecuteUnit(ctx *risc.Context, bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext], mmu *memoryManagementUnit, cc *cacheController) *executeUnit {
+func newExecuteUnit(id int, ctx *risc.Context, bu *btbBranchUnit, inBus *comp.BufferedBus[*risc.InstructionRunnerPc], outBus *comp.BufferedBus[risc.ExecutionContext], mmu *memoryManagementUnit, cc *cacheController) *executeUnit {
 	eu := &executeUnit{
+		id:     id,
 		ctx:    ctx,
 		bu:     bu,
 		inBus:  inBus,
@@ -53,6 +55,9 @@ func newExecuteUnit(ctx *risc.Context, bu *btbBranchUnit, inBus *comp.BufferedBu
 			return false
 		}
 		if eu.runner.SequenceID > eu.sequenceID {
+			if eu.isPendingMessages() {
+				panic("invalid state")
+			}
 			eu.flush()
 			return true
 		}
@@ -62,7 +67,14 @@ func newExecuteUnit(ctx *risc.Context, bu *btbBranchUnit, inBus *comp.BufferedBu
 }
 
 func (u *executeUnit) start(r euReq) euResp {
-	runner, exists := u.inBus.Get()
+	runner, exists := u.inBus.Pick(func(pc *risc.InstructionRunnerPc) bool {
+		v, exists := pc.ExecutionUnitID.Get()
+		if !exists {
+			return true
+		}
+		return v == u.id
+	})
+
 	if !exists {
 		return euResp{}
 	}
@@ -205,4 +217,10 @@ func (u *executeUnit) flush() {
 
 func (u *executeUnit) isEmpty() bool {
 	return u.IsStart()
+}
+
+func (u *executeUnit) isPendingMessages() bool {
+	return u.inBus.Exists(func(pc *risc.InstructionRunnerPc) bool {
+		return pc.SequenceID <= u.sequenceID
+	})
 }

@@ -42,6 +42,10 @@ type msi struct {
 	pendings map[comp.AlignedAddress]*comp.Sem
 	states   map[msiEntry]msiState
 	commands map[msiCommandRequest]*msiCommandInfo
+
+	// Monitoring
+	evictRequestCount     int
+	writeBackRequestCount int
 }
 
 type msiEntry struct {
@@ -308,6 +312,11 @@ func (m *msi) sendNewMSICommand(id int, alignedAddr comp.AlignedAddress, request
 			request: request,
 		}
 		m.commands[cmdRequest] = newCommand
+		if request == evict {
+			m.evictRequestCount++
+		} else if request == writeBack {
+			m.writeBackRequestCount++
+		}
 		return newCommand
 	}
 }

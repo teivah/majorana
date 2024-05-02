@@ -2,12 +2,15 @@ package risc
 
 import (
 	"fmt"
+
+	"github.com/teivah/majorana/common/option"
 )
 
 type InstructionRunnerPc struct {
-	Runner     InstructionRunner
-	Pc         int32
-	SequenceID int32
+	Runner          InstructionRunner
+	Pc              int32
+	SequenceID      int32
+	ExecutionUnitID option.Optional[int]
 
 	Forwarder       chan<- int32
 	Receiver        <-chan int32
@@ -45,6 +48,7 @@ type InstructionRunner interface {
 	WriteRegisters() []RegisterType
 	Forward(forward Forward)
 	MemoryRead(ctx *Context) []int32
+	MemoryWrite(ctx *Context) []int32
 }
 
 type add struct {
@@ -85,6 +89,10 @@ func (op *add) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *add) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type addi struct {
 	imm     int32
 	rd      RegisterType
@@ -119,6 +127,10 @@ func (op *addi) Forward(forward Forward) {
 }
 
 func (op *addi) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *addi) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -160,6 +172,10 @@ func (op *and) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *and) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type andi struct {
 	imm     int32
 	rd      RegisterType
@@ -197,6 +213,10 @@ func (op *andi) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *andi) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type auipc struct {
 	rd  RegisterType
 	imm int32
@@ -227,6 +247,10 @@ func (op *auipc) Forward(forward Forward) {
 }
 
 func (op *auipc) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *auipc) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -273,6 +297,10 @@ func (op *beq) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *beq) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type beqz struct {
 	rs      RegisterType
 	label   string
@@ -311,6 +339,10 @@ func (op *beqz) Forward(forward Forward) {
 }
 
 func (op *beqz) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *beqz) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -363,6 +395,10 @@ func (op *bge) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *bge) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type bgeu struct {
 	rs1     RegisterType
 	rs2     RegisterType
@@ -403,6 +439,10 @@ func (op *bgeu) Forward(forward Forward) {
 }
 
 func (op *bgeu) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *bgeu) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -449,6 +489,10 @@ func (op *ble) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *ble) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type blt struct {
 	rs1     RegisterType
 	rs2     RegisterType
@@ -489,6 +533,10 @@ func (op *blt) Forward(forward Forward) {
 }
 
 func (op *blt) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *blt) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -535,6 +583,10 @@ func (op *bltu) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *bltu) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type bne struct {
 	rs1     RegisterType
 	rs2     RegisterType
@@ -575,6 +627,10 @@ func (op *bne) Forward(forward Forward) {
 }
 
 func (op *bne) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *bne) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -619,6 +675,10 @@ func (op *bnez) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *bnez) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type div struct {
 	rd      RegisterType
 	rs1     RegisterType
@@ -660,6 +720,10 @@ func (op *div) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *div) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type j struct {
 	label string
 }
@@ -691,6 +755,10 @@ func (op *j) Forward(forward Forward) {
 }
 
 func (op *j) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *j) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -737,6 +805,10 @@ func (op *jal) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *jal) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type jalr struct {
 	rd      RegisterType
 	rs      RegisterType
@@ -776,6 +848,10 @@ func (op *jalr) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *jalr) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type lui struct {
 	rd  RegisterType
 	imm int32
@@ -806,6 +882,10 @@ func (op *lui) Forward(forward Forward) {
 }
 
 func (op *lui) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *lui) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -847,6 +927,10 @@ func (op *lb) MemoryRead(ctx *Context) []int32 {
 	return []int32{rs + op.offset}
 }
 
+func (op *lb) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type lh struct {
 	rd      RegisterType
 	offset  int32
@@ -886,6 +970,10 @@ func (op *lh) MemoryRead(ctx *Context) []int32 {
 	return []int32{idx, idx + 1}
 }
 
+func (op *lh) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type li struct {
 	rd  RegisterType
 	imm int32
@@ -916,6 +1004,10 @@ func (op *li) Forward(forward Forward) {
 }
 
 func (op *li) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *li) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -961,6 +1053,10 @@ func (op *lw) MemoryRead(ctx *Context) []int32 {
 	return []int32{idx, idx + 1, idx + 2, idx + 3}
 }
 
+func (op *lw) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type nop struct{}
 
 func (op *nop) Run(_ *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
@@ -983,6 +1079,10 @@ func (op *nop) Forward(forward Forward) {
 }
 
 func (op *nop) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *nop) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -1024,6 +1124,10 @@ func (op *mul) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *mul) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type mv struct {
 	rd      RegisterType
 	rs      RegisterType
@@ -1057,6 +1161,10 @@ func (op *mv) Forward(forward Forward) {
 }
 
 func (op *mv) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *mv) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -1098,6 +1206,10 @@ func (op *or) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *or) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type ori struct {
 	imm     int32
 	rd      RegisterType
@@ -1132,6 +1244,10 @@ func (op *ori) Forward(forward Forward) {
 }
 
 func (op *ori) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *ori) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -1176,6 +1292,10 @@ func (op *rem) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *rem) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type ret struct{}
 
 func (op *ret) Run(_ *Context, _ map[string]int32, _ int32, memory []int8) (Execution, error) {
@@ -1201,18 +1321,22 @@ func (op *ret) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *ret) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type sb struct {
-	rs2     RegisterType
+	rs      RegisterType
 	offset  int32
-	rs1     RegisterType
+	rd      RegisterType
 	forward Forward
 }
 
 func (op *sb) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
-	idx := rs1 + op.offset
-	n := rs2
+	rd := registerRead(ctx, op.forward, op.rd)
+	rs := registerRead(ctx, op.forward, op.rs)
+	idx := rd + op.offset
+	n := rs
 	return Execution{
 		MemoryChange:  true,
 		MemoryChanges: map[int32]int8{idx: int8(n)},
@@ -1224,7 +1348,7 @@ func (op *sb) InstructionType() InstructionType {
 }
 
 func (op *sb) ReadRegisters() []RegisterType {
-	return []RegisterType{op.rs1, op.rs2}
+	return []RegisterType{op.rd, op.rs}
 }
 
 func (op *sb) WriteRegisters() []RegisterType {
@@ -1239,18 +1363,24 @@ func (op *sb) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *sb) MemoryWrite(ctx *Context) []int32 {
+	rd := registerRead(ctx, op.forward, op.rd)
+	idx := rd + op.offset
+	return []int32{idx}
+}
+
 type sh struct {
-	rs2     RegisterType
+	rd      RegisterType
+	rs      RegisterType
 	offset  int32
-	rs1     RegisterType
 	forward Forward
 }
 
 func (op *sh) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
-	idx := rs1 + op.offset
-	n := rs2
+	rd := registerRead(ctx, op.forward, op.rd)
+	rs := registerRead(ctx, op.forward, op.rs)
+	idx := rd + op.offset
+	n := rs
 	bytes := BytesFromLowBits(n)
 	return Execution{
 		MemoryChange: true,
@@ -1266,7 +1396,7 @@ func (op *sh) InstructionType() InstructionType {
 }
 
 func (op *sh) ReadRegisters() []RegisterType {
-	return []RegisterType{op.rs1, op.rs2}
+	return []RegisterType{op.rd, op.rs}
 }
 
 func (op *sh) WriteRegisters() []RegisterType {
@@ -1279,6 +1409,12 @@ func (op *sh) Forward(forward Forward) {
 
 func (op *sh) MemoryRead(ctx *Context) []int32 {
 	return nil
+}
+
+func (op *sh) MemoryWrite(ctx *Context) []int32 {
+	rd := registerRead(ctx, op.forward, op.rd)
+	idx := rd + op.offset
+	return []int32{idx, idx + 1}
 }
 
 type sll struct {
@@ -1319,6 +1455,10 @@ func (op *sll) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *sll) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type slli struct {
 	rd      RegisterType
 	rs      RegisterType
@@ -1353,6 +1493,10 @@ func (op *slli) Forward(forward Forward) {
 }
 
 func (op *slli) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *slli) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -1400,6 +1544,10 @@ func (op *slt) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *slt) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type sltu struct {
 	rd      RegisterType
 	rs1     RegisterType
@@ -1441,6 +1589,10 @@ func (op *sltu) Forward(forward Forward) {
 }
 
 func (op *sltu) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *sltu) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -1487,6 +1639,10 @@ func (op *slti) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *slti) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type sra struct {
 	rd      RegisterType
 	rs1     RegisterType
@@ -1525,6 +1681,10 @@ func (op *sra) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *sra) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type srai struct {
 	rd      RegisterType
 	rs      RegisterType
@@ -1559,6 +1719,10 @@ func (op *srai) Forward(forward Forward) {
 }
 
 func (op *srai) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *srai) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -1600,6 +1764,10 @@ func (op *srl) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *srl) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type srli struct {
 	rd      RegisterType
 	rs      RegisterType
@@ -1634,6 +1802,10 @@ func (op *srli) Forward(forward Forward) {
 }
 
 func (op *srli) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *srli) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }
 
@@ -1675,18 +1847,22 @@ func (op *sub) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *sub) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type sw struct {
-	rs2     RegisterType
+	rs      RegisterType
 	offset  int32
-	rs1     RegisterType
+	rd      RegisterType
 	forward Forward
 }
 
 func (op *sw) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
-	idx := rs1 + op.offset
-	n := rs2
+	rd := registerRead(ctx, op.forward, op.rd)
+	rs := registerRead(ctx, op.forward, op.rs)
+	idx := rd + op.offset
+	n := rs
 	bytes := BytesFromLowBits(n)
 	if ctx.Debug {
 		fmt.Printf("\t\tRun: Sw %d to %d\n", idx, n)
@@ -1707,7 +1883,7 @@ func (op *sw) InstructionType() InstructionType {
 }
 
 func (op *sw) ReadRegisters() []RegisterType {
-	return []RegisterType{op.rs1, op.rs2}
+	return []RegisterType{op.rd, op.rs}
 }
 
 func (op *sw) WriteRegisters() []RegisterType {
@@ -1720,6 +1896,12 @@ func (op *sw) Forward(forward Forward) {
 
 func (op *sw) MemoryRead(ctx *Context) []int32 {
 	return nil
+}
+
+func (op *sw) MemoryWrite(ctx *Context) []int32 {
+	rd := registerRead(ctx, op.forward, op.rd)
+	idx := rd + op.offset
+	return []int32{idx, idx + 1, idx + 2, idx + 3}
 }
 
 type xor struct {
@@ -1760,6 +1942,10 @@ func (op *xor) MemoryRead(ctx *Context) []int32 {
 	return nil
 }
 
+func (op *xor) MemoryWrite(ctx *Context) []int32 {
+	return nil
+}
+
 type xori struct {
 	imm     int32
 	rd      RegisterType
@@ -1794,5 +1980,9 @@ func (op *xori) Forward(forward Forward) {
 }
 
 func (op *xori) MemoryRead(ctx *Context) []int32 {
+	return nil
+}
+
+func (op *xori) MemoryWrite(ctx *Context) []int32 {
 	return nil
 }

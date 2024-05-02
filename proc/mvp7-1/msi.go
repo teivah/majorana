@@ -42,6 +42,10 @@ type msi struct {
 	pendings map[comp.AlignedAddress]*comp.Sem
 	states   map[msiEntry]msiState
 	commands map[msiCommandRequest]*msiCommandInfo
+
+	// Monitoring
+	evictRequestCount     int
+	writeBackRequestCount int
 }
 
 type msiEntry struct {
@@ -80,6 +84,14 @@ func newMSI() *msi {
 		states:   make(map[msiEntry]msiState),
 		commands: make(map[msiCommandRequest]*msiCommandInfo),
 	}
+}
+
+func (m *msi) copyState() map[msiEntry]msiState {
+	res := make(map[msiEntry]msiState, len(m.states))
+	for k, v := range m.states {
+		res[k] = v
+	}
+	return res
 }
 
 var noop = func() {}
@@ -308,6 +320,11 @@ func (m *msi) sendNewMSICommand(id int, alignedAddr comp.AlignedAddress, request
 			request: request,
 		}
 		m.commands[cmdRequest] = newCommand
+		if request == evict {
+			m.evictRequestCount++
+		} else if request == writeBack {
+			m.writeBackRequestCount++
+		}
 		return newCommand
 	}
 }

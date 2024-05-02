@@ -33,6 +33,7 @@ type CPU struct {
 	branchUnit           *btbBranchUnit
 	memoryManagementUnit *memoryManagementUnit
 	cacheControllers     []*cacheController
+	msi                  *msi
 }
 
 func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
@@ -54,9 +55,9 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 	eus := make([]*executeUnit, 0, parallelism)
 	wus := make([]*writeUnit, 0, parallelism)
 	ccs := make([]*cacheController, 0, parallelism)
-	lock := newMSI()
+	msi := newMSI()
 	for i := 0; i < parallelism; i++ {
-		cc := newCacheController(i, ctx, mmu, lock)
+		cc := newCacheController(i, ctx, mmu, msi)
 		ccs = append(ccs, cc)
 		eus = append(eus, newExecuteUnit(ctx, bu, executeBus, writeBus, mmu, cc))
 		wus = append(wus, newWriteUnit(ctx, writeBus))
@@ -76,6 +77,7 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 		branchUnit:           bu,
 		memoryManagementUnit: mmu,
 		cacheControllers:     ccs,
+		msi:                  msi,
 	}
 }
 
@@ -254,6 +256,8 @@ func (m *CPU) Stats() map[string]any {
 		"cu_cant_add":            m.controlUnit.cantAdd,
 		"cu_blocked_branch":      m.controlUnit.blockedBranch,
 		"cu_blocked_data_hazard": m.controlUnit.blockedDataHazard,
+		"msi_evict_request":      m.msi.evictRequestCount,
+		"msi_writeback_request":  m.msi.writeBackRequestCount,
 	}
 }
 

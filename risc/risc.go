@@ -355,15 +355,6 @@ func (ins InstructionType) Cycles() int {
 	}
 }
 
-// TODO What?
-func (ins InstructionType) IsWriteBack() bool {
-	switch ins {
-	case Sb, Sw, Sh:
-		return false
-	}
-	return true
-}
-
 func (ins InstructionType) IsMemoryWrite() bool {
 	switch ins {
 	case Sb, Sw, Sh:

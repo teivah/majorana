@@ -3,6 +3,7 @@ package mvp7_1
 import (
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/common/obs"
+	"github.com/teivah/majorana/common/option"
 	"github.com/teivah/majorana/proc/comp"
 	"github.com/teivah/majorana/risc"
 )
@@ -21,6 +22,11 @@ type controlUnit struct {
 	skippedInCurrentCycle        []risc.InstructionRunnerPc
 	pushedBranchInCurrentCycle   bool
 	pendingConditionalBranch     bool
+	count                        int
+	msi                          *msi
+	// A copy, not necessarily up-to-date
+	msiStatesCopy     map[msiEntry]msiState
+	msiFetchFrequency int
 
 	// Monitoring
 	pushed            *obs.Gauge
@@ -34,7 +40,7 @@ type controlUnit struct {
 	blockedDataHazard int
 }
 
-func newControlUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc]) *controlUnit {
+func newControlUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc], msi *msi, msiFetchFrequency int) *controlUnit {
 	return &controlUnit{
 		ctx:                          ctx,
 		inBus:                        inBus,
@@ -46,10 +52,20 @@ func newControlUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.InstructionR
 		blocked:                      &obs.Gauge{},
 		pushedRunnersInCurrentCycle:  make(map[*risc.InstructionRunnerPc]bool),
 		pushedRunnersInPreviousCycle: make(map[*risc.InstructionRunnerPc]bool),
+		msi:                          msi,
+		msiFetchFrequency:            msiFetchFrequency,
+		msiStatesCopy:                make(map[msiEntry]msiState),
 	}
 }
 
 func (u *controlUnit) cycle(cycle int) {
+	u.count++
+	if u.count%u.msiFetchFrequency == 0 {
+		// Simulate a MSI state synchronization
+		u.msiStatesCopy = u.msi.copyState()
+		//return
+	}
+
 	u.pushedRunnersInCurrentCycle = make(map[*risc.InstructionRunnerPc]bool)
 	defer func() {
 		u.pushed.Push(len(u.pushedRunnersInCurrentCycle))
@@ -250,10 +266,49 @@ func (u *controlUnit) pushRunner(ctx *risc.Context, cycle int, runner *risc.Inst
 		return false
 	}
 
+	runner.ExecutionUnitID = u.getExecutionUnitIDPreference(runner)
 	u.outBus.Add(runner, cycle)
 	ctx.AddPendingRegisters(runner.Runner)
 	log.Infoi(ctx, "CU", runner.Runner.InstructionType(), runner.Pc, "pushing runner")
 	return true
+}
+
+func (u *controlUnit) getExecutionUnitIDPreference(runner *risc.InstructionRunnerPc) option.Optional[int] {
+	if runner.Runner.InstructionType().IsMemoryRead() {
+		addr := getAlignedMemoryAddress(runner.Runner.MemoryRead(u.ctx))
+		readers := u.getReaders(addr)
+		if len(readers) == 0 {
+			return option.None[int]()
+		}
+		// We want the choice to be deterministic
+		//return option.None[int]()
+		return option.Of[int](readers[len(readers)-1])
+	} else if runner.Runner.InstructionType().IsMemoryWrite() {
+		addr := getAlignedMemoryAddress(runner.Runner.MemoryWrite(u.ctx))
+		return u.getWriter(addr)
+		//return option.None[int]()
+	} else {
+		return option.None[int]()
+	}
+}
+
+func (u *controlUnit) getReaders(addr comp.AlignedAddress) []int {
+	var ids []int
+	for e, state := range u.msiStatesCopy {
+		if e.alignedAddr == addr && (state == shared || state == modified) {
+			ids = append(ids, e.id)
+		}
+	}
+	return ids
+}
+
+func (u *controlUnit) getWriter(addr comp.AlignedAddress) option.Optional[int] {
+	for e, state := range u.msiStatesCopy {
+		if e.alignedAddr == addr && state == modified {
+			return option.Of(e.id)
+		}
+	}
+	return option.None[int]()
 }
 
 func (u *controlUnit) flush() {

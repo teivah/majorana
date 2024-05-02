@@ -552,9 +552,9 @@ func Parse(s string) (Application, error) {
 				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &sb{
-				rs2:    rs2,
+				rs:     rs2,
 				offset: offset,
-				rs1:    rs1,
+				rd:     rs1,
 			})
 		case "sh":
 			if err := validateArgs(3, elements, remainingLine); err != nil {
@@ -573,9 +573,9 @@ func Parse(s string) (Application, error) {
 				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &sh{
-				rs2:    rs2,
+				rs:     rs2,
 				offset: int32(offset),
-				rs1:    rs1,
+				rd:     rs1,
 			})
 
 		case "sll":
@@ -805,9 +805,9 @@ func Parse(s string) (Application, error) {
 				return Application{}, fmt.Errorf("line %s: %v", remainingLine, err)
 			}
 			instructions = append(instructions, &sw{
-				rs2:    rs2,
+				rs:     rs2,
 				offset: offset,
-				rs1:    rs1,
+				rd:     rs1,
 			})
 		case "xor":
 			if err := validateArgs(3, elements, remainingLine); err != nil {

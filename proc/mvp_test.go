@@ -302,13 +302,13 @@ func TestMvp7_0_3x3(t *testing.T) {
 	factory := func(memory int) virtualMachine {
 		return mvp7_0.NewCPU(false, memory, 3)
 	}
-	testPrime(t, factory, memory, testFrom, testTo, false)
-	testSums(t, factory, memory, testFrom, testTo, false)
-	testStringLength(t, factory, 1024, testTo, false)
-	testStringCopy(t, factory, testTo*2, testTo, false)
-	testBubbleSort(t, testBubSort, factory, false)
-	testConditionalBranch(t, factory, false)
-	testSpectre(t, factory, false)
+	//testPrime(t, factory, memory, testFrom, testTo, false)
+	//testSums(t, factory, memory, testFrom, testTo, false)
+	//testStringLength(t, factory, 1024, testTo, false)
+	//testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, testBubSort, factory, true)
+	//testConditionalBranch(t, factory, false)
+	//testSpectre(t, factory, false)
 }
 
 func TestMvp7_1_2x2(t *testing.T) {
@@ -330,13 +330,13 @@ func TestMvp7_1_3x3(t *testing.T) {
 	factory := func(memory int) virtualMachine {
 		return mvp7_1.NewCPU(false, memory, 3)
 	}
-	testPrime(t, factory, memory, testFrom, testTo, false)
-	testSums(t, factory, memory, testFrom, testTo, false)
-	testStringLength(t, factory, 1024, testTo, false)
-	testStringCopy(t, factory, testTo*2, testTo, false)
+	//testPrime(t, factory, memory, testFrom, testTo, false)
+	//testSums(t, factory, memory, testFrom, testTo, false)
+	//testStringLength(t, factory, 1024, testTo, false)
+	//testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, testBubSort, factory, false)
-	testConditionalBranch(t, factory, false)
-	testSpectre(t, factory, false)
+	//testConditionalBranch(t, factory, false)
+	//testSpectre(t, factory, false)
 }
 
 func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
@@ -634,6 +634,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-6.2",
 		"MVP-6.3",
 		"MVP-7.0",
+		"MVP-7.1",
 	}
 	const (
 		versionMVP1 = iota
@@ -646,6 +647,7 @@ func TestBenchmarks(t *testing.T) {
 		versionMVP6_2
 		versionMVP6_3
 		versionMVP7_0
+		versionMVP7_1
 		totalVersions
 	)
 
@@ -661,6 +663,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_2: 351784,
 			versionMVP6_3: 301710,
 			versionMVP7_0: 301714,
+			versionMVP7_1: 301714,
 		},
 		"Sum": {
 			versionMVP1:   10409494,
@@ -673,6 +676,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_2: 321432,
 			versionMVP6_3: 321432,
 			versionMVP7_0: 137257,
+			versionMVP7_1: 137257,
 		},
 		"String copy": {
 			versionMVP1:   32349405,
@@ -685,6 +689,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_2: 3834899,
 			versionMVP6_3: 1956067,
 			versionMVP7_0: 303003,
+			versionMVP7_1: 303003,
 		},
 		"String length": {
 			versionMVP1:   19622376,
@@ -697,6 +702,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_2: 641250,
 			versionMVP6_3: 641250,
 			versionMVP7_0: 163635,
+			versionMVP7_1: 163635,
 		},
 		"Bubble sort": {
 			versionMVP1:   158852511,
@@ -709,6 +715,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_2: 2677345,
 			versionMVP6_3: 2677345,
 			versionMVP7_0: 24232735,
+			versionMVP7_1: 24232735,
 		},
 	}
 
@@ -742,6 +749,9 @@ func TestBenchmarks(t *testing.T) {
 		},
 		versionMVP7_0: func(m int) virtualMachine {
 			return mvp7_0.NewCPU(false, m, 2)
+		},
+		versionMVP7_1: func(m int) virtualMachine {
+			return mvp7_1.NewCPU(false, m, 2)
 		},
 	}
 

@@ -80,6 +80,7 @@ func (c *LRUCache) Write(addr int32, data []int8) {
 			for i, v := range data {
 				l.set(addr+int32(i), v)
 			}
+			fmt.Println(addr/4, l)
 			return
 		}
 	}

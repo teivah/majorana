@@ -33,6 +33,7 @@ type CPU struct {
 	branchUnit           *btbBranchUnit
 	memoryManagementUnit *memoryManagementUnit
 	cacheControllers     []*cacheController
+	msi                  *msi
 }
 
 func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
@@ -44,21 +45,22 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 	writeBus := comp.NewBufferedBus[risc.ExecutionContext](busSize, busSize)
 
 	ctx := risc.NewContext(debug, memoryBytes, true)
+	msi := newMSI()
 
 	mmu := newMemoryManagementUnit(ctx)
 	fu := newFetchUnit(ctx, decodeBus)
 	du := newDecodeUnit(ctx, decodeBus, controlBus)
-	cu := newControlUnit(ctx, controlBus, executeBus)
+	//cu := newControlUnit(ctx, controlBus, executeBus, msi, 100000)
+	cu := newControlUnit(ctx, controlBus, executeBus, msi, 1)
 	bu := newBTBBranchUnit(ctx, 4, fu, du, cu)
 
 	eus := make([]*executeUnit, 0, parallelism)
 	wus := make([]*writeUnit, 0, parallelism)
 	ccs := make([]*cacheController, 0, parallelism)
-	lock := newMSI()
 	for i := 0; i < parallelism; i++ {
-		cc := newCacheController(i, ctx, mmu, lock)
+		cc := newCacheController(i, ctx, mmu, msi)
 		ccs = append(ccs, cc)
-		eus = append(eus, newExecuteUnit(ctx, bu, executeBus, writeBus, mmu, cc))
+		eus = append(eus, newExecuteUnit(i, ctx, bu, executeBus, writeBus, mmu, cc))
 		wus = append(wus, newWriteUnit(ctx, writeBus))
 	}
 
@@ -76,6 +78,7 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 		branchUnit:           bu,
 		memoryManagementUnit: mmu,
 		cacheControllers:     ccs,
+		msi:                  msi,
 	}
 }
 
@@ -171,7 +174,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 				}
 
 				for _, eu := range m.executeUnits {
-					if !eu.isEmpty() {
+					if !eu.isEmpty() || eu.isPendingMessages() {
 						isEmpty = false
 						resp := eu.Cycle(euReq{fromCycle, app})
 						if resp.err != nil {
@@ -254,6 +257,8 @@ func (m *CPU) Stats() map[string]any {
 		"cu_cant_add":            m.controlUnit.cantAdd,
 		"cu_blocked_branch":      m.controlUnit.blockedBranch,
 		"cu_blocked_data_hazard": m.controlUnit.blockedDataHazard,
+		"msi_evict_request":      m.msi.evictRequestCount,
+		"msi_writeback_request":  m.msi.writeBackRequestCount,
 	}
 }
 

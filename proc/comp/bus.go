@@ -1,5 +1,7 @@
 package comp
 
+import "slices"
+
 type SimpleBus[T any] struct {
 	pending entry[T]
 	current entry[T]
@@ -110,6 +112,37 @@ func (b *BufferedBus[T]) Get() (T, bool) {
 	elem := b.queue[0]
 	b.queue = b.queue[1:]
 	return elem, true
+}
+
+func (b *BufferedBus[T]) Pick(predicate func(T) bool) (T, bool) {
+	var zero T
+	if len(b.queue) == 0 {
+		return zero, false
+	}
+
+	found := false
+	var elem T
+	b.queue = slices.DeleteFunc(b.queue, func(t T) bool {
+		if found {
+			return false
+		}
+		if predicate(t) {
+			elem = t
+			found = true
+			return true
+		}
+		return false
+	})
+	return elem, found
+}
+
+func (b *BufferedBus[T]) Exists(predicate func(T) bool) bool {
+	for _, t := range b.queue {
+		if predicate(t) {
+			return true
+		}
+	}
+	return false
 }
 
 func (b *BufferedBus[T]) CanGet() bool {
