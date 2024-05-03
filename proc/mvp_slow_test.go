@@ -14,6 +14,7 @@ import (
 	mvp6_3 "github.com/teivah/majorana/proc/mvp6-3"
 	mvp7_0 "github.com/teivah/majorana/proc/mvp7-0"
 	mvp7_1 "github.com/teivah/majorana/proc/mvp7-1"
+	mvp7_2 "github.com/teivah/majorana/proc/mvp7-2"
 )
 
 const (
@@ -148,6 +149,22 @@ func TestSlowMvp7_1_3x3(t *testing.T) {
 	t.Parallel()
 	factory := func(memory int) virtualMachine {
 		return mvp7_1.NewCPU(false, memory, 3)
+	}
+	testSlow(t, factory)
+}
+
+func TestSlowMvp7_2_2x2(t *testing.T) {
+	t.Parallel()
+	factory := func(memory int) virtualMachine {
+		return mvp7_2.NewCPU(false, memory, 2)
+	}
+	testSlow(t, factory)
+}
+
+func TestSlowMvp7_2_3x3(t *testing.T) {
+	t.Parallel()
+	factory := func(memory int) virtualMachine {
+		return mvp7_2.NewCPU(false, memory, 3)
 	}
 	testSlow(t, factory)
 }

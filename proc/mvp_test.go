@@ -19,6 +19,7 @@ import (
 	"github.com/teivah/majorana/proc/mvp6-3"
 	"github.com/teivah/majorana/proc/mvp7-0"
 	mvp7_1 "github.com/teivah/majorana/proc/mvp7-1"
+	mvp7_2 "github.com/teivah/majorana/proc/mvp7-2"
 	"github.com/teivah/majorana/risc"
 	"github.com/teivah/majorana/test"
 )
@@ -340,6 +341,34 @@ func TestMvp7_1_3x3(t *testing.T) {
 	testSpectre(t, factory, false)
 }
 
+func TestMvp7_2_2x2(t *testing.T) {
+	t.Parallel()
+	factory := func(memory int) virtualMachine {
+		return mvp7_2.NewCPU(false, memory, 2)
+	}
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, testBubSort, factory, false)
+	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
+}
+
+func TestMvp7_2_3x3(t *testing.T) {
+	t.Parallel()
+	factory := func(memory int) virtualMachine {
+		return mvp7_2.NewCPU(false, memory, 3)
+	}
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
+	testBubbleSort(t, testBubSort, factory, false)
+	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
+}
+
 func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
 	cache := make(map[int]bool, to-from+1)
 	for i := from; i < to; i++ {
@@ -642,6 +671,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-6.3",
 		"MVP-7.0",
 		"MVP-7.1",
+		"MVP-7.2",
 	}
 	const (
 		versionMVP1 = iota
@@ -655,6 +685,7 @@ func TestBenchmarks(t *testing.T) {
 		versionMVP6_3
 		versionMVP7_0
 		versionMVP7_1
+		versionMVP7_2
 		totalVersions
 	)
 
@@ -671,6 +702,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 301710,
 			versionMVP7_0: 301714,
 			versionMVP7_1: 301714,
+			versionMVP7_2: 301714,
 		},
 		"Sum": {
 			versionMVP1:   10409494,
@@ -684,6 +716,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 321432,
 			versionMVP7_0: 137257,
 			versionMVP7_1: 137257,
+			versionMVP7_2: 137257,
 		},
 		"String copy": {
 			versionMVP1:   32349405,
@@ -697,6 +730,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 1956067,
 			versionMVP7_0: 303003,
 			versionMVP7_1: 303003,
+			versionMVP7_2: 303003,
 		},
 		"String length": {
 			versionMVP1:   19622376,
@@ -710,6 +744,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 641250,
 			versionMVP7_0: 163635,
 			versionMVP7_1: 163635,
+			versionMVP7_2: 163635,
 		},
 		"Bubble sort": {
 			versionMVP1:   158852511,
@@ -723,6 +758,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 2677345,
 			versionMVP7_0: 24232735,
 			versionMVP7_1: 1229959,
+			versionMVP7_2: 1229959,
 		},
 	}
 
@@ -759,6 +795,9 @@ func TestBenchmarks(t *testing.T) {
 		},
 		versionMVP7_1: func(m int) virtualMachine {
 			return mvp7_1.NewCPU(false, m, 2)
+		},
+		versionMVP7_2: func(m int) virtualMachine {
+			return mvp7_2.NewCPU(false, m, 2)
 		},
 	}
 
