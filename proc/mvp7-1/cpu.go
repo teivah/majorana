@@ -268,8 +268,8 @@ func (m *CPU) flush(pc int32) {
 	m.fetchUnit.flush(pc)
 	m.decodeUnit.flush()
 	m.controlUnit.flush()
-	for _, executeUnit := range m.executeUnits {
-		executeUnit.flush()
+	for _, eu := range m.executeUnits {
+		eu.flush()
 	}
 	m.decodeBus.Clean()
 	m.controlBus.Clean()

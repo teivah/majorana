@@ -70,6 +70,8 @@ func (u *executeUnit) start(r euReq) euResp {
 	runner, exists := u.inBus.Pick(func(pc *risc.InstructionRunnerPc) bool {
 		v, exists := pc.ExecutionUnitID.Get()
 		if !exists {
+			// If there's no instruction assigned to the current core, the core takes
+			// the first available instruction
 			return true
 		}
 		return v == u.id

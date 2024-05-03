@@ -24,9 +24,13 @@ type controlUnit struct {
 	pushedBranchInCurrentCycle   bool
 	pendingConditionalBranch     bool
 	msi                          *msi
-	// A copy, not necessarily up-to-date
-	msiStatesCopy        map[msiEntry]msiState
-	msiFetchFrequency    int
+	// An MSI copy, not necessarily up-to-date
+	// Used to distribute the work to the right core (right = has already fetched
+	// the cache line)
+	msiStatesCopy     map[msiEntry]msiState
+	msiFetchFrequency int
+	// LRU cache if multiple cores are possible (e.g., 2 cores are reader on the
+	// same cache line)
 	executionUnitIDCache *cache.LRUCache[int, struct{}]
 
 	// Monitoring
@@ -60,9 +64,10 @@ func newControlUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.InstructionR
 }
 
 func (u *controlUnit) cycle(cycle int) {
-	if u.msi.stateToBeSynchronized {
+	if u.msi.staleState {
 		u.msiStatesCopy = u.msi.copyState()
-		u.msi.stateToBeSynchronized = false
+		u.msi.staleState = false
+		// Return to simulate that it takes a cycle to sync the MSI state
 		return
 	}
 
@@ -276,7 +281,7 @@ func (u *controlUnit) pushRunner(ctx *risc.Context, cycle int, runner *risc.Inst
 func (u *controlUnit) getExecutionUnitIDPreference(runner *risc.InstructionRunnerPc) option.Optional[int] {
 	if runner.Runner.InstructionType().IsMemoryRead() {
 		addr := getAlignedMemoryAddress(runner.Runner.MemoryRead(u.ctx, runner.SequenceID))
-		readers := u.getReaders(addr)
+		readers := u.getLineReaders(addr)
 		if len(readers) == 0 {
 			return option.None[int]()
 		}
@@ -288,13 +293,13 @@ func (u *controlUnit) getExecutionUnitIDPreference(runner *risc.InstructionRunne
 		return option.Of[int](readers[v])
 	} else if runner.Runner.InstructionType().IsMemoryWrite() {
 		addr := getAlignedMemoryAddress(runner.Runner.MemoryWrite(u.ctx, runner.SequenceID))
-		return u.getWriter(addr)
+		return u.getLineWriter(addr)
 	} else {
 		return option.None[int]()
 	}
 }
 
-func (u *controlUnit) getReaders(addr comp.AlignedAddress) []int {
+func (u *controlUnit) getLineReaders(addr comp.AlignedAddress) []int {
 	var ids []int
 	for e, state := range u.msiStatesCopy {
 		if e.alignedAddr == addr && (state == shared || state == modified) {
@@ -304,7 +309,7 @@ func (u *controlUnit) getReaders(addr comp.AlignedAddress) []int {
 	return ids
 }
 
-func (u *controlUnit) getWriter(addr comp.AlignedAddress) option.Optional[int] {
+func (u *controlUnit) getLineWriter(addr comp.AlignedAddress) option.Optional[int] {
 	for e, state := range u.msiStatesCopy {
 		if e.alignedAddr == addr && state == modified {
 			return option.Of(e.id)

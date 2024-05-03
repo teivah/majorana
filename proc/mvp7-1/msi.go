@@ -39,10 +39,11 @@ type msiResponse struct {
 }
 
 type msi struct {
-	pendings              map[comp.AlignedAddress]*comp.Sem
-	states                map[msiEntry]msiState
-	stateToBeSynchronized bool
-	commands              map[msiCommandRequest]*msiCommandInfo
+	pendings map[comp.AlignedAddress]*comp.Sem
+	states   map[msiEntry]msiState
+	// An eviction happened, the CU has to synchronize the state
+	staleState bool
+	commands   map[msiCommandRequest]*msiCommandInfo
 
 	// Monitoring
 	evictRequestCount     int

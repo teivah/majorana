@@ -70,7 +70,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 	for req, info := range requests {
 		switch req.request {
 		case evict:
-			cc.msi.stateToBeSynchronized = true
+			cc.msi.staleState = true
 			cc.snoop.Append(func(struct{}) bool {
 				_, _ = cc.l1d.EvictCacheLine(req.alignedAddr)
 				info.done()
