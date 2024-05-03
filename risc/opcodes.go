@@ -3,6 +3,7 @@ package risc
 import (
 	"fmt"
 
+	"github.com/teivah/majorana/common/bytes"
 	"github.com/teivah/majorana/common/option"
 )
 
@@ -22,14 +23,24 @@ type Forward struct {
 	Value    int32
 }
 
-func registerRead(ctx *Context, forward Forward, reg RegisterType) int32 {
+func registerRead(ctx *Context, forward Forward, reg RegisterType, sequenceID int32) int32 {
 	if reg == forward.Register {
 		return forward.Value
 	}
 
 	if ctx.rat {
-		if v, exists := ctx.transactionRAT.Read(reg); exists {
-			return v.value
+		if sequenceID == 0 {
+			if v, exists := ctx.transactionRAT.Read(reg); exists {
+				return v.value
+			}
+		} else {
+			// If a sequence ID is provided, we make sure not to read a register
+			// value written by an instruction following the current instruction
+			if v, exists := ctx.transactionRAT.Find(reg, func(v transactionUnit) bool {
+				return v.sequenceID <= sequenceID
+			}); exists {
+				return v.value
+			}
 		}
 		v, _ := ctx.committedRAT.Read(reg)
 		return v
@@ -42,13 +53,13 @@ func registerRead(ctx *Context, forward Forward, reg RegisterType) int32 {
 }
 
 type InstructionRunner interface {
-	Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error)
+	Run(ctx *Context, labels map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error)
 	InstructionType() InstructionType
 	ReadRegisters() []RegisterType
 	WriteRegisters() []RegisterType
 	Forward(forward Forward)
-	MemoryRead(ctx *Context) []int32
-	MemoryWrite(ctx *Context) []int32
+	MemoryRead(ctx *Context, sequenceID int32) []int32
+	MemoryWrite(ctx *Context, sequenceID int32) []int32
 }
 
 type add struct {
@@ -58,9 +69,9 @@ type add struct {
 	forward Forward
 }
 
-func (op *add) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *add) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs1+rs2)
 	return Execution{
 		RegisterChange: true,
@@ -85,11 +96,11 @@ func (op *add) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *add) MemoryRead(ctx *Context) []int32 {
+func (op *add) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *add) MemoryWrite(ctx *Context) []int32 {
+func (op *add) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -100,8 +111,8 @@ type addi struct {
 	forward Forward
 }
 
-func (op *addi) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *addi) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs+op.imm)
 	return Execution{
 		RegisterChange: true,
@@ -126,11 +137,11 @@ func (op *addi) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *addi) MemoryRead(ctx *Context) []int32 {
+func (op *addi) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *addi) MemoryWrite(ctx *Context) []int32 {
+func (op *addi) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -141,9 +152,9 @@ type and struct {
 	forward Forward
 }
 
-func (op *and) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *and) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs1&rs2)
 	return Execution{
 		RegisterChange: true,
@@ -168,11 +179,11 @@ func (op *and) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *and) MemoryRead(ctx *Context) []int32 {
+func (op *and) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *and) MemoryWrite(ctx *Context) []int32 {
+func (op *and) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -183,8 +194,8 @@ type andi struct {
 	forward Forward
 }
 
-func (op *andi) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *andi) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs&op.imm)
 	return Execution{
 		RegisterChange: true,
@@ -209,11 +220,11 @@ func (op *andi) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *andi) MemoryRead(ctx *Context) []int32 {
+func (op *andi) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *andi) MemoryWrite(ctx *Context) []int32 {
+func (op *andi) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -222,7 +233,7 @@ type auipc struct {
 	imm int32
 }
 
-func (op *auipc) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
+func (op *auipc) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
 	register, value := IsRegisterChange(op.rd, pc+(op.imm<<12))
 	return Execution{
 		RegisterChange: true,
@@ -246,11 +257,11 @@ func (op *auipc) WriteRegisters() []RegisterType {
 func (op *auipc) Forward(forward Forward) {
 }
 
-func (op *auipc) MemoryRead(ctx *Context) []int32 {
+func (op *auipc) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *auipc) MemoryWrite(ctx *Context) []int32 {
+func (op *auipc) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -261,9 +272,9 @@ type beq struct {
 	forward Forward
 }
 
-func (op *beq) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *beq) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	if rs1 == rs2 {
 		addr, ok := labels[op.label]
 		if !ok {
@@ -293,11 +304,11 @@ func (op *beq) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *beq) MemoryRead(ctx *Context) []int32 {
+func (op *beq) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *beq) MemoryWrite(ctx *Context) []int32 {
+func (op *beq) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -307,8 +318,8 @@ type beqz struct {
 	forward Forward
 }
 
-func (op *beqz) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *beqz) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	if rs == 0 {
 		addr, ok := labels[op.label]
 		if !ok {
@@ -338,11 +349,11 @@ func (op *beqz) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *beqz) MemoryRead(ctx *Context) []int32 {
+func (op *beqz) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *beqz) MemoryWrite(ctx *Context) []int32 {
+func (op *beqz) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -353,9 +364,9 @@ type bge struct {
 	forward Forward
 }
 
-func (op *bge) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *bge) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	if rs1 >= rs2 {
 		addr, ok := labels[op.label]
 		if !ok {
@@ -391,11 +402,11 @@ func (op *bge) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *bge) MemoryRead(ctx *Context) []int32 {
+func (op *bge) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *bge) MemoryWrite(ctx *Context) []int32 {
+func (op *bge) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -406,9 +417,9 @@ type bgeu struct {
 	forward Forward
 }
 
-func (op *bgeu) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *bgeu) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	if rs1 >= rs2 {
 		addr, ok := labels[op.label]
 		if !ok {
@@ -438,11 +449,11 @@ func (op *bgeu) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *bgeu) MemoryRead(ctx *Context) []int32 {
+func (op *bgeu) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *bgeu) MemoryWrite(ctx *Context) []int32 {
+func (op *bgeu) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -453,9 +464,9 @@ type ble struct {
 	forward Forward
 }
 
-func (op *ble) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *ble) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	if rs1 <= rs2 {
 		addr, ok := labels[op.label]
 		if !ok {
@@ -485,11 +496,11 @@ func (op *ble) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *ble) MemoryRead(ctx *Context) []int32 {
+func (op *ble) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *ble) MemoryWrite(ctx *Context) []int32 {
+func (op *ble) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -500,9 +511,9 @@ type blt struct {
 	forward Forward
 }
 
-func (op *blt) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *blt) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	if rs1 < rs2 {
 		addr, ok := labels[op.label]
 		if !ok {
@@ -532,11 +543,11 @@ func (op *blt) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *blt) MemoryRead(ctx *Context) []int32 {
+func (op *blt) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *blt) MemoryWrite(ctx *Context) []int32 {
+func (op *blt) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -547,9 +558,9 @@ type bltu struct {
 	forward Forward
 }
 
-func (op *bltu) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *bltu) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	if rs1 < rs2 {
 		addr, ok := labels[op.label]
 		if !ok {
@@ -579,11 +590,11 @@ func (op *bltu) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *bltu) MemoryRead(ctx *Context) []int32 {
+func (op *bltu) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *bltu) MemoryWrite(ctx *Context) []int32 {
+func (op *bltu) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -594,9 +605,9 @@ type bne struct {
 	forward Forward
 }
 
-func (op *bne) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *bne) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	if rs1 != rs2 {
 		addr, ok := labels[op.label]
 		if !ok {
@@ -626,11 +637,11 @@ func (op *bne) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *bne) MemoryRead(ctx *Context) []int32 {
+func (op *bne) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *bne) MemoryWrite(ctx *Context) []int32 {
+func (op *bne) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -640,8 +651,8 @@ type bnez struct {
 	forward Forward
 }
 
-func (op *bnez) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs)
+func (op *bnez) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs, sequenceID)
 	if rs1 != 0 {
 		addr, ok := labels[op.label]
 		if !ok {
@@ -671,11 +682,11 @@ func (op *bnez) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *bnez) MemoryRead(ctx *Context) []int32 {
+func (op *bnez) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *bnez) MemoryWrite(ctx *Context) []int32 {
+func (op *bnez) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -686,9 +697,9 @@ type div struct {
 	forward Forward
 }
 
-func (op *div) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *div) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	if rs2 == 0 {
 		return Execution{}, fmt.Errorf("division by zero")
 	}
@@ -716,11 +727,11 @@ func (op *div) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *div) MemoryRead(ctx *Context) []int32 {
+func (op *div) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *div) MemoryWrite(ctx *Context) []int32 {
+func (op *div) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -728,7 +739,7 @@ type j struct {
 	label string
 }
 
-func (op *j) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
+func (op *j) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
 	addr, ok := labels[op.label]
 	if !ok {
 		return Execution{}, fmt.Errorf("label %s does not exist", op.label)
@@ -754,11 +765,11 @@ func (op *j) WriteRegisters() []RegisterType {
 func (op *j) Forward(forward Forward) {
 }
 
-func (op *j) MemoryRead(ctx *Context) []int32 {
+func (op *j) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *j) MemoryWrite(ctx *Context) []int32 {
+func (op *j) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -768,7 +779,7 @@ type jal struct {
 	forward Forward
 }
 
-func (op *jal) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8) (Execution, error) {
+func (op *jal) Run(ctx *Context, labels map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
 	addr, ok := labels[op.label]
 	if !ok {
 		return Execution{}, fmt.Errorf("label %s does not exist", op.label)
@@ -801,11 +812,11 @@ func (op *jal) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *jal) MemoryRead(ctx *Context) []int32 {
+func (op *jal) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *jal) MemoryWrite(ctx *Context) []int32 {
+func (op *jal) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -816,8 +827,8 @@ type jalr struct {
 	forward Forward
 }
 
-func (op *jalr) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *jalr) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	register, value := IsRegisterChange(op.rd, pc+4)
 	return Execution{
 		RegisterChange: true,
@@ -844,11 +855,11 @@ func (op *jalr) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *jalr) MemoryRead(ctx *Context) []int32 {
+func (op *jalr) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *jalr) MemoryWrite(ctx *Context) []int32 {
+func (op *jalr) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -857,7 +868,7 @@ type lui struct {
 	imm int32
 }
 
-func (op *lui) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
+func (op *lui) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
 	register, value := IsRegisterChange(op.rd, op.imm<<12)
 	return Execution{
 		RegisterChange: true,
@@ -881,11 +892,11 @@ func (op *lui) WriteRegisters() []RegisterType {
 func (op *lui) Forward(forward Forward) {
 }
 
-func (op *lui) MemoryRead(ctx *Context) []int32 {
+func (op *lui) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *lui) MemoryWrite(ctx *Context) []int32 {
+func (op *lui) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -896,7 +907,7 @@ type lb struct {
 	forward Forward
 }
 
-func (op *lb) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
+func (op *lb) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
 	n := memory[0]
 	register, value := IsRegisterChange(op.rd, int32(n))
 	return Execution{
@@ -922,12 +933,12 @@ func (op *lb) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *lb) MemoryRead(ctx *Context) []int32 {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *lb) MemoryRead(ctx *Context, sequenceID int32) []int32 {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	return []int32{rs + op.offset}
 }
 
-func (op *lb) MemoryWrite(ctx *Context) []int32 {
+func (op *lb) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -938,8 +949,8 @@ type lh struct {
 	forward Forward
 }
 
-func (op *lh) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	n := I32FromBytes(memory[0], memory[1], 0, 0)
+func (op *lh) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	n := bytes.I32FromBytes(memory[0], memory[1], 0, 0)
 	register, value := IsRegisterChange(op.rd, n)
 	return Execution{
 		RegisterChange: true,
@@ -964,13 +975,13 @@ func (op *lh) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *lh) MemoryRead(ctx *Context) []int32 {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *lh) MemoryRead(ctx *Context, sequenceID int32) []int32 {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	idx := rs + op.offset
 	return []int32{idx, idx + 1}
 }
 
-func (op *lh) MemoryWrite(ctx *Context) []int32 {
+func (op *lh) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -979,7 +990,7 @@ type li struct {
 	imm int32
 }
 
-func (op *li) Run(ctx *Context, _ map[string]int32, _ int32, memory []int8) (Execution, error) {
+func (op *li) Run(ctx *Context, _ map[string]int32, _ int32, memory []int8, sequenceID int32) (Execution, error) {
 	register, value := IsRegisterChange(op.rd, op.imm)
 	return Execution{
 		RegisterChange: true,
@@ -1003,11 +1014,11 @@ func (op *li) WriteRegisters() []RegisterType {
 func (op *li) Forward(forward Forward) {
 }
 
-func (op *li) MemoryRead(ctx *Context) []int32 {
+func (op *li) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *li) MemoryWrite(ctx *Context) []int32 {
+func (op *li) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1018,8 +1029,8 @@ type lw struct {
 	forward Forward
 }
 
-func (op *lw) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	n := I32FromBytes(memory[0], memory[1], memory[2], memory[3])
+func (op *lw) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	n := bytes.I32FromBytes(memory[0], memory[1], memory[2], memory[3])
 	register, value := IsRegisterChange(op.rd, n)
 	if ctx.Debug {
 		fmt.Printf("\t\tRun: Lw %s %d\n", register, value)
@@ -1047,19 +1058,19 @@ func (op *lw) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *lw) MemoryRead(ctx *Context) []int32 {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *lw) MemoryRead(ctx *Context, sequenceID int32) []int32 {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	idx := rs + op.offset
 	return []int32{idx, idx + 1, idx + 2, idx + 3}
 }
 
-func (op *lw) MemoryWrite(ctx *Context) []int32 {
+func (op *lw) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
 type nop struct{}
 
-func (op *nop) Run(_ *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
+func (op *nop) Run(_ *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
 	return Execution{}, nil
 }
 
@@ -1078,11 +1089,11 @@ func (op *nop) WriteRegisters() []RegisterType {
 func (op *nop) Forward(forward Forward) {
 }
 
-func (op *nop) MemoryRead(ctx *Context) []int32 {
+func (op *nop) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *nop) MemoryWrite(ctx *Context) []int32 {
+func (op *nop) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1093,9 +1104,9 @@ type mul struct {
 	forward Forward
 }
 
-func (op *mul) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *mul) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs1*rs2)
 	return Execution{
 		RegisterChange: true,
@@ -1120,11 +1131,11 @@ func (op *mul) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *mul) MemoryRead(ctx *Context) []int32 {
+func (op *mul) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *mul) MemoryWrite(ctx *Context) []int32 {
+func (op *mul) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1134,8 +1145,8 @@ type mv struct {
 	forward Forward
 }
 
-func (op *mv) Run(ctx *Context, _ map[string]int32, _ int32, memory []int8) (Execution, error) {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *mv) Run(ctx *Context, _ map[string]int32, _ int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs)
 	return Execution{
 		RegisterChange: true,
@@ -1160,11 +1171,11 @@ func (op *mv) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *mv) MemoryRead(ctx *Context) []int32 {
+func (op *mv) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *mv) MemoryWrite(ctx *Context) []int32 {
+func (op *mv) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1175,9 +1186,9 @@ type or struct {
 	forward Forward
 }
 
-func (op *or) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *or) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs1|rs2)
 	return Execution{
 		RegisterChange: true,
@@ -1202,11 +1213,11 @@ func (op *or) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *or) MemoryRead(ctx *Context) []int32 {
+func (op *or) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *or) MemoryWrite(ctx *Context) []int32 {
+func (op *or) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1217,8 +1228,8 @@ type ori struct {
 	forward Forward
 }
 
-func (op *ori) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *ori) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs|op.imm)
 	return Execution{
 		RegisterChange: true,
@@ -1243,11 +1254,11 @@ func (op *ori) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *ori) MemoryRead(ctx *Context) []int32 {
+func (op *ori) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *ori) MemoryWrite(ctx *Context) []int32 {
+func (op *ori) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1258,9 +1269,9 @@ type rem struct {
 	forward Forward
 }
 
-func (op *rem) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *rem) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	if ctx.Debug {
 		fmt.Printf("\t\tRun: Rem %d %d\n", rs1, rs2)
 	}
@@ -1288,17 +1299,17 @@ func (op *rem) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *rem) MemoryRead(ctx *Context) []int32 {
+func (op *rem) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *rem) MemoryWrite(ctx *Context) []int32 {
+func (op *rem) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
 type ret struct{}
 
-func (op *ret) Run(_ *Context, _ map[string]int32, _ int32, memory []int8) (Execution, error) {
+func (op *ret) Run(_ *Context, _ map[string]int32, _ int32, memory []int8, sequenceID int32) (Execution, error) {
 	return Execution{Return: true}, nil
 }
 
@@ -1317,11 +1328,11 @@ func (op *ret) WriteRegisters() []RegisterType {
 func (op *ret) Forward(forward Forward) {
 }
 
-func (op *ret) MemoryRead(ctx *Context) []int32 {
+func (op *ret) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *ret) MemoryWrite(ctx *Context) []int32 {
+func (op *ret) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1332,9 +1343,9 @@ type sb struct {
 	forward Forward
 }
 
-func (op *sb) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rd := registerRead(ctx, op.forward, op.rd)
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *sb) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rd := registerRead(ctx, op.forward, op.rd, sequenceID)
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	idx := rd + op.offset
 	n := rs
 	return Execution{
@@ -1359,12 +1370,12 @@ func (op *sb) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *sb) MemoryRead(ctx *Context) []int32 {
+func (op *sb) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *sb) MemoryWrite(ctx *Context) []int32 {
-	rd := registerRead(ctx, op.forward, op.rd)
+func (op *sb) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
+	rd := registerRead(ctx, op.forward, op.rd, sequenceID)
 	idx := rd + op.offset
 	return []int32{idx}
 }
@@ -1376,17 +1387,17 @@ type sh struct {
 	forward Forward
 }
 
-func (op *sh) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rd := registerRead(ctx, op.forward, op.rd)
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *sh) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rd := registerRead(ctx, op.forward, op.rd, sequenceID)
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	idx := rd + op.offset
 	n := rs
-	bytes := BytesFromLowBits(n)
+	b := bytes.BytesFromLowBits(n)
 	return Execution{
 		MemoryChange: true,
 		MemoryChanges: map[int32]int8{
-			idx:     bytes[0],
-			idx + 1: bytes[1],
+			idx:     b[0],
+			idx + 1: b[1],
 		},
 	}, nil
 }
@@ -1407,12 +1418,12 @@ func (op *sh) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *sh) MemoryRead(ctx *Context) []int32 {
+func (op *sh) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *sh) MemoryWrite(ctx *Context) []int32 {
-	rd := registerRead(ctx, op.forward, op.rd)
+func (op *sh) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
+	rd := registerRead(ctx, op.forward, op.rd, sequenceID)
 	idx := rd + op.offset
 	return []int32{idx, idx + 1}
 }
@@ -1424,9 +1435,9 @@ type sll struct {
 	forward Forward
 }
 
-func (op *sll) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *sll) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs1<<uint(rs2))
 	return Execution{
 		RegisterChange: true,
@@ -1451,11 +1462,11 @@ func (op *sll) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *sll) MemoryRead(ctx *Context) []int32 {
+func (op *sll) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *sll) MemoryWrite(ctx *Context) []int32 {
+func (op *sll) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1466,8 +1477,8 @@ type slli struct {
 	forward Forward
 }
 
-func (op *slli) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *slli) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs<<uint(op.imm))
 	return Execution{
 		RegisterChange: true,
@@ -1492,11 +1503,11 @@ func (op *slli) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *slli) MemoryRead(ctx *Context) []int32 {
+func (op *slli) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *slli) MemoryWrite(ctx *Context) []int32 {
+func (op *slli) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1507,11 +1518,11 @@ type slt struct {
 	forward Forward
 }
 
-func (op *slt) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
+func (op *slt) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
 	var register RegisterType
 	var value int32
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	if rs1 < rs2 {
 		register, value = IsRegisterChange(op.rd, 1)
 	} else {
@@ -1540,11 +1551,11 @@ func (op *slt) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *slt) MemoryRead(ctx *Context) []int32 {
+func (op *slt) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *slt) MemoryWrite(ctx *Context) []int32 {
+func (op *slt) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1555,11 +1566,11 @@ type sltu struct {
 	forward Forward
 }
 
-func (op *sltu) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
+func (op *sltu) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
 	var register RegisterType
 	var value int32
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	if rs1 < rs2 {
 		register, value = IsRegisterChange(op.rd, 1)
 	} else {
@@ -1588,11 +1599,11 @@ func (op *sltu) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *sltu) MemoryRead(ctx *Context) []int32 {
+func (op *sltu) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *sltu) MemoryWrite(ctx *Context) []int32 {
+func (op *sltu) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1603,10 +1614,10 @@ type slti struct {
 	forward Forward
 }
 
-func (op *slti) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
+func (op *slti) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
 	var register RegisterType
 	var value int32
-	rs := registerRead(ctx, op.forward, op.rs)
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	if rs < op.imm {
 		register, value = IsRegisterChange(op.rd, 1)
 	} else {
@@ -1635,11 +1646,11 @@ func (op *slti) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *slti) MemoryRead(ctx *Context) []int32 {
+func (op *slti) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *slti) MemoryWrite(ctx *Context) []int32 {
+func (op *slti) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1650,9 +1661,9 @@ type sra struct {
 	forward Forward
 }
 
-func (op *sra) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *sra) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs1>>rs2)
 	return Execution{
 		RegisterChange: true,
@@ -1677,11 +1688,11 @@ func (op *sra) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *sra) MemoryRead(ctx *Context) []int32 {
+func (op *sra) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *sra) MemoryWrite(ctx *Context) []int32 {
+func (op *sra) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1692,8 +1703,8 @@ type srai struct {
 	forward Forward
 }
 
-func (op *srai) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *srai) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs>>op.imm)
 	return Execution{
 		RegisterChange: true,
@@ -1718,11 +1729,11 @@ func (op *srai) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *srai) MemoryRead(ctx *Context) []int32 {
+func (op *srai) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *srai) MemoryWrite(ctx *Context) []int32 {
+func (op *srai) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1733,9 +1744,9 @@ type srl struct {
 	forward Forward
 }
 
-func (op *srl) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *srl) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs1>>rs2)
 	return Execution{
 		RegisterChange: true,
@@ -1760,11 +1771,11 @@ func (op *srl) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *srl) MemoryRead(ctx *Context) []int32 {
+func (op *srl) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *srl) MemoryWrite(ctx *Context) []int32 {
+func (op *srl) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1775,8 +1786,8 @@ type srli struct {
 	forward Forward
 }
 
-func (op *srli) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *srli) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs>>op.imm)
 	return Execution{
 		RegisterChange: true,
@@ -1801,11 +1812,11 @@ func (op *srli) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *srli) MemoryRead(ctx *Context) []int32 {
+func (op *srli) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *srli) MemoryWrite(ctx *Context) []int32 {
+func (op *srli) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1816,9 +1827,9 @@ type sub struct {
 	forward Forward
 }
 
-func (op *sub) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *sub) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs1-rs2)
 	return Execution{
 		RegisterChange: true,
@@ -1843,11 +1854,11 @@ func (op *sub) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *sub) MemoryRead(ctx *Context) []int32 {
+func (op *sub) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *sub) MemoryWrite(ctx *Context) []int32 {
+func (op *sub) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1858,22 +1869,22 @@ type sw struct {
 	forward Forward
 }
 
-func (op *sw) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rd := registerRead(ctx, op.forward, op.rd)
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *sw) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rd := registerRead(ctx, op.forward, op.rd, sequenceID)
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	idx := rd + op.offset
 	n := rs
-	bytes := BytesFromLowBits(n)
+	b := bytes.BytesFromLowBits(n)
 	if ctx.Debug {
 		fmt.Printf("\t\tRun: Sw %d to %d\n", idx, n)
 	}
 	return Execution{
 		MemoryChange: true,
 		MemoryChanges: map[int32]int8{
-			idx:     bytes[0],
-			idx + 1: bytes[1],
-			idx + 2: bytes[2],
-			idx + 3: bytes[3],
+			idx:     b[0],
+			idx + 1: b[1],
+			idx + 2: b[2],
+			idx + 3: b[3],
 		},
 	}, nil
 }
@@ -1894,12 +1905,12 @@ func (op *sw) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *sw) MemoryRead(ctx *Context) []int32 {
+func (op *sw) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *sw) MemoryWrite(ctx *Context) []int32 {
-	rd := registerRead(ctx, op.forward, op.rd)
+func (op *sw) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
+	rd := registerRead(ctx, op.forward, op.rd, sequenceID)
 	idx := rd + op.offset
 	return []int32{idx, idx + 1, idx + 2, idx + 3}
 }
@@ -1911,9 +1922,9 @@ type xor struct {
 	forward Forward
 }
 
-func (op *xor) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs1 := registerRead(ctx, op.forward, op.rs1)
-	rs2 := registerRead(ctx, op.forward, op.rs2)
+func (op *xor) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs1 := registerRead(ctx, op.forward, op.rs1, sequenceID)
+	rs2 := registerRead(ctx, op.forward, op.rs2, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs1^rs2)
 	return Execution{
 		RegisterChange: true,
@@ -1938,11 +1949,11 @@ func (op *xor) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *xor) MemoryRead(ctx *Context) []int32 {
+func (op *xor) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *xor) MemoryWrite(ctx *Context) []int32 {
+func (op *xor) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
@@ -1953,8 +1964,8 @@ type xori struct {
 	forward Forward
 }
 
-func (op *xori) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8) (Execution, error) {
-	rs := registerRead(ctx, op.forward, op.rs)
+func (op *xori) Run(ctx *Context, _ map[string]int32, pc int32, memory []int8, sequenceID int32) (Execution, error) {
+	rs := registerRead(ctx, op.forward, op.rs, sequenceID)
 	register, value := IsRegisterChange(op.rd, rs^op.imm)
 	return Execution{
 		RegisterChange: true,
@@ -1979,10 +1990,10 @@ func (op *xori) Forward(forward Forward) {
 	op.forward = forward
 }
 
-func (op *xori) MemoryRead(ctx *Context) []int32 {
+func (op *xori) MemoryRead(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }
 
-func (op *xori) MemoryWrite(ctx *Context) []int32 {
+func (op *xori) MemoryWrite(ctx *Context, sequenceID int32) []int32 {
 	return nil
 }

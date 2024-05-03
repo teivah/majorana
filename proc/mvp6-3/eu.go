@@ -90,7 +90,7 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 
 	log.Infoi(r.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "executing")
 
-	addrs := u.runner.Runner.MemoryRead(r.ctx)
+	addrs := u.runner.Runner.MemoryRead(r.ctx, 0)
 	if len(addrs) != 0 {
 		memory, pending, exists := u.mmu.getFromL3(addrs)
 		if pending {
@@ -130,7 +130,7 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 }
 
 func (u *executeUnit) run(r euReq) euResp {
-	execution, err := u.runner.Runner.Run(r.ctx, r.app.Labels, u.runner.Pc, u.memory)
+	execution, err := u.runner.Runner.Run(r.ctx, r.app.Labels, u.runner.Pc, u.memory, 0)
 	if err != nil {
 		return euResp{err: err}
 	}

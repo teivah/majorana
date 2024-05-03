@@ -1,4 +1,4 @@
-package risc
+package bytes
 
 func BytesFromLowBits(n int32) [4]int8 {
 	var i1, i2, i3, i4 int8

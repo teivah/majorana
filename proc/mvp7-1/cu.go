@@ -275,7 +275,7 @@ func (u *controlUnit) pushRunner(ctx *risc.Context, cycle int, runner *risc.Inst
 
 func (u *controlUnit) getExecutionUnitIDPreference(runner *risc.InstructionRunnerPc) option.Optional[int] {
 	if runner.Runner.InstructionType().IsMemoryRead() {
-		addr := getAlignedMemoryAddress(runner.Runner.MemoryRead(u.ctx))
+		addr := getAlignedMemoryAddress(runner.Runner.MemoryRead(u.ctx, runner.SequenceID))
 		readers := u.getReaders(addr)
 		if len(readers) == 0 {
 			return option.None[int]()
@@ -284,7 +284,7 @@ func (u *controlUnit) getExecutionUnitIDPreference(runner *risc.InstructionRunne
 		//return option.None[int]()
 		return option.Of[int](readers[len(readers)-1])
 	} else if runner.Runner.InstructionType().IsMemoryWrite() {
-		addr := getAlignedMemoryAddress(runner.Runner.MemoryWrite(u.ctx))
+		addr := getAlignedMemoryAddress(runner.Runner.MemoryWrite(u.ctx, runner.SequenceID))
 		return u.getWriter(addr)
 		//return option.None[int]()
 	} else {

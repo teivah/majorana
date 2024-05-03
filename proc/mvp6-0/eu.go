@@ -53,7 +53,7 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 
 	log.Infoi(ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "executing")
 
-	addrs := u.runner.Runner.MemoryRead(ctx)
+	addrs := u.runner.Runner.MemoryRead(ctx, 0)
 	if len(addrs) != 0 {
 		memory, pending, exists := u.mmu.getFromL3(addrs)
 		if pending {
@@ -93,7 +93,7 @@ func (u *executeUnit) coPrepareRun(cycle int, ctx *risc.Context, app risc.Applic
 
 func (u *executeUnit) coRun(cycle int, ctx *risc.Context, app risc.Application) (bool, int32, int32, bool, error) {
 	u.coroutine = nil
-	execution, err := u.runner.Runner.Run(ctx, app.Labels, u.runner.Pc, u.memory)
+	execution, err := u.runner.Runner.Run(ctx, app.Labels, u.runner.Pc, u.memory, 0)
 	if err != nil {
 		return false, 0, 0, false, err
 	}

@@ -25,6 +25,31 @@ func (r *RAT[K, V]) Read(k K) (V, bool) {
 	return r.values[k][idx], true
 }
 
+func (r *RAT[K, V]) Find(k K, predicate func(V) bool) (V, bool) {
+	var zero V
+
+	idx, exists := r.idx[k]
+	if !exists {
+		return zero, false
+	}
+
+	for i := idx; i >= 0; i-- {
+		v := r.values[k][idx]
+		if predicate(v) {
+			return v, true
+		}
+	}
+
+	for i := r.length - 1; i > idx; i-- {
+		v := r.values[k][idx]
+		if predicate(v) {
+			return v, true
+		}
+	}
+
+	return zero, false
+}
+
 func (r *RAT[K, V]) Write(k K, value V) {
 	idx, exists := r.idx[k]
 	if !exists {

@@ -80,7 +80,7 @@ func (m *CPU) decode(app risc.Application, pc int32) risc.InstructionRunner {
 }
 
 func (m *CPU) execute(app risc.Application, r risc.InstructionRunner, pc int32) (risc.Execution, risc.InstructionType, error) {
-	addrs := r.MemoryRead(m.ctx)
+	addrs := r.MemoryRead(m.ctx, 0)
 	var memory []int8
 	if len(addrs) != 0 {
 		for _, addr := range addrs {
@@ -89,7 +89,7 @@ func (m *CPU) execute(app risc.Application, r risc.InstructionRunner, pc int32) 
 		m.cycle += latency.MemoryAccess
 	}
 
-	exe, err := r.Run(m.ctx, app.Labels, pc, memory)
+	exe, err := r.Run(m.ctx, app.Labels, pc, memory, 0)
 	if err != nil {
 		return risc.Execution{}, 0, err
 	}

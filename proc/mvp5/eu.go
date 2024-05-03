@@ -87,7 +87,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 		fmt.Printf("\tEU: Executing instruction %d\n", eu.runner.Pc/4)
 	}
 
-	addrs := runner.Runner.MemoryRead(ctx)
+	addrs := runner.Runner.MemoryRead(ctx, 0)
 	if len(addrs) != 0 {
 		if m, exists := eu.mmu.getFromL1D(addrs); exists {
 			eu.memory = m
@@ -108,7 +108,7 @@ func (eu *executeUnit) cycle(ctx *risc.Context, app risc.Application, inBus *com
 }
 
 func (eu *executeUnit) run(ctx *risc.Context, app risc.Application, outBus *comp.SimpleBus[risc.ExecutionContext], memory []int8) (bool, int32, bool, error) {
-	execution, err := eu.runner.Runner.Run(ctx, app.Labels, eu.runner.Pc, memory)
+	execution, err := eu.runner.Runner.Run(ctx, app.Labels, eu.runner.Pc, memory, 0)
 	if err != nil {
 		return false, 0, false, err
 	}

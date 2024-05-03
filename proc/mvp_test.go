@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/teivah/majorana/common/bytes"
 	"github.com/teivah/majorana/proc/mvp1"
 	"github.com/teivah/majorana/proc/mvp2"
 	"github.com/teivah/majorana/proc/mvp3"
@@ -302,13 +303,13 @@ func TestMvp7_0_3x3(t *testing.T) {
 	factory := func(memory int) virtualMachine {
 		return mvp7_0.NewCPU(false, memory, 3)
 	}
-	//testPrime(t, factory, memory, testFrom, testTo, false)
-	//testSums(t, factory, memory, testFrom, testTo, false)
-	//testStringLength(t, factory, 1024, testTo, false)
-	//testStringCopy(t, factory, testTo*2, testTo, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, testBubSort, factory, true)
-	//testConditionalBranch(t, factory, false)
-	//testSpectre(t, factory, false)
+	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func TestMvp7_1_2x2(t *testing.T) {
@@ -330,13 +331,13 @@ func TestMvp7_1_3x3(t *testing.T) {
 	factory := func(memory int) virtualMachine {
 		return mvp7_1.NewCPU(false, memory, 3)
 	}
-	//testPrime(t, factory, memory, testFrom, testTo, false)
-	//testSums(t, factory, memory, testFrom, testTo, false)
-	//testStringLength(t, factory, 1024, testTo, false)
-	//testStringCopy(t, factory, testTo*2, testTo, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, testBubSort, factory, false)
-	//testConditionalBranch(t, factory, false)
-	//testSpectre(t, factory, false)
+	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
@@ -351,7 +352,7 @@ func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to 
 			vm := factory(memory)
 			instructions := test.ReadFile(t, "../res/prime-number.asm")
 			app, err := risc.Parse(instructions)
-			bytes := risc.BytesFromLowBits(int32(i))
+			bytes := bytes.BytesFromLowBits(int32(i))
 			vm.Context().Memory[0] = bytes[0]
 			vm.Context().Memory[1] = bytes[1]
 			vm.Context().Memory[2] = bytes[2]
@@ -380,7 +381,7 @@ func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to 
 			vm := factory(memory)
 			instructions := test.ReadFile(t, "../res/prime-number-2.asm")
 			app, err := risc.Parse(instructions)
-			bytes := risc.BytesFromLowBits(int32(i))
+			bytes := bytes.BytesFromLowBits(int32(i))
 			vm.Context().Memory[0] = bytes[0]
 			vm.Context().Memory[1] = bytes[1]
 			vm.Context().Memory[2] = bytes[2]
@@ -414,7 +415,7 @@ func testSums(t *testing.T, factory func(int) virtualMachine, memory, from, to i
 			vm := factory(memory)
 			n := i
 			for i := 0; i < n; i++ {
-				bytes := risc.BytesFromLowBits(int32(i))
+				bytes := bytes.BytesFromLowBits(int32(i))
 				vm.Context().Memory[4*i+0] = bytes[0]
 				vm.Context().Memory[4*i+1] = bytes[1]
 				vm.Context().Memory[4*i+2] = bytes[2]
@@ -459,7 +460,7 @@ func testStringLength(t *testing.T, factory func(int) virtualMachine, memory int
 		cycle, err := vm.Run(app)
 		require.NoError(t, err)
 
-		got := risc.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
+		got := bytes.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
 		assert.Equal(t, int32(length), got)
 
 		if stats {
@@ -504,7 +505,7 @@ func testBubbleSort(t *testing.T, length int, factory func(int) virtualMachine, 
 	t.Run("Bubble sort", func(t *testing.T) {
 		vm := factory(length * 4)
 		for i := 0; i < length; i++ {
-			bytes := risc.BytesFromLowBits(int32(length - i))
+			bytes := bytes.BytesFromLowBits(int32(length - i))
 			vm.Context().Memory[4*i+0] = bytes[0]
 			vm.Context().Memory[4*i+1] = bytes[1]
 			vm.Context().Memory[4*i+2] = bytes[2]
@@ -520,7 +521,7 @@ func testBubbleSort(t *testing.T, length int, factory func(int) virtualMachine, 
 		require.NoError(t, err)
 
 		for i := 0; i < length; i++ {
-			n := risc.I32FromBytes(vm.Context().Memory[4*i], vm.Context().Memory[4*i+1], vm.Context().Memory[4*i+2], vm.Context().Memory[4*i+3])
+			n := bytes.I32FromBytes(vm.Context().Memory[4*i], vm.Context().Memory[4*i+1], vm.Context().Memory[4*i+2], vm.Context().Memory[4*i+3])
 			require.Equal(t, int32(i+1), n)
 		}
 
@@ -560,7 +561,7 @@ func testSpectre(t *testing.T, factory func(int) virtualMachine, stats bool) {
 		secret := 42
 		data := []int{3, 1, 2, 3, 0, 0, 0, 0, 0, secret}
 		for idx, i := range data {
-			bytes := risc.BytesFromLowBits(int32(i))
+			bytes := bytes.BytesFromLowBits(int32(i))
 			vm.Context().Memory[4*idx+0] = bytes[0]
 			vm.Context().Memory[4*idx+1] = bytes[1]
 			vm.Context().Memory[4*idx+2] = bytes[2]
@@ -571,7 +572,7 @@ func testSpectre(t *testing.T, factory func(int) virtualMachine, stats bool) {
 		require.NoError(t, err)
 		_, err = vm.Run(app)
 		require.NoError(t, err)
-		got := risc.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
+		got := bytes.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
 		assert.NotEqual(t, int32(secret), got)
 	})
 }
@@ -689,7 +690,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_2: 3834899,
 			versionMVP6_3: 1956067,
 			versionMVP7_0: 303003,
-			versionMVP7_1: 303003,
+			versionMVP7_1: 302682,
 		},
 		"String length": {
 			versionMVP1:   19622376,
@@ -715,7 +716,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_2: 2677345,
 			versionMVP6_3: 2677345,
 			versionMVP7_0: 24232735,
-			versionMVP7_1: 24232735,
+			versionMVP7_1: 1067282,
 		},
 	}
 
@@ -766,7 +767,7 @@ func TestBenchmarks(t *testing.T) {
 				}
 
 				vm := factory(5)
-				bytes := risc.BytesFromLowBits(int32(benchPrimeNumber))
+				bytes := bytes.BytesFromLowBits(int32(benchPrimeNumber))
 				vm.Context().Memory[0] = bytes[0]
 				vm.Context().Memory[1] = bytes[1]
 				vm.Context().Memory[2] = bytes[2]
@@ -800,7 +801,7 @@ func TestBenchmarks(t *testing.T) {
 				vm := factory(memory)
 				n := benchSums
 				for i := 0; i < n; i++ {
-					bytes := risc.BytesFromLowBits(int32(i))
+					bytes := bytes.BytesFromLowBits(int32(i))
 					vm.Context().Memory[4*i+0] = bytes[0]
 					vm.Context().Memory[4*i+1] = bytes[1]
 					vm.Context().Memory[4*i+2] = bytes[2]
@@ -881,7 +882,7 @@ func TestBenchmarks(t *testing.T) {
 				cycles, err := vm.Run(app)
 				require.NoError(t, err)
 
-				got := risc.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
+				got := bytes.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
 				assert.Equal(t, int32(length), got)
 
 				assert.Equal(t, v, cycles)
@@ -903,7 +904,7 @@ func TestBenchmarks(t *testing.T) {
 				data := benchBubSort
 				vm := factory(data * 4)
 				for i := 0; i < data; i++ {
-					bytes := risc.BytesFromLowBits(int32(data - i))
+					bytes := bytes.BytesFromLowBits(int32(data - i))
 					vm.Context().Memory[4*i+0] = bytes[0]
 					vm.Context().Memory[4*i+1] = bytes[1]
 					vm.Context().Memory[4*i+2] = bytes[2]
@@ -919,7 +920,7 @@ func TestBenchmarks(t *testing.T) {
 				require.NoError(t, err)
 
 				for i := 0; i < data; i++ {
-					n := risc.I32FromBytes(vm.Context().Memory[4*i], vm.Context().Memory[4*i+1], vm.Context().Memory[4*i+2], vm.Context().Memory[4*i+3])
+					n := bytes.I32FromBytes(vm.Context().Memory[4*i], vm.Context().Memory[4*i+1], vm.Context().Memory[4*i+2], vm.Context().Memory[4*i+3])
 					require.Equal(t, int32(i+1), n)
 				}
 

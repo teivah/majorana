@@ -95,7 +95,7 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 
 	log.Infoi(u.ctx, "EU", u.runner.Runner.InstructionType(), u.runner.Pc, "executing")
 
-	addrs := u.runner.Runner.MemoryRead(u.ctx)
+	addrs := u.runner.Runner.MemoryRead(u.ctx, 0)
 	if len(addrs) != 0 {
 		return u.ExecuteWithCheckpoint(r, func(r euReq) euResp {
 			resp := u.cc.read.Cycle(ccReadReq{r.cycle, addrs})
@@ -110,7 +110,7 @@ func (u *executeUnit) prepareRun(r euReq) euResp {
 }
 
 func (u *executeUnit) run(r euReq) euResp {
-	execution, err := u.runner.Runner.Run(u.ctx, r.app.Labels, u.runner.Pc, u.memory)
+	execution, err := u.runner.Runner.Run(u.ctx, r.app.Labels, u.runner.Pc, u.memory, 0)
 	if err != nil {
 		return euResp{err: err}
 	}

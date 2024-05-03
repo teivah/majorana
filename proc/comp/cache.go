@@ -74,13 +74,20 @@ func (c *LRUCache) EvictCacheLine(addr AlignedAddress) ([]int8, bool) {
 	return nil, false
 }
 
+var Delta = 0
+
 func (c *LRUCache) Write(addr int32, data []int8) {
+	Delta++
 	for _, l := range c.lines {
 		if _, exists := l.get(addr); exists {
 			for i, v := range data {
 				l.set(addr+int32(i), v)
 			}
-			fmt.Println(addr/4, l)
+			//{
+			//addr := addr / 4
+			//v := bytes.I32FromBytes(data[0], data[1], data[2], data[3])
+			//fmt.Println(addr, v, l)
+			//}
 			return
 		}
 	}
