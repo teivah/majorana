@@ -140,6 +140,10 @@ Register renaming to tackle waw and war
 
 L1D per core, MSI protocol implementation; yet, lots of "false sharing"
 
+#### MVP-7.1
+
+The CU syncs to the MSI when there was an eviction (lost a cycle) but then tells that a particular instruction has to be executed by a specific core.
+
 ## Benchmarks
 
 All the benchmarks are executed at a fixed CPU clock frequency of 3.2 GHz.

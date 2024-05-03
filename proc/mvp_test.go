@@ -690,7 +690,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_2: 3834899,
 			versionMVP6_3: 1956067,
 			versionMVP7_0: 303003,
-			versionMVP7_1: 302682,
+			versionMVP7_1: 303003,
 		},
 		"String length": {
 			versionMVP1:   19622376,
@@ -716,7 +716,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_2: 2677345,
 			versionMVP6_3: 2677345,
 			versionMVP7_0: 24232735,
-			versionMVP7_1: 1067282,
+			versionMVP7_1: 1229959,
 		},
 	}
 

@@ -22,7 +22,6 @@ type controlUnit struct {
 	skippedInCurrentCycle        []risc.InstructionRunnerPc
 	pushedBranchInCurrentCycle   bool
 	pendingConditionalBranch     bool
-	count                        int
 	msi                          *msi
 	// A copy, not necessarily up-to-date
 	msiStatesCopy     map[msiEntry]msiState
@@ -40,7 +39,7 @@ type controlUnit struct {
 	blockedDataHazard int
 }
 
-func newControlUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc], msi *msi, msiFetchFrequency int) *controlUnit {
+func newControlUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc], msi *msi) *controlUnit {
 	return &controlUnit{
 		ctx:                          ctx,
 		inBus:                        inBus,
@@ -53,17 +52,15 @@ func newControlUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.InstructionR
 		pushedRunnersInCurrentCycle:  make(map[*risc.InstructionRunnerPc]bool),
 		pushedRunnersInPreviousCycle: make(map[*risc.InstructionRunnerPc]bool),
 		msi:                          msi,
-		msiFetchFrequency:            msiFetchFrequency,
 		msiStatesCopy:                make(map[msiEntry]msiState),
 	}
 }
 
 func (u *controlUnit) cycle(cycle int) {
-	u.count++
-	if u.count%u.msiFetchFrequency == 0 {
-		// Simulate a MSI state synchronization
+	if u.msi.stateToBeSynchronized {
 		u.msiStatesCopy = u.msi.copyState()
-		//return
+		u.msi.stateToBeSynchronized = false
+		return
 	}
 
 	u.pushedRunnersInCurrentCycle = make(map[*risc.InstructionRunnerPc]bool)

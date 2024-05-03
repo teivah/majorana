@@ -51,7 +51,7 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 	fu := newFetchUnit(ctx, decodeBus)
 	du := newDecodeUnit(ctx, decodeBus, controlBus)
 	//cu := newControlUnit(ctx, controlBus, executeBus, msi, 100000)
-	cu := newControlUnit(ctx, controlBus, executeBus, msi, 1)
+	cu := newControlUnit(ctx, controlBus, executeBus, msi)
 	bu := newBTBBranchUnit(ctx, 4, fu, du, cu)
 
 	eus := make([]*executeUnit, 0, parallelism)
