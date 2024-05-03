@@ -48,3 +48,24 @@ func getAssert(t *testing.T, c *LRUCache) func(int32, int8, bool) {
 		assert.Equal(t, b, exists)
 	}
 }
+
+func TestLRUCache_GetSubCacheLine(t *testing.T) {
+	c := NewLRUCache(4, 4)
+	c.PushLine(4, []int8{0, 1, 2, 3})
+
+	_, _, exists := c.GetSubCacheLine([]int32{0, 1}, 2)
+	assert.False(t, exists)
+
+	_, _, exists = c.GetSubCacheLine([]int32{8, 9}, 2)
+	assert.False(t, exists)
+
+	addr, data, exists := c.GetSubCacheLine([]int32{4, 5}, 2)
+	assert.True(t, exists)
+	assert.Equal(t, AlignedAddress(4), addr)
+	assert.Equal(t, []int8{0, 1}, data)
+
+	addr, data, exists = c.GetSubCacheLine([]int32{6, 7}, 2)
+	assert.True(t, exists)
+	assert.Equal(t, AlignedAddress(6), addr)
+	assert.Equal(t, []int8{2, 3}, data)
+}

@@ -72,9 +72,9 @@ func (c *LRUCache) GetSubCacheLine(addrs []int32, lineLength int32) (AlignedAddr
 			smallerAlignAddr := getAlignedMemoryAddress(addrs, lineLength)
 			data := make([]int8, 0, lineLength)
 			for i := 0; i < int(lineLength); i++ {
-				data = append(data, l.Data[i+int(smallerAlignAddr)])
+				data = append(data, l.Data[int(l.Boundary[0])-int(smallerAlignAddr)+i])
 			}
-			return smallerAlignAddr, l.Data, true
+			return smallerAlignAddr, data, true
 		}
 	}
 	return 0, nil, false

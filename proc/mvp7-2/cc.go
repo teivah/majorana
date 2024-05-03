@@ -71,14 +71,14 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 
 	for req, info := range requests {
 		switch req.request {
-		case evict:
+		case l1Evict:
 			cc.msi.staleState = true
 			cc.snoop.Append(func(struct{}) bool {
 				_, _ = cc.l1d.EvictCacheLine(req.alignedAddr)
 				info.done()
 				return true
 			})
-		case writeBack:
+		case l1WriteBack:
 			cycles := latency.MemoryAccess
 			cc.snoop.Append(func(struct{}) bool {
 				if cycles > 0 {
@@ -140,15 +140,53 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 					panic("invalid state")
 				}
 				cycles := latency.MemoryAccess
-				lineAddr, data := cc.mmu.fetchCacheLine(r.addrs[0], l1DCacheLineSize)
+				l3Addr, l3Data := cc.mmu.fetchCacheLine(r.addrs[0], l3CacheLineSize)
 				return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
 					if cycles > 0 {
 						cycles--
 						return ccReadResp{}
 					}
-					shouldEvict := cc.pushLineToL1(lineAddr, data)
+
+					shouldL3Evict := cc.pushLineToL3(l3Addr, l3Data)
+					if shouldL3Evict != nil {
+						pending := cc.msi.evictL3ExtraCacheLine(cc.id, shouldL3Evict.Boundary[0])
+						cc.read.Checkpoint(func(r ccReadReq) ccReadResp {
+							if pending != nil && !pending.isDone() {
+								return ccReadResp{}
+							}
+
+							// A
+							l1Addr, l1Data, exists := cc.l3.GetSubCacheLine(r.addrs, l1DCacheLineSize)
+							if !exists {
+								panic("invalid state")
+							}
+							shouldEvict := cc.pushLineToL1(l1Addr, l1Data)
+							if shouldEvict != nil {
+								pending := cc.msi.evictL1ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
+								cc.read.Checkpoint(func(r ccReadReq) ccReadResp {
+									if pending != nil && !pending.isDone() {
+										return ccReadResp{}
+									}
+
+									cc.post = post
+									return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
+								})
+								return ccReadResp{}
+							}
+							cc.post = post
+							return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
+						})
+						return ccReadResp{}
+					}
+
+					// A
+					l1Addr, l1Data, exists := cc.l3.GetSubCacheLine(r.addrs, l1DCacheLineSize)
+					if !exists {
+						panic("invalid state")
+					}
+					shouldEvict := cc.pushLineToL1(l1Addr, l1Data)
 					if shouldEvict != nil {
-						pending := cc.msi.evictExtraCacheLine(cc.id, shouldEvict.Boundary[0])
+						pending := cc.msi.evictL1ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
 						cc.read.Checkpoint(func(r ccReadReq) ccReadResp {
 							if pending != nil && !pending.isDone() {
 								return ccReadResp{}
@@ -209,7 +247,7 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 
 				shouldEvict := cc.pushLineToL1(addr, line)
 				if shouldEvict != nil {
-					pending := cc.msi.evictExtraCacheLine(cc.id, shouldEvict.Boundary[0])
+					pending := cc.msi.evictL1ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
 					cycles = latency.L1Access
 					cc.write.Checkpoint(func(r ccWriteReq) ccWriteResp {
 						if pending != nil && !pending.isDone() {
@@ -265,6 +303,17 @@ func (cc *cacheController) pushLineToL1(addr comp.AlignedAddress, line []int8) *
 	return cc.l1d.PushLineWithEvictionWarning(addr, line)
 }
 
+func (cc *cacheController) pushLineToL3(addr comp.AlignedAddress, line []int8) *comp.Line {
+	if len(line) != l3CacheLineSize {
+		panic("invalid state")
+	}
+	if cc.isAddressInL3([]int32{int32(addr)}) {
+		// No need to wait if it was already in L3
+		return nil
+	}
+	return cc.l3.PushLineWithEvictionWarning(addr, line)
+}
+
 func (cc *cacheController) isAddressInL1(addrs []int32) bool {
 	_, exists := cc.l1d.Get(addrs[0])
 	return exists
@@ -274,6 +323,23 @@ func (cc *cacheController) getFromL1(addrs []int32) []int8 {
 	memory := make([]int8, 0, len(addrs))
 	for _, addr := range addrs {
 		v, exists := cc.l1d.Get(addr)
+		if !exists {
+			panic("value presence should have been checked first")
+		}
+		memory = append(memory, v)
+	}
+	return memory
+}
+
+func (cc *cacheController) isAddressInL3(addrs []int32) bool {
+	_, exists := cc.l3.Get(addrs[0])
+	return exists
+}
+
+func (cc *cacheController) getFromL3(addrs []int32) []int8 {
+	memory := make([]int8, 0, len(addrs))
+	for _, addr := range addrs {
+		v, exists := cc.l3.Get(addr)
 		if !exists {
 			panic("value presence should have been checked first")
 		}

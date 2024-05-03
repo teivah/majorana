@@ -15,7 +15,7 @@ const (
 	l1ICacheSize     = 1 * kilobytes
 	l1DCacheLineSize = 64 * bytes
 	l1DCacheSize     = 1 * kilobytes
-	l3CacheLineSize  = 64 * bytes
+	l3CacheLineSize  = 128 * bytes
 	l3CacheSize      = 1 * kilobytes
 )
 

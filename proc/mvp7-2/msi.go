@@ -18,8 +18,10 @@ type requestType = int32
 
 const (
 	// Make sure a zero value isn't confused with an element
-	evict requestType = iota + 1
-	writeBack
+	l1Evict requestType = iota + 1
+	l1WriteBack
+	l3Evict
+	l3WriteBack
 )
 
 // msiResponse represents the response to an MSI query.
@@ -162,7 +164,7 @@ func (m *msi) readRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommand
 		}
 		switch state {
 		case modified:
-			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, writeBack))
+			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, l1WriteBack))
 		}
 	}
 	return pendings
@@ -227,9 +229,9 @@ func (m *msi) writeRequest(id int, alignedAddr comp.AlignedAddress) []*msiComman
 		}
 		switch state {
 		case modified:
-			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, writeBack))
+			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, l1WriteBack))
 		case shared:
-			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, evict))
+			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, l1Evict))
 		}
 	}
 	return pendings
@@ -248,25 +250,40 @@ func (m *msi) invalidationRequest(id int, alignedAddr comp.AlignedAddress) []*ms
 		// We want to evict the line with or without write-back first
 		switch state {
 		case modified:
-			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, writeBack))
+			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, l1WriteBack))
 		case shared:
-			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, evict))
+			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, l1Evict))
 		}
 	}
 	return pendings
 }
 
-// evictExtraCacheLine evicts a cache line when L1 is full
-func (m *msi) evictExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *msiCommandInfo {
+// evictL1ExtraCacheLine evicts a cache line when L1 is full
+func (m *msi) evictL1ExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *msiCommandInfo {
 	state := m.states[msiEntry{
 		id:          id,
 		alignedAddr: alignedAddr,
 	}]
 	switch state {
 	case shared:
-		return m.sendNewMSICommand(id, alignedAddr, evict)
+		return m.sendNewMSICommand(id, alignedAddr, l1Evict)
 	case modified:
-		return m.sendNewMSICommand(id, alignedAddr, writeBack)
+		return m.sendNewMSICommand(id, alignedAddr, l1WriteBack)
+	default:
+		return nil
+	}
+}
+
+func (m *msi) evictL3ExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *msiCommandInfo {
+	state := m.states[msiEntry{
+		id:          id,
+		alignedAddr: alignedAddr,
+	}]
+	switch state {
+	case shared:
+		return m.sendNewMSICommand(id, alignedAddr, l3Evict)
+	case modified:
+		return m.sendNewMSICommand(id, alignedAddr, l3WriteBack)
 	default:
 		return nil
 	}
@@ -322,9 +339,9 @@ func (m *msi) sendNewMSICommand(id int, alignedAddr comp.AlignedAddress, request
 			request: request,
 		}
 		m.commands[cmdRequest] = newCommand
-		if request == evict {
+		if request == l1Evict {
 			m.evictRequestCount++
-		} else if request == writeBack {
+		} else if request == l1WriteBack {
 			m.writeBackRequestCount++
 		}
 		return newCommand
