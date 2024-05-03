@@ -16,7 +16,7 @@ func newMemoryManagementUnit(ctx *risc.Context) *memoryManagementUnit {
 }
 
 func (u *memoryManagementUnit) fetchCacheLine(addr int32, cacheLineSize int32) (comp.AlignedAddress, []int8) {
-	alignedAddr := getAlignedMemoryAddress([]int32{addr})
+	alignedAddr := getL1AlignedMemoryAddress([]int32{addr})
 	memory := make([]int8, 0, cacheLineSize)
 	for i := 0; i < int(cacheLineSize); i++ {
 		if int(alignedAddr)+i >= len(u.ctx.Memory) {

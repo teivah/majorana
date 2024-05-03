@@ -64,6 +64,27 @@ func (c *LRUCache) GetCacheLine(addr AlignedAddress) ([]int8, bool) {
 	return nil, false
 }
 
+// GetSubCacheLine return a smaller cache line within a cache with bigger cache
+// lines. For example, returning a L1 cache line size in a L3 cache.
+func (c *LRUCache) GetSubCacheLine(addrs []int32, lineLength int32) (AlignedAddress, []int8, bool) {
+	for _, l := range c.lines {
+		if _, exists := l.get(addrs[0]); exists {
+			smallerAlignAddr := getAlignedMemoryAddress(addrs, lineLength)
+			data := make([]int8, 0, lineLength)
+			for i := 0; i < int(lineLength); i++ {
+				data = append(data, l.Data[i+int(smallerAlignAddr)])
+			}
+			return smallerAlignAddr, l.Data, true
+		}
+	}
+	return 0, nil, false
+}
+
+func getAlignedMemoryAddress(addrs []int32, align int32) AlignedAddress {
+	addr := addrs[0]
+	return AlignedAddress(addr - (addr % align))
+}
+
 func (c *LRUCache) EvictCacheLine(addr AlignedAddress) ([]int8, bool) {
 	for i, l := range c.lines {
 		if _, exists := l.get(int32(addr)); exists {

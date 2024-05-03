@@ -56,8 +56,9 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 	eus := make([]*executeUnit, 0, parallelism)
 	wus := make([]*writeUnit, 0, parallelism)
 	ccs := make([]*cacheController, 0, parallelism)
+	l3 := comp.NewLRUCache(l3CacheLineSize, l3CacheSize)
 	for i := 0; i < parallelism; i++ {
-		cc := newCacheController(i, ctx, mmu, msi)
+		cc := newCacheController(i, ctx, mmu, msi, l3)
 		ccs = append(ccs, cc)
 		eus = append(eus, newExecuteUnit(i, ctx, bu, executeBus, writeBus, mmu, cc))
 		wus = append(wus, newWriteUnit(ctx, writeBus))
@@ -90,9 +91,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	cycle := 0
 	for {
 		cycle++
-		//if cycle > 10000 {
-		//	return 0, nil
-		//}
 		log.Info(m.ctx, "Cycle %d", cycle)
 		m.decodeBus.Connect(cycle)
 		m.controlBus.Connect(cycle)

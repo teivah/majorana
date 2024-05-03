@@ -32,6 +32,7 @@ type cacheController struct {
 	id        int
 	mmu       *memoryManagementUnit
 	l1d       *comp.LRUCache
+	l3        *comp.LRUCache
 	read      co.Coroutine[ccReadReq, ccReadResp]
 	write     co.Coroutine[ccWriteReq, ccWriteResp]
 	snoop     co.Coroutine[struct{}, struct{}]
@@ -43,12 +44,13 @@ type cacheController struct {
 	post func()
 }
 
-func newCacheController(id int, ctx *risc.Context, mmu *memoryManagementUnit, msi *msi) *cacheController {
+func newCacheController(id int, ctx *risc.Context, mmu *memoryManagementUnit, msi *msi, l3 *comp.LRUCache) *cacheController {
 	cc := &cacheController{
 		ctx:       ctx,
 		id:        id,
 		mmu:       mmu,
 		l1d:       comp.NewLRUCache(l1DCacheLineSize, l1DCacheSize),
+		l3:        l3,
 		msi:       msi,
 		rlockSems: make(map[comp.AlignedAddress]*comp.Sem),
 		lockSems:  make(map[comp.AlignedAddress]*comp.Sem),
@@ -103,9 +105,17 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 	return struct{}{}
 }
 
-func getAlignedMemoryAddress(addrs []int32) comp.AlignedAddress {
+func getL1AlignedMemoryAddress(addrs []int32) comp.AlignedAddress {
+	return getAlignedMemoryAddress(addrs, l1DCacheLineSize)
+}
+
+func getL3AlignedMemoryAddress(addrs []int32) comp.AlignedAddress {
+	return getAlignedMemoryAddress(addrs, l3CacheLineSize)
+}
+
+func getAlignedMemoryAddress(addrs []int32, align int32) comp.AlignedAddress {
 	addr := addrs[0]
-	return comp.AlignedAddress(addr - (addr % l1DCacheLineSize))
+	return comp.AlignedAddress(addr - (addr % align))
 }
 
 func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
@@ -113,7 +123,7 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 	if resp.wait {
 		return ccReadResp{}
 	}
-	cc.rlockSems[getAlignedMemoryAddress(r.addrs)] = sem
+	cc.rlockSems[getL1AlignedMemoryAddress(r.addrs)] = sem
 	return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
 		for _, pending := range resp.pendings {
 			if !pending.isDone() {
@@ -122,11 +132,11 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 		}
 
 		return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
-			if resp.readFromL1 {
+			if resp.fromL1 {
 				cc.post = post
 				return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
-			} else if resp.fetchFromMemory {
-				if _, exists := cc.l1d.GetCacheLine(getAlignedMemoryAddress(r.addrs)); exists {
+			} else if resp.notFromL1 {
+				if _, exists := cc.l1d.GetCacheLine(getL1AlignedMemoryAddress(r.addrs)); exists {
 					panic("invalid state")
 				}
 				cycles := latency.MemoryAccess
@@ -170,7 +180,7 @@ func (cc *cacheController) coReadFromL1(r ccReadReq) ccReadResp {
 		cc.post()
 		cc.post = nil
 		cc.read.Reset()
-		delete(cc.rlockSems, getAlignedMemoryAddress(r.addrs))
+		delete(cc.rlockSems, getL1AlignedMemoryAddress(r.addrs))
 		return ccReadResp{data, true}
 	})
 }
@@ -180,7 +190,7 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 	if resp.wait {
 		return ccWriteResp{}
 	}
-	cc.lockSems[getAlignedMemoryAddress(r.addrs)] = sem
+	cc.lockSems[getL1AlignedMemoryAddress(r.addrs)] = sem
 	return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
 		for _, pending := range resp.pendings {
 			if !pending.isDone() {
@@ -188,7 +198,7 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 			}
 		}
 
-		if resp.fetchFromMemory {
+		if resp.notFromL1 {
 			cycles := latency.MemoryAccess
 			addr, line := cc.mmu.fetchCacheLine(r.addrs[0], l1DCacheLineSize)
 			return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
@@ -239,12 +249,15 @@ func (cc *cacheController) coWriteToL1(r ccWriteReq) ccWriteResp {
 		cc.post()
 		cc.post = nil
 		cc.write.Reset()
-		delete(cc.lockSems, getAlignedMemoryAddress(r.addrs))
+		delete(cc.lockSems, getL1AlignedMemoryAddress(r.addrs))
 		return ccWriteResp{done: true}
 	})
 }
 
 func (cc *cacheController) pushLineToL1(addr comp.AlignedAddress, line []int8) *comp.Line {
+	if len(line) != l1DCacheLineSize {
+		panic("invalid state")
+	}
 	if cc.isAddressInL1([]int32{int32(addr)}) {
 		// No need to wait if it was already in L1
 		return nil

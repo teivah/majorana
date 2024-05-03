@@ -30,10 +30,10 @@ type msiResponse struct {
 	// Mutually exclusive
 	// wait means can't lock for now
 	wait bool
-	// fetchFromMemory means fetch from memory then store into L1
-	fetchFromMemory bool
-	// readFromL1 means the line is already fetched, the core can read from L1
-	readFromL1 bool
+	// notFromL1 means fetch from memory then store into L1
+	notFromL1 bool
+	// fromL1 means the line is already fetched, the core can read from L1
+	fromL1 bool
 	// writeToL1 means the line is already fetched, the core can write to L1
 	writeToL1 bool
 }
@@ -116,7 +116,7 @@ func (m *msi) getPendingRequestsToCore(id int) map[msiCommandRequest]*msiCommand
 // Action: msiResponse
 // Post-action: msiCommandInfo callback
 func (m *msi) rLock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
-	alignedAddr := getAlignedMemoryAddress(addrs)
+	alignedAddr := getL1AlignedMemoryAddress(addrs)
 	state := m.getState(id, addrs)
 	switch state {
 	case invalid:
@@ -125,8 +125,8 @@ func (m *msi) rLock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 		}
 		pendings := m.readRequest(id, alignedAddr)
 		return msiResponse{
-				fetchFromMemory: true,
-				pendings:        pendings,
+				notFromL1: true,
+				pendings:  pendings,
 			}, func() {
 				m.setState(id, addrs, shared)
 				m.getSem(addrs).RUnlock()
@@ -135,14 +135,14 @@ func (m *msi) rLock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 		if !m.getSem(addrs).Lock() {
 			return msiResponse{wait: true}, noop, nil
 		}
-		return msiResponse{readFromL1: true}, func() {
+		return msiResponse{fromL1: true}, func() {
 			m.getSem(addrs).Unlock()
 		}, m.getSem(addrs)
 	case shared:
 		if !m.getSem(addrs).RLock() {
 			return msiResponse{wait: true}, noop, nil
 		}
-		return msiResponse{readFromL1: true}, func() {
+		return msiResponse{fromL1: true}, func() {
 			m.getSem(addrs).RUnlock()
 		}, m.getSem(addrs)
 	default:
@@ -174,7 +174,7 @@ func (m *msi) readRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommand
 // Action: msiResponse
 // Post-action: msiCommandInfo callback
 func (m *msi) lock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
-	alignedAddr := getAlignedMemoryAddress(addrs)
+	alignedAddr := getL1AlignedMemoryAddress(addrs)
 	state := m.getState(id, addrs)
 	switch state {
 	case invalid:
@@ -184,8 +184,8 @@ func (m *msi) lock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 
 		pendings := m.writeRequest(id, alignedAddr)
 		return msiResponse{
-				fetchFromMemory: true,
-				pendings:        pendings,
+				notFromL1: true,
+				pendings:  pendings,
 			}, func() {
 				m.setState(id, addrs, modified)
 				m.getSem(addrs).Unlock()
@@ -273,7 +273,7 @@ func (m *msi) evictExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *msiC
 }
 
 func (m *msi) getSem(addrs []int32) *comp.Sem {
-	alignedAddr := getAlignedMemoryAddress(addrs)
+	alignedAddr := getL1AlignedMemoryAddress(addrs)
 	sem, exists := m.pendings[alignedAddr]
 	if !exists {
 		sem = &comp.Sem{}
@@ -285,7 +285,7 @@ func (m *msi) getSem(addrs []int32) *comp.Sem {
 func (m *msi) getState(id int, addrs []int32) msiState {
 	e := msiEntry{
 		id:          id,
-		alignedAddr: getAlignedMemoryAddress(addrs),
+		alignedAddr: getL1AlignedMemoryAddress(addrs),
 	}
 	return m.states[e]
 }
@@ -293,7 +293,7 @@ func (m *msi) getState(id int, addrs []int32) msiState {
 func (m *msi) setState(id int, addrs []int32, state msiState) {
 	e := msiEntry{
 		id:          id,
-		alignedAddr: getAlignedMemoryAddress(addrs),
+		alignedAddr: getL1AlignedMemoryAddress(addrs),
 	}
 	m.states[e] = state
 }
