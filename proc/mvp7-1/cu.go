@@ -1,6 +1,7 @@
 package mvp7_1
 
 import (
+	"github.com/teivah/majorana/common/cache"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/common/obs"
 	"github.com/teivah/majorana/common/option"
@@ -24,8 +25,9 @@ type controlUnit struct {
 	pendingConditionalBranch     bool
 	msi                          *msi
 	// A copy, not necessarily up-to-date
-	msiStatesCopy     map[msiEntry]msiState
-	msiFetchFrequency int
+	msiStatesCopy        map[msiEntry]msiState
+	msiFetchFrequency    int
+	executionUnitIDCache *cache.LRUCache[int, struct{}]
 
 	// Monitoring
 	pushed            *obs.Gauge
@@ -39,7 +41,7 @@ type controlUnit struct {
 	blockedDataHazard int
 }
 
-func newControlUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc], msi *msi) *controlUnit {
+func newControlUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.InstructionRunnerPc], outBus *comp.BufferedBus[*risc.InstructionRunnerPc], msi *msi, parallelism int) *controlUnit {
 	return &controlUnit{
 		ctx:                          ctx,
 		inBus:                        inBus,
@@ -53,6 +55,7 @@ func newControlUnit(ctx *risc.Context, inBus *comp.BufferedBus[risc.InstructionR
 		pushedRunnersInPreviousCycle: make(map[*risc.InstructionRunnerPc]bool),
 		msi:                          msi,
 		msiStatesCopy:                make(map[msiEntry]msiState),
+		executionUnitIDCache:         cache.NewLRUCache[int, struct{}](parallelism),
 	}
 }
 
@@ -277,13 +280,15 @@ func (u *controlUnit) getExecutionUnitIDPreference(runner *risc.InstructionRunne
 		if len(readers) == 0 {
 			return option.None[int]()
 		}
-		// We want the choice to be deterministic
-		//return option.None[int]()
-		return option.Of[int](readers[len(readers)-1])
+		// Pick the least-recently used core
+		v, exists := u.executionUnitIDCache.Find(readers)
+		if !exists {
+			return option.Of[int](readers[0])
+		}
+		return option.Of[int](readers[v])
 	} else if runner.Runner.InstructionType().IsMemoryWrite() {
 		addr := getAlignedMemoryAddress(runner.Runner.MemoryWrite(u.ctx, runner.SequenceID))
 		return u.getWriter(addr)
-		//return option.None[int]()
 	} else {
 		return option.None[int]()
 	}

@@ -38,7 +38,6 @@ func (u *writeUnit) start(r wuReq) error {
 	if execution.Execution.RegisterChange {
 		u.ctx.TransactionRATWrite(execution.Execution, execution.SequenceID)
 		u.ctx.DeletePendingRegisters(execution.ReadRegisters, execution.WriteRegisters)
-		//log.Infoi(u.ctx, "WU", execution.InstructionType, execution.SequenceID, "write to register")
 	} else if execution.Execution.MemoryChange {
 		panic("From MVP 6.4, memory changes are written via L1 cache eviction solely")
 	} else {

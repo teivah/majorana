@@ -352,11 +352,11 @@ func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to 
 			vm := factory(memory)
 			instructions := test.ReadFile(t, "../res/prime-number.asm")
 			app, err := risc.Parse(instructions)
-			bytes := bytes.BytesFromLowBits(int32(i))
-			vm.Context().Memory[0] = bytes[0]
-			vm.Context().Memory[1] = bytes[1]
-			vm.Context().Memory[2] = bytes[2]
-			vm.Context().Memory[3] = bytes[3]
+			b := bytes.BytesFromLowBits(int32(i))
+			vm.Context().Memory[0] = b[0]
+			vm.Context().Memory[1] = b[1]
+			vm.Context().Memory[2] = b[2]
+			vm.Context().Memory[3] = b[3]
 			require.NoError(t, err)
 			cycle, err := vm.Run(app)
 			require.NoError(t, err)
@@ -381,11 +381,11 @@ func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to 
 			vm := factory(memory)
 			instructions := test.ReadFile(t, "../res/prime-number-2.asm")
 			app, err := risc.Parse(instructions)
-			bytes := bytes.BytesFromLowBits(int32(i))
-			vm.Context().Memory[0] = bytes[0]
-			vm.Context().Memory[1] = bytes[1]
-			vm.Context().Memory[2] = bytes[2]
-			vm.Context().Memory[3] = bytes[3]
+			b := bytes.BytesFromLowBits(int32(i))
+			vm.Context().Memory[0] = b[0]
+			vm.Context().Memory[1] = b[1]
+			vm.Context().Memory[2] = b[2]
+			vm.Context().Memory[3] = b[3]
 			require.NoError(t, err)
 			cycle, err := vm.Run(app)
 			require.NoError(t, err)
@@ -415,11 +415,11 @@ func testSums(t *testing.T, factory func(int) virtualMachine, memory, from, to i
 			vm := factory(memory)
 			n := i
 			for i := 0; i < n; i++ {
-				bytes := bytes.BytesFromLowBits(int32(i))
-				vm.Context().Memory[4*i+0] = bytes[0]
-				vm.Context().Memory[4*i+1] = bytes[1]
-				vm.Context().Memory[4*i+2] = bytes[2]
-				vm.Context().Memory[4*i+3] = bytes[3]
+				b := bytes.BytesFromLowBits(int32(i))
+				vm.Context().Memory[4*i+0] = b[0]
+				vm.Context().Memory[4*i+1] = b[1]
+				vm.Context().Memory[4*i+2] = b[2]
+				vm.Context().Memory[4*i+3] = b[3]
 			}
 			vm.Context().Registers[risc.A1] = int32(n)
 
@@ -505,11 +505,11 @@ func testBubbleSort(t *testing.T, length int, factory func(int) virtualMachine, 
 	t.Run("Bubble sort", func(t *testing.T) {
 		vm := factory(length * 4)
 		for i := 0; i < length; i++ {
-			bytes := bytes.BytesFromLowBits(int32(length - i))
-			vm.Context().Memory[4*i+0] = bytes[0]
-			vm.Context().Memory[4*i+1] = bytes[1]
-			vm.Context().Memory[4*i+2] = bytes[2]
-			vm.Context().Memory[4*i+3] = bytes[3]
+			b := bytes.BytesFromLowBits(int32(length - i))
+			vm.Context().Memory[4*i+0] = b[0]
+			vm.Context().Memory[4*i+1] = b[1]
+			vm.Context().Memory[4*i+2] = b[2]
+			vm.Context().Memory[4*i+3] = b[3]
 		}
 		vm.Context().Registers[risc.A0] = 0
 		vm.Context().Registers[risc.A1] = int32(length)
@@ -561,19 +561,25 @@ func testSpectre(t *testing.T, factory func(int) virtualMachine, stats bool) {
 		secret := 42
 		data := []int{3, 1, 2, 3, 0, 0, 0, 0, 0, secret}
 		for idx, i := range data {
-			bytes := bytes.BytesFromLowBits(int32(i))
-			vm.Context().Memory[4*idx+0] = bytes[0]
-			vm.Context().Memory[4*idx+1] = bytes[1]
-			vm.Context().Memory[4*idx+2] = bytes[2]
-			vm.Context().Memory[4*idx+3] = bytes[3]
+			b := bytes.BytesFromLowBits(int32(i))
+			vm.Context().Memory[4*idx+0] = b[0]
+			vm.Context().Memory[4*idx+1] = b[1]
+			vm.Context().Memory[4*idx+2] = b[2]
+			vm.Context().Memory[4*idx+3] = b[3]
 		}
 		instructions := test.ReadFile(t, "../res/spectre.asm")
 		app, err := risc.Parse(instructions)
 		require.NoError(t, err)
-		_, err = vm.Run(app)
+		cycle, err := vm.Run(app)
 		require.NoError(t, err)
 		got := bytes.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
 		assert.NotEqual(t, int32(secret), got)
+		if stats {
+			t.Logf("Cycle: %d", cycle)
+			for k, v := range vm.Stats() {
+				t.Log(k, v)
+			}
+		}
 	})
 }
 
@@ -767,11 +773,11 @@ func TestBenchmarks(t *testing.T) {
 				}
 
 				vm := factory(5)
-				bytes := bytes.BytesFromLowBits(int32(benchPrimeNumber))
-				vm.Context().Memory[0] = bytes[0]
-				vm.Context().Memory[1] = bytes[1]
-				vm.Context().Memory[2] = bytes[2]
-				vm.Context().Memory[3] = bytes[3]
+				b := bytes.BytesFromLowBits(int32(benchPrimeNumber))
+				vm.Context().Memory[0] = b[0]
+				vm.Context().Memory[1] = b[1]
+				vm.Context().Memory[2] = b[2]
+				vm.Context().Memory[3] = b[3]
 
 				cycles, err := execute(t, vm, test.ReadFile(t, "../res/prime-number.asm"))
 				require.NoError(t, err)
@@ -801,11 +807,11 @@ func TestBenchmarks(t *testing.T) {
 				vm := factory(memory)
 				n := benchSums
 				for i := 0; i < n; i++ {
-					bytes := bytes.BytesFromLowBits(int32(i))
-					vm.Context().Memory[4*i+0] = bytes[0]
-					vm.Context().Memory[4*i+1] = bytes[1]
-					vm.Context().Memory[4*i+2] = bytes[2]
-					vm.Context().Memory[4*i+3] = bytes[3]
+					b := bytes.BytesFromLowBits(int32(i))
+					vm.Context().Memory[4*i+0] = b[0]
+					vm.Context().Memory[4*i+1] = b[1]
+					vm.Context().Memory[4*i+2] = b[2]
+					vm.Context().Memory[4*i+3] = b[3]
 				}
 				vm.Context().Registers[risc.A1] = int32(n)
 
@@ -904,11 +910,11 @@ func TestBenchmarks(t *testing.T) {
 				data := benchBubSort
 				vm := factory(data * 4)
 				for i := 0; i < data; i++ {
-					bytes := bytes.BytesFromLowBits(int32(data - i))
-					vm.Context().Memory[4*i+0] = bytes[0]
-					vm.Context().Memory[4*i+1] = bytes[1]
-					vm.Context().Memory[4*i+2] = bytes[2]
-					vm.Context().Memory[4*i+3] = bytes[3]
+					b := bytes.BytesFromLowBits(int32(data - i))
+					vm.Context().Memory[4*i+0] = b[0]
+					vm.Context().Memory[4*i+1] = b[1]
+					vm.Context().Memory[4*i+2] = b[2]
+					vm.Context().Memory[4*i+3] = b[3]
 				}
 				vm.Context().Registers[risc.A0] = 0
 				vm.Context().Registers[risc.A1] = int32(data)
