@@ -78,6 +78,13 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				info.done()
 				return true
 			})
+		case l3Evict:
+			cc.msi.staleState = true
+			cc.snoop.Append(func(struct{}) bool {
+				_, _ = cc.l3.EvictCacheLine(req.alignedAddr)
+				info.done()
+				return true
+			})
 		case l1WriteBack:
 			cycles := latency.MemoryAccess
 			cc.snoop.Append(func(struct{}) bool {
@@ -90,8 +97,33 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				if !exists {
 					panic("memory address should exist")
 				}
+
+				// TODO Cycles
+				cc.writeToL3(req.alignedAddr, memory)
+
 				cc.mmu.writeToMemory(req.alignedAddr, memory)
 				_, evicted := cc.l1d.EvictCacheLine(req.alignedAddr)
+				if !evicted {
+					panic("invalid state")
+				}
+				info.done()
+				return true
+			})
+		case l3WriteBack:
+			cycles := latency.MemoryAccess
+			cc.snoop.Append(func(struct{}) bool {
+				if cycles > 0 {
+					cycles--
+					return false
+				}
+
+				memory, exists := cc.l3.GetCacheLine(req.alignedAddr)
+				if !exists {
+					panic("memory address should exist")
+				}
+
+				cc.mmu.writeToMemory(req.alignedAddr, memory)
+				_, evicted := cc.l3.EvictCacheLine(req.alignedAddr)
 				if !evicted {
 					panic("invalid state")
 				}
@@ -139,51 +171,15 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 				if _, exists := cc.l1d.GetCacheLine(getL1AlignedMemoryAddress(r.addrs)); exists {
 					panic("invalid state")
 				}
-				cycles := latency.MemoryAccess
-				l3Addr, l3Data := cc.mmu.fetchCacheLine(r.addrs[0], l3CacheLineSize)
-				return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
-					if cycles > 0 {
-						cycles--
-						return ccReadResp{}
-					}
 
-					shouldL3Evict := cc.pushLineToL3(l3Addr, l3Data)
-					if shouldL3Evict != nil {
-						pending := cc.msi.evictL3ExtraCacheLine(cc.id, shouldL3Evict.Boundary[0])
-						cc.read.Checkpoint(func(r ccReadReq) ccReadResp {
-							if pending != nil && !pending.isDone() {
-								return ccReadResp{}
-							}
-
-							// A
-							l1Addr, l1Data, exists := cc.l3.GetSubCacheLine(r.addrs, l1DCacheLineSize)
-							if !exists {
-								panic("invalid state")
-							}
-							shouldEvict := cc.pushLineToL1(l1Addr, l1Data)
-							if shouldEvict != nil {
-								pending := cc.msi.evictL1ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
-								cc.read.Checkpoint(func(r ccReadReq) ccReadResp {
-									if pending != nil && !pending.isDone() {
-										return ccReadResp{}
-									}
-
-									cc.post = post
-									return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
-								})
-								return ccReadResp{}
-							}
-							cc.post = post
-							return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
-						})
-						return ccReadResp{}
-					}
-
-					// A
+				// TODO Cycles
+				if cc.isAddressInL3(r.addrs) {
+					// Fetch from L3, sync to L1
 					l1Addr, l1Data, exists := cc.l3.GetSubCacheLine(r.addrs, l1DCacheLineSize)
 					if !exists {
 						panic("invalid state")
 					}
+
 					shouldEvict := cc.pushLineToL1(l1Addr, l1Data)
 					if shouldEvict != nil {
 						pending := cc.msi.evictL1ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
@@ -199,7 +195,73 @@ func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
 					}
 					cc.post = post
 					return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
-				})
+				} else {
+					// Fetch from memory, sync to L3, sync to L1
+					cycles := latency.MemoryAccess
+					l3Addr, l3Data := cc.mmu.fetchCacheLine(r.addrs[0], l3CacheLineSize)
+					return cc.read.ExecuteWithCheckpoint(r, func(r ccReadReq) ccReadResp {
+						if cycles > 0 {
+							cycles--
+							return ccReadResp{}
+						}
+
+						// TODO Cycles
+						shouldEvict := cc.pushLineToL3(l3Addr, l3Data)
+						if shouldEvict != nil {
+							pending := cc.msi.evictL3ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
+							cc.read.Checkpoint(func(r ccReadReq) ccReadResp {
+								if pending != nil && !pending.isDone() {
+									return ccReadResp{}
+								}
+
+								// A
+								l1Addr, l1Data, exists := cc.l3.GetSubCacheLine(r.addrs, l1DCacheLineSize)
+								if !exists {
+									panic("invalid state")
+								}
+
+								shouldEvict = cc.pushLineToL1(l1Addr, l1Data)
+								if shouldEvict != nil {
+									pending := cc.msi.evictL1ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
+									cc.read.Checkpoint(func(r ccReadReq) ccReadResp {
+										if pending != nil && !pending.isDone() {
+											return ccReadResp{}
+										}
+
+										cc.post = post
+										return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
+									})
+									return ccReadResp{}
+								}
+								cc.post = post
+								return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
+							})
+						}
+
+						// A
+						l1Addr, l1Data, exists := cc.l3.GetSubCacheLine(r.addrs, l1DCacheLineSize)
+						if !exists {
+							panic("invalid state")
+						}
+
+						shouldEvict = cc.pushLineToL1(l1Addr, l1Data)
+						if shouldEvict != nil {
+							pending := cc.msi.evictL1ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
+							cc.read.Checkpoint(func(r ccReadReq) ccReadResp {
+								if pending != nil && !pending.isDone() {
+									return ccReadResp{}
+								}
+
+								cc.post = post
+								return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
+							})
+							return ccReadResp{}
+						}
+						cc.post = post
+						return cc.read.ExecuteWithCheckpoint(r, cc.coReadFromL1)
+					})
+				}
+
 			} else {
 				panic("invalid state")
 			}
@@ -237,18 +299,16 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 		}
 
 		if resp.notFromL1 {
-			cycles := latency.MemoryAccess
-			addr, line := cc.mmu.fetchCacheLine(r.addrs[0], l1DCacheLineSize)
-			return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
-				if cycles > 0 {
-					cycles--
-					return ccWriteResp{}
+			if cc.isAddressInL3(r.addrs) {
+				// Fetch from L3, sync to L1
+				l1Addr, l1Data, exists := cc.l3.GetSubCacheLine(r.addrs, l1DCacheLineSize)
+				if !exists {
+					panic("invalid state")
 				}
-
-				shouldEvict := cc.pushLineToL1(addr, line)
+				shouldEvict := cc.pushLineToL1(l1Addr, l1Data)
 				if shouldEvict != nil {
 					pending := cc.msi.evictL1ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
-					cycles = latency.L1Access
+					cycles := latency.L1Access
 					cc.write.Checkpoint(func(r ccWriteReq) ccWriteResp {
 						if pending != nil && !pending.isDone() {
 							return ccWriteResp{}
@@ -264,7 +324,82 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 				}
 				cc.post = post
 				return cc.write.ExecuteWithCheckpoint(r, cc.coWriteToL1)
-			})
+			} else {
+				// Fetch from memory, sync to L3, sync to L1
+				cycles := latency.MemoryAccess
+				l3Addr, l3Data := cc.mmu.fetchCacheLine(r.addrs[0], l3CacheLineSize)
+				return cc.write.ExecuteWithCheckpoint(r, func(r ccWriteReq) ccWriteResp {
+					if cycles > 0 {
+						cycles--
+						return ccWriteResp{}
+					}
+
+					// TODO Cycles
+					shouldEvict := cc.pushLineToL3(l3Addr, l3Data)
+					if shouldEvict != nil {
+						pending := cc.msi.evictL3ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
+						cc.write.Checkpoint(func(r ccWriteReq) ccWriteResp {
+							if pending != nil && !pending.isDone() {
+								return ccWriteResp{}
+							}
+
+							l1Addr, l1Data, exists := cc.l3.GetSubCacheLine(r.addrs, l1DCacheLineSize)
+							if !exists {
+								panic("invalid state")
+							}
+
+							// A
+							shouldEvict = cc.pushLineToL1(l1Addr, l1Data)
+							if shouldEvict != nil {
+								pending := cc.msi.evictL1ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
+								cycles = latency.L1Access
+								cc.write.Checkpoint(func(r ccWriteReq) ccWriteResp {
+									if pending != nil && !pending.isDone() {
+										return ccWriteResp{}
+									}
+									if cycles > 0 {
+										cycles--
+										return ccWriteResp{}
+									}
+									cc.post = post
+									return cc.write.ExecuteWithCheckpoint(r, cc.coWriteToL1)
+								})
+								return ccWriteResp{}
+							}
+							cc.post = post
+							return cc.write.ExecuteWithCheckpoint(r, cc.coWriteToL1)
+
+						})
+						return ccWriteResp{}
+					}
+
+					// A
+					l1Addr, l1Data, exists := cc.l3.GetSubCacheLine(r.addrs, l1DCacheLineSize)
+					if !exists {
+						panic("invalid state")
+					}
+
+					shouldEvict = cc.pushLineToL1(l1Addr, l1Data)
+					if shouldEvict != nil {
+						pending := cc.msi.evictL1ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
+						cycles = latency.L1Access
+						cc.write.Checkpoint(func(r ccWriteReq) ccWriteResp {
+							if pending != nil && !pending.isDone() {
+								return ccWriteResp{}
+							}
+							if cycles > 0 {
+								cycles--
+								return ccWriteResp{}
+							}
+							cc.post = post
+							return cc.write.ExecuteWithCheckpoint(r, cc.coWriteToL1)
+						})
+						return ccWriteResp{}
+					}
+					cc.post = post
+					return cc.write.ExecuteWithCheckpoint(r, cc.coWriteToL1)
+				})
+			}
 		} else if resp.writeToL1 {
 			cc.post = post
 			return cc.write.ExecuteWithCheckpoint(r, cc.coWriteToL1)
@@ -350,6 +485,10 @@ func (cc *cacheController) getFromL3(addrs []int32) []int8 {
 
 func (cc *cacheController) writeToL1(addrs []int32, data []int8) {
 	cc.l1d.Write(addrs[0], data)
+}
+
+func (cc *cacheController) writeToL3(l1Addr comp.AlignedAddress, data []int8) {
+	cc.l3.Write(int32(l1Addr), data)
 }
 
 func (cc *cacheController) flush() {

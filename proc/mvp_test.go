@@ -360,13 +360,13 @@ func TestMvp7_2_3x3(t *testing.T) {
 	factory := func(memory int) virtualMachine {
 		return mvp7_2.NewCPU(false, memory, 3)
 	}
-	//testPrime(t, factory, memory, testFrom, testTo, false)
-	//testSums(t, factory, memory, testFrom, testTo, false)
-	//testStringLength(t, factory, 1024, testTo, false)
-	//testStringCopy(t, factory, testTo*2, testTo, false)
+	testPrime(t, factory, memory, testFrom, testTo, false)
+	testSums(t, factory, memory, testFrom, testTo, false)
+	testStringLength(t, factory, 1024, testTo, false)
+	testStringCopy(t, factory, testTo*2, testTo, false)
 	testBubbleSort(t, testBubSort, factory, false)
-	//testConditionalBranch(t, factory, false)
-	//testSpectre(t, factory, false)
+	testConditionalBranch(t, factory, false)
+	testSpectre(t, factory, false)
 }
 
 func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to int, stats bool) {
