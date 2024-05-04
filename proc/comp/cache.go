@@ -45,8 +45,14 @@ func NewLRUCache(lineLength int, cacheLength int) *LRUCache {
 	}
 }
 
+// ExistingLines filters the lines that are being evicted
+func (c *LRUCache) ExistingLines() []Line {
+	boundary := min(len(c.lines), c.numberOfLines)
+	return c.lines[:boundary]
+}
+
 func (c *LRUCache) Get(addr int32) (int8, bool) {
-	for i, l := range c.lines {
+	for i, l := range c.ExistingLines() {
 		if v, exists := l.get(addr); exists {
 			c.lines = append(append([]Line{l}, c.lines[:i]...), c.lines[i+1:]...)
 			return v, true
@@ -56,6 +62,15 @@ func (c *LRUCache) Get(addr int32) (int8, bool) {
 }
 
 func (c *LRUCache) GetCacheLine(addr AlignedAddress) ([]int8, bool) {
+	for _, l := range c.ExistingLines() {
+		if _, exists := l.get(int32(addr)); exists {
+			return l.Data, true
+		}
+	}
+	return nil, false
+}
+
+func (c *LRUCache) GetCacheLineWithEvicted(addr AlignedAddress) ([]int8, bool) {
 	for _, l := range c.lines {
 		if _, exists := l.get(int32(addr)); exists {
 			return l.Data, true
@@ -67,7 +82,7 @@ func (c *LRUCache) GetCacheLine(addr AlignedAddress) ([]int8, bool) {
 // GetSubCacheLine return a smaller cache line within a cache with bigger cache
 // lines. For example, returning a L1 cache line size in a L3 cache.
 func (c *LRUCache) GetSubCacheLine(addrs []int32, lineLength int32) (AlignedAddress, []int8, bool) {
-	for _, l := range c.lines {
+	for _, l := range c.ExistingLines() {
 		if _, exists := l.get(addrs[0]); exists {
 			smallerAlignAddr := getAlignedMemoryAddress(addrs, lineLength)
 			data := make([]int8, 0, lineLength)
@@ -99,7 +114,7 @@ var Delta = 0
 
 func (c *LRUCache) Write(addr int32, data []int8) {
 	Delta++
-	for _, l := range c.lines {
+	for _, l := range c.ExistingLines() {
 		if _, exists := l.get(addr); exists {
 			for i, v := range data {
 				l.set(addr+int32(i), v)
@@ -116,6 +131,10 @@ func (c *LRUCache) Write(addr int32, data []int8) {
 }
 
 func (c *LRUCache) PushLine(addr AlignedAddress, data []int8) []int8 {
+	if len(data) != c.lineLength {
+		panic("invalid state")
+	}
+
 	newLine := Line{
 		Boundary: [2]AlignedAddress{addr, addr + AlignedAddress(c.lineLength)},
 		Data:     data,
@@ -131,6 +150,10 @@ func (c *LRUCache) PushLine(addr AlignedAddress, data []int8) []int8 {
 }
 
 func (c *LRUCache) PushLineWithEvictionWarning(addr AlignedAddress, data []int8) *Line {
+	if len(data) != c.lineLength {
+		panic("invalid state")
+	}
+
 	newLine := Line{
 		Boundary: [2]AlignedAddress{addr, addr + AlignedAddress(c.lineLength)},
 		Data:     data,
@@ -142,6 +165,14 @@ func (c *LRUCache) PushLineWithEvictionWarning(addr AlignedAddress, data []int8)
 		return &line
 	}
 	return nil
+}
+
+func (c *LRUCache) EvictExtraLines() {
+	// TODO
+	fmt.Println(len(c.lines), c.numberOfLines)
+	if len(c.lines) > c.numberOfLines {
+		c.lines = c.lines[:c.numberOfLines]
+	}
 }
 
 func (c *LRUCache) Lines() []Line {

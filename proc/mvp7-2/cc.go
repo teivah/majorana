@@ -86,28 +86,38 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				return true
 			})
 		case l1WriteBack:
-			cycles := latency.MemoryAccess
+			cycles := latency.L3Access
 			cc.snoop.Append(func(struct{}) bool {
 				if cycles > 0 {
 					cycles--
 					return false
 				}
 
-				memory, exists := cc.l1d.GetCacheLine(req.alignedAddr)
+				memory, exists := cc.l1d.GetCacheLineWithEvicted(req.alignedAddr)
 				if !exists {
 					panic("memory address should exist")
 				}
 
-				// TODO Cycles
-				cc.writeToL3(req.alignedAddr, memory)
-
-				cc.mmu.writeToMemory(req.alignedAddr, memory)
-				_, evicted := cc.l1d.EvictCacheLine(req.alignedAddr)
-				if !evicted {
-					panic("invalid state")
+				if !cc.isAddressInL3([]int32{int32(req.alignedAddr)}) {
+					// Cache line was evicted
+					// TODO Cycles
+					cc.mmu.writeToMemory(req.alignedAddr, memory)
+					_, evicted := cc.l1d.EvictCacheLine(req.alignedAddr)
+					if !evicted {
+						panic("invalid state")
+					}
+					info.done()
+					return true
+				} else {
+					// TODO Cycles
+					cc.writeToL3(req.alignedAddr, memory)
+					_, evicted := cc.l1d.EvictCacheLine(req.alignedAddr)
+					if !evicted {
+						panic("invalid state")
+					}
+					info.done()
+					return true
 				}
-				info.done()
-				return true
 			})
 		case l3WriteBack:
 			cycles := latency.MemoryAccess
@@ -117,7 +127,8 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 					return false
 				}
 
-				memory, exists := cc.l3.GetCacheLine(req.alignedAddr)
+				// TODO Useful?
+				memory, exists := cc.l3.GetCacheLineWithEvicted(req.alignedAddr)
 				if !exists {
 					panic("memory address should exist")
 				}
@@ -281,6 +292,7 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 				if !exists {
 					panic("invalid state")
 				}
+				// TODO Cycles
 				shouldEvict := cc.pushLineToL1(l1Addr, l1Data)
 				if shouldEvict != nil {
 					pending := cc.msi.evictL1ExtraCacheLine(cc.id, shouldEvict.Boundary[0])
@@ -375,7 +387,7 @@ func (cc *cacheController) coWriteToL1(r ccWriteReq) ccWriteResp {
 }
 
 func (cc *cacheController) pushLineToL1(addr comp.AlignedAddress, line []int8) *comp.Line {
-	if len(line) != l1DCacheLineSize {
+	if len(line) != l1DCacheLineSize || addr%l1DCacheLineSize != 0 {
 		panic("invalid state")
 	}
 	if cc.isAddressInL1([]int32{int32(addr)}) {
@@ -386,7 +398,7 @@ func (cc *cacheController) pushLineToL1(addr comp.AlignedAddress, line []int8) *
 }
 
 func (cc *cacheController) pushLineToL3(addr comp.AlignedAddress, line []int8) *comp.Line {
-	if len(line) != l3CacheLineSize {
+	if len(line) != l3CacheLineSize || addr%l3CacheLineSize != 0 {
 		panic("invalid state")
 	}
 	if cc.isAddressInL3([]int32{int32(addr)}) {
@@ -453,15 +465,20 @@ func (cc *cacheController) flush() {
 
 func (cc *cacheController) export() int {
 	additionalCycles := 0
-	for _, line := range cc.l1d.Lines() {
+	for _, line := range cc.l1d.ExistingLines() {
 		addr := line.Boundary[0]
 		if cc.msi.states[msiEntry{cc.id, addr}] != modified {
 			// If not modified, we don't write back the line in memory
 			continue
 		}
 
-		additionalCycles += latency.MemoryAccess
-		for i := 0; i < l3CacheLineSize; i++ {
+		// TODO Cycles
+		if cc.isAddressInL3([]int32{int32(line.Boundary[0])}) {
+			additionalCycles += latency.L3Access
+			cc.writeToL3(line.Boundary[0], line.Data)
+		} else {
+			// Line was evicted
+			additionalCycles += latency.MemoryAccess
 			cc.mmu.writeToMemory(line.Boundary[0], line.Data)
 		}
 	}

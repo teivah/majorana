@@ -34,6 +34,7 @@ type CPU struct {
 	memoryManagementUnit *memoryManagementUnit
 	cacheControllers     []*cacheController
 	msi                  *msi
+	l3                   *comp.LRUCache
 }
 
 func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
@@ -79,6 +80,7 @@ func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
 		memoryManagementUnit: mmu,
 		cacheControllers:     ccs,
 		msi:                  msi,
+		l3:                   l3,
 	}
 }
 
@@ -233,14 +235,25 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 	}
 
+	m.l3.EvictExtraLines()
 	for _, cc := range m.cacheControllers {
 		cycle += cc.export()
 	}
+	cycle += m.exportL3()
 
 	m.ctx.RATCommit()
 	m.ctx.RATFlush()
 	log.Info(m.ctx, "Registers: %v", m.ctx.Registers)
 	return cycle, nil
+}
+
+func (m *CPU) exportL3() int {
+	additionalCycles := 0
+	for _, line := range m.l3.Lines() {
+		additionalCycles += latency.MemoryAccess
+		m.memoryManagementUnit.writeToMemory(line.Boundary[0], line.Data)
+	}
+	return additionalCycles
 }
 
 func (m *CPU) Stats() map[string]any {
