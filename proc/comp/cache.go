@@ -70,15 +70,6 @@ func (c *LRUCache) GetCacheLine(addr AlignedAddress) ([]int8, bool) {
 	return nil, false
 }
 
-func (c *LRUCache) GetCacheLineWithEvicted(addr AlignedAddress) ([]int8, bool) {
-	for _, l := range c.lines {
-		if _, exists := l.get(int32(addr)); exists {
-			return l.Data, true
-		}
-	}
-	return nil, false
-}
-
 // GetSubCacheLine return a smaller cache line within a cache with bigger cache
 // lines. For example, returning a L1 cache line size in a L3 cache.
 func (c *LRUCache) GetSubCacheLine(addrs []int32, lineLength int32) (AlignedAddress, []int8, bool) {

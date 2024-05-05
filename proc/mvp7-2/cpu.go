@@ -236,8 +236,6 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 	}
 
-	// TODO Why 30 L1 lines??
-	//m.l3.EvictExtraLines()
 	for _, cc := range m.cacheControllers {
 		cycle += cc.export()
 	}

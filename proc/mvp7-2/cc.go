@@ -63,6 +63,16 @@ func newCacheController(id int, ctx *risc.Context, mmu *memoryManagementUnit, ms
 	return cc
 }
 
+func (cc *cacheController) assertAddrInState(addr comp.AlignedAddress, expected msiState) {
+	got := cc.msi.states[msiEntry{
+		id:          cc.id,
+		alignedAddr: addr,
+	}]
+	if expected != got {
+		panic(fmt.Sprintf("invalid state: expected %s, got %s", expected, got))
+	}
+}
+
 // coSnoop is the coroutine executed *before* coRead and coWrite to execute
 // the requests sent by msi.
 func (cc *cacheController) coSnoop(struct{}) struct{} {
@@ -74,16 +84,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 	for req, info := range requests {
 		switch req.request {
 		case l1Evict:
-			//fmt.Println(cc.id, "l1 evict prepare", req.alignedAddr)
-			// TODO
-			state := cc.msi.states[msiEntry{
-				id:          cc.id,
-				alignedAddr: req.alignedAddr,
-			}]
-			if state != shared {
-				panic(fmt.Sprintf("invalid state: %d", state))
-			}
-
+			cc.assertAddrInState(req.alignedAddr, shared)
 			cc.msi.staleState = true
 			cc.snoop.Append(func(struct{}) bool {
 				//fmt.Println(cc.id, "l1 evict run", req.alignedAddr)
@@ -106,15 +107,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				return true
 			})
 		case l1WriteBack:
-			//fmt.Println(cc.id, "l1 write back prepare", req.alignedAddr, req.alignedAddr+l1DCacheLineSize)
-			// TODO
-			//state := cc.msi.states[msiEntry{
-			//	id:          cc.id,
-			//	alignedAddr: req.alignedAddr,
-			//}]
-			//if state != modified {
-			//	panic(fmt.Sprintf("invalid state: %d", state))
-			//}
+			cc.assertAddrInState(req.alignedAddr, modified)
 			cycles := latency.L3Access
 			cc.snoop.Append(func(struct{}) bool {
 				if cycles > 0 {
@@ -122,7 +115,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 					return false
 				}
 
-				memory, exists := cc.l1d.GetCacheLineWithEvicted(req.alignedAddr)
+				memory, exists := cc.l1d.GetCacheLine(req.alignedAddr)
 				if !exists {
 					panic("memory address should exist")
 				}
@@ -164,8 +157,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 					return false
 				}
 
-				// TODO Useful?
-				memory, exists := cc.l3.GetCacheLineWithEvicted(req.alignedAddr)
+				memory, exists := cc.l3.GetCacheLine(req.alignedAddr)
 				if !exists {
 					panic("memory address should exist")
 				}
