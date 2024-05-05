@@ -2,8 +2,6 @@
 
 - Reorder buffer
 - TLB?
-- L1 should be per core
-- Multiple L1i, L1 is a multiplier of the cache line
 - "If a matching entry is found in the btb, fetching begins immediately at the predicted pc"
 
 # Minor

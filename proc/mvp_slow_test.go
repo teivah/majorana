@@ -171,9 +171,9 @@ func TestSlowMvp7_2_3x3(t *testing.T) {
 
 func testSlow(t *testing.T, factory func(memory int) virtualMachine) {
 	//testPrime(t, factory, memory, testFrom, slowTest, false)
-	//testSums(t, factory, memory, testFrom, slowTest, false)
+	testSums(t, factory, memory, testFrom, slowTest, true)
 	//testStringLength(t, factory, benchStringLength*2, benchStringLength, false)
-	testStringCopy(t, factory, benchStringCopy*2, benchStringCopy, true)
+	//testStringCopy(t, factory, benchStringCopy*2, benchStringCopy, true)
 	//testBubbleSort(t, slowTest/5, factory, false)
 	//testConditionalBranch(t, factory, false)
 	//testSpectre(t, factory, false)

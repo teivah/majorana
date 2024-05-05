@@ -35,6 +35,9 @@ type CPU struct {
 	cacheControllers     []*cacheController
 	msi                  *msi
 	l3                   *comp.LRUCache
+
+	// Monitoring
+	flushCount int
 }
 
 func NewCPU(debug bool, memoryBytes int, parallelism int) *CPU {
@@ -159,6 +162,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 			break
 		}
 		if flush {
+			m.flushCount++
 			// Execute pending instructions up to sequenceID.
 			log.Info(m.ctx, "\t️⚠️ Executing previous unit cycles")
 
@@ -261,7 +265,9 @@ func (m *CPU) l3WriteBack() int {
 }
 
 func (m *CPU) Stats() map[string]any {
-	root := make(map[string]any)
+	root := map[string]any{
+		"cpu_flush": m.flushCount,
+	}
 	appendStats(root, m.decodeUnit.stats())
 	appendStats(root, m.controlUnit.stats())
 	appendStats(root, m.msi.stats())
