@@ -92,7 +92,6 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				return true
 			})
 		case l3Evict:
-			cc.msi.staleState = true
 			cc.snoop.Append(func(struct{}) bool {
 				mu := cc.msi.getL3Lock([]int32{int32(req.alignedAddr)})
 				if mu.TryLock() {
