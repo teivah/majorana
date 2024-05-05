@@ -69,7 +69,7 @@ func (cc *cacheController) assertAddrInState(addr comp.AlignedAddress, expected 
 		alignedAddr: addr,
 	}]
 	if expected != got {
-		panic(fmt.Sprintf("invalid state: expected %s, got %s", expected, got))
+		panic(fmt.Sprintf("invalid state: expected %v, got %v", expected, got))
 	}
 }
 
