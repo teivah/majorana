@@ -16,8 +16,7 @@ const (
 	l1DCacheLineSize = 64 * bytes
 	l1DCacheSize     = 1 * kilobytes
 	l3CacheLineSize  = 128 * bytes
-	// TODO Increase
-	l3CacheSize = 1 * kilobytes
+	l3CacheSize      = 4 * kilobytes
 )
 
 type CPU struct {

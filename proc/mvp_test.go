@@ -702,7 +702,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 301710,
 			versionMVP7_0: 301714,
 			versionMVP7_1: 301714,
-			versionMVP7_2: 301714,
+			versionMVP7_2: 301864,
 		},
 		"Sum": {
 			versionMVP1:   10409494,
@@ -758,7 +758,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 2677345,
 			versionMVP7_0: 24232735,
 			versionMVP7_1: 1229959,
-			versionMVP7_2: 1229959,
+			versionMVP7_2: 1008464,
 		},
 	}
 
