@@ -2,6 +2,7 @@ package mvp7_1
 
 import (
 	"github.com/teivah/majorana/common/cache"
+	"github.com/teivah/majorana/common/ds"
 	"github.com/teivah/majorana/common/log"
 	"github.com/teivah/majorana/common/obs"
 	"github.com/teivah/majorana/common/option"
@@ -301,7 +302,8 @@ func (u *controlUnit) getExecutionUnitIDPreference(runner *risc.InstructionRunne
 
 func (u *controlUnit) getLineReaders(addr comp.AlignedAddress) []int {
 	var ids []int
-	for e, state := range u.msiStatesCopy {
+	for elem := range ds.StableMapIteration(u.msiStatesCopy, msiEntry{}.less()) {
+		e, state := elem.K, elem.V
 		if e.alignedAddr == addr && (state == shared || state == modified) {
 			ids = append(ids, e.id)
 		}
@@ -310,7 +312,8 @@ func (u *controlUnit) getLineReaders(addr comp.AlignedAddress) []int {
 }
 
 func (u *controlUnit) getLineWriter(addr comp.AlignedAddress) option.Optional[int] {
-	for e, state := range u.msiStatesCopy {
+	for elem := range ds.StableMapIteration[msiEntry, msiState, int](u.msiStatesCopy, msiEntry{}.less()) {
+		e, state := elem.K, elem.V
 		if e.alignedAddr == addr && state == modified {
 			return option.Of(e.id)
 		}

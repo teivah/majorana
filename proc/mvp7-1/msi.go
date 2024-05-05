@@ -55,6 +55,13 @@ type msiEntry struct {
 	alignedAddr comp.AlignedAddress
 }
 
+func (msiEntry) less() []func(msiEntry) int {
+	return []func(msiEntry) int{
+		func(m msiEntry) int { return m.id },
+		func(m msiEntry) int { return int(m.alignedAddr) },
+	}
+}
+
 // msiCommandRequest is a request to a specific core (snoop)
 type msiCommandRequest struct {
 	id          int
