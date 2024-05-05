@@ -398,3 +398,12 @@ func (m *msi) l3WriteNotify(addr comp.AlignedAddress) {
 func (m *msi) l3ReleaseWriteNotify(addr comp.AlignedAddress) {
 	m.l3Write[addr] = false
 }
+
+func (m *msi) stats() map[string]any {
+	return map[string]any{
+		"msi_l1_evict_request":     m.l1EvictRequestCount,
+		"msi_l1_writeback_request": m.l1WriteBackRequestCount,
+		"msi_l3_evict_request":     m.l3EvictRequestCount,
+		"msi_l3_writeback_request": m.l3WriteBackRequestCount,
+	}
+}

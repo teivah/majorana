@@ -327,3 +327,17 @@ func (u *controlUnit) flush() {
 func (u *controlUnit) isEmpty() bool {
 	return u.pendings.Length() == 0
 }
+
+func (u *controlUnit) stats() map[string]any {
+	return map[string]any{
+		"cu_push":                u.pushed.Stats(),
+		"cu_pending":             u.pending.Stats(),
+		"cu_pending_read":        u.pendingRead.Stats(),
+		"cu_blocked":             u.blocked.Stats(),
+		"cu_forward":             u.forwarding,
+		"cu_total":               u.total,
+		"cu_cant_add":            u.cantAdd,
+		"cu_blocked_branch":      u.blockedBranch,
+		"cu_blocked_data_hazard": u.blockedDataHazard,
+	}
+}

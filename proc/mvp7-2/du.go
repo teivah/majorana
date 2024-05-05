@@ -102,3 +102,11 @@ func (u *decodeUnit) isEmpty() bool {
 	// As the decode unit takes only one cycle, it is considered as empty by default
 	return true
 }
+
+func (u *decodeUnit) stats() map[string]any {
+	return map[string]any{
+		"du_pending_read": u.pendingRead.Stats(),
+		"du_blocked":      u.blocked.Stats(),
+		"du_pushed":       u.pushed.Stats(),
+	}
+}

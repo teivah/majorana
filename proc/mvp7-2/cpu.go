@@ -261,23 +261,16 @@ func (m *CPU) l3WriteBack() int {
 }
 
 func (m *CPU) Stats() map[string]any {
-	return map[string]any{
-		"du_pending_read":          m.decodeUnit.pendingRead.Stats(),
-		"du_blocked":               m.decodeUnit.blocked.Stats(),
-		"du_pushed":                m.decodeUnit.pushed.Stats(),
-		"cu_push":                  m.controlUnit.pushed.Stats(),
-		"cu_pending":               m.controlUnit.pending.Stats(),
-		"cu_pending_read":          m.controlUnit.pendingRead.Stats(),
-		"cu_blocked":               m.controlUnit.blocked.Stats(),
-		"cu_forward":               m.controlUnit.forwarding,
-		"cu_total":                 m.controlUnit.total,
-		"cu_cant_add":              m.controlUnit.cantAdd,
-		"cu_blocked_branch":        m.controlUnit.blockedBranch,
-		"cu_blocked_data_hazard":   m.controlUnit.blockedDataHazard,
-		"msi_l1_evict_request":     m.msi.l1EvictRequestCount,
-		"msi_l1_writeback_request": m.msi.l1WriteBackRequestCount,
-		"msi_l3_evict_request":     m.msi.l3EvictRequestCount,
-		"msi_l3_writeback_request": m.msi.l3WriteBackRequestCount,
+	root := make(map[string]any)
+	appendStats(root, m.decodeUnit.stats())
+	appendStats(root, m.controlUnit.stats())
+	appendStats(root, m.msi.stats())
+	return root
+}
+
+func appendStats(root, child map[string]any) {
+	for k, v := range child {
+		root[k] = v
 	}
 }
 
