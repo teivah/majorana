@@ -236,9 +236,9 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	}
 
 	for _, cc := range m.cacheControllers {
-		cycle += cc.export()
+		cycle += cc.writeBack()
 	}
-	cycle += m.exportL3()
+	cycle += m.l3WriteBack()
 
 	m.ctx.RATCommit()
 	m.ctx.RATFlush()
@@ -246,7 +246,7 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 	return cycle, nil
 }
 
-func (m *CPU) exportL3() int {
+func (m *CPU) l3WriteBack() int {
 	additionalCycles := 0
 	for _, line := range m.l3.Lines() {
 		mu := m.msi.getL3Lock([]int32{int32(line.Boundary[0])})

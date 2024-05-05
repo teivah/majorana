@@ -33,7 +33,7 @@ type msiResponse struct {
 	pendings []*msiCommandInfo
 
 	// Mutually exclusive
-	// wait means can't lock for now
+	// wait means can't l1Lock for now
 	wait bool
 	// notFromL1 means fetch from memory then store into L1
 	notFromL1 bool
@@ -124,48 +124,48 @@ func (m *msi) getPendingRequestsToCore(id int) map[msiCommandRequest]*msiCommand
 	return requests
 }
 
-// rLock is a lock for read
+// l1RLock is a lock for read
 // Workflows:
 // Pre-actions: pendings
 // Action: msiResponse
 // Post-action: msiCommandInfo callback
-func (m *msi) rLock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
+func (m *msi) l1RLock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 	alignedAddr := getL1AlignedMemoryAddress(addrs)
-	state := m.getState(id, addrs)
+	state := m.getL1State(id, addrs)
 	switch state {
 	case invalid:
-		if !m.getSem(addrs).RLock() {
+		if !m.getL1Sem(addrs).RLock() {
 			return msiResponse{wait: true}, noop, nil
 		}
-		pendings := m.readRequest(id, alignedAddr)
+		pendings := m.l1ReadRequest(id, alignedAddr)
 		return msiResponse{
 				notFromL1: true,
 				pendings:  pendings,
 			}, func() {
-				m.setState(id, addrs, shared)
-				m.getSem(addrs).RUnlock()
-			}, m.getSem(addrs)
+				m.setL1State(id, addrs, shared)
+				m.getL1Sem(addrs).RUnlock()
+			}, m.getL1Sem(addrs)
 	case modified:
-		if !m.getSem(addrs).Lock() {
+		if !m.getL1Sem(addrs).Lock() {
 			return msiResponse{wait: true}, noop, nil
 		}
 		return msiResponse{fromL1: true}, func() {
-			m.getSem(addrs).Unlock()
-		}, m.getSem(addrs)
+			m.getL1Sem(addrs).Unlock()
+		}, m.getL1Sem(addrs)
 	case shared:
-		if !m.getSem(addrs).RLock() {
+		if !m.getL1Sem(addrs).RLock() {
 			return msiResponse{wait: true}, noop, nil
 		}
 		return msiResponse{fromL1: true}, func() {
-			m.getSem(addrs).RUnlock()
-		}, m.getSem(addrs)
+			m.getL1Sem(addrs).RUnlock()
+		}, m.getL1Sem(addrs)
 	default:
 		panic(state)
 	}
 }
 
-// readRequest means a core with an invalid line wants to read from it
-func (m *msi) readRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommandInfo {
+// l1ReadRequest means a core with an invalid line wants to read from it
+func (m *msi) l1ReadRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommandInfo {
 	var pendings []*msiCommandInfo
 	for e, state := range m.states {
 		if id == e.id {
@@ -182,55 +182,55 @@ func (m *msi) readRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommand
 	return pendings
 }
 
-// lock is a lock for write
+// l1Lock is a lock for write
 // Workflows:
 // Pre-actions: pendings
 // Action: msiResponse
 // Post-action: msiCommandInfo callback
-func (m *msi) lock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
+func (m *msi) l1Lock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 	alignedAddr := getL1AlignedMemoryAddress(addrs)
-	state := m.getState(id, addrs)
+	state := m.getL1State(id, addrs)
 	switch state {
 	case invalid:
-		if !m.getSem(addrs).Lock() {
+		if !m.getL1Sem(addrs).Lock() {
 			return msiResponse{wait: true}, noop, nil
 		}
 
-		pendings := m.writeRequest(id, alignedAddr)
+		pendings := m.l1WriteRequest(id, alignedAddr)
 		return msiResponse{
 				notFromL1: true,
 				pendings:  pendings,
 			}, func() {
-				m.setState(id, addrs, modified)
-				m.getSem(addrs).Unlock()
-			}, m.getSem(addrs)
+				m.setL1State(id, addrs, modified)
+				m.getL1Sem(addrs).Unlock()
+			}, m.getL1Sem(addrs)
 	case modified:
-		if !m.getSem(addrs).Lock() {
+		if !m.getL1Sem(addrs).Lock() {
 			return msiResponse{wait: true}, noop, nil
 		}
 		return msiResponse{writeToL1: true}, func() {
-			m.getSem(addrs).Unlock()
-		}, m.getSem(addrs)
+			m.getL1Sem(addrs).Unlock()
+		}, m.getL1Sem(addrs)
 	case shared:
-		if !m.getSem(addrs).Lock() {
+		if !m.getL1Sem(addrs).Lock() {
 			return msiResponse{wait: true}, noop, nil
 		}
 
-		pendings := m.invalidationRequest(id, alignedAddr)
+		pendings := m.l1InvalidationRequest(id, alignedAddr)
 		return msiResponse{
 				writeToL1: true,
 				pendings:  pendings,
 			}, func() {
-				m.setState(id, addrs, modified)
-				m.getSem(addrs).Unlock()
-			}, m.getSem(addrs)
+				m.setL1State(id, addrs, modified)
+				m.getL1Sem(addrs).Unlock()
+			}, m.getL1Sem(addrs)
 	default:
 		panic(state)
 	}
 }
 
-// writeRequest means a core with an invalid line wants to write to it
-func (m *msi) writeRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommandInfo {
+// l1WriteRequest means a core with an invalid line wants to write to it
+func (m *msi) l1WriteRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommandInfo {
 	var pendings []*msiCommandInfo
 	for e, state := range m.states {
 		if id == e.id {
@@ -249,8 +249,8 @@ func (m *msi) writeRequest(id int, alignedAddr comp.AlignedAddress) []*msiComman
 	return pendings
 }
 
-// invalidationRequest means a core with a shared line wants to write to it
-func (m *msi) invalidationRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommandInfo {
+// l1InvalidationRequest means a core with a shared line wants to write to it
+func (m *msi) l1InvalidationRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommandInfo {
 	var pendings []*msiCommandInfo
 	for e, state := range m.states {
 		if id == e.id {
@@ -295,7 +295,7 @@ func (m *msi) evictL3ExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *ms
 	return m.sendNewL3MSICommand(id, alignedAddr, l3Evict)
 }
 
-func (m *msi) getSem(addrs []int32) *comp.Sem {
+func (m *msi) getL1Sem(addrs []int32) *comp.Sem {
 	alignedAddr := getL1AlignedMemoryAddress(addrs)
 	sem, exists := m.pendings[alignedAddr]
 	if !exists {
@@ -305,7 +305,7 @@ func (m *msi) getSem(addrs []int32) *comp.Sem {
 	return sem
 }
 
-func (m *msi) getState(id int, addrs []int32) msiState {
+func (m *msi) getL1State(id int, addrs []int32) msiState {
 	e := msiEntry{
 		id:          id,
 		alignedAddr: getL1AlignedMemoryAddress(addrs),
@@ -313,7 +313,7 @@ func (m *msi) getState(id int, addrs []int32) msiState {
 	return m.states[e]
 }
 
-func (m *msi) setState(id int, addrs []int32, state msiState) {
+func (m *msi) setL1State(id int, addrs []int32, state msiState) {
 	e := msiEntry{
 		id:          id,
 		alignedAddr: getL1AlignedMemoryAddress(addrs),

@@ -197,7 +197,7 @@ func getAlignedMemoryAddress(addrs []int32, align int32) comp.AlignedAddress {
 }
 
 func (cc *cacheController) coRead(r ccReadReq) ccReadResp {
-	resp, post, sem := cc.msi.rLock(cc.id, r.addrs)
+	resp, post, sem := cc.msi.l1RLock(cc.id, r.addrs)
 	if resp.wait {
 		return ccReadResp{}
 	}
@@ -306,7 +306,7 @@ func (cc *cacheController) coReadFromL1(r ccReadReq) ccReadResp {
 }
 
 func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
-	resp, post, sem := cc.msi.lock(cc.id, r.addrs)
+	resp, post, sem := cc.msi.l1Lock(cc.id, r.addrs)
 	if resp.wait {
 		return ccWriteResp{}
 	}
@@ -486,7 +486,7 @@ func (cc *cacheController) flush() {
 	}
 }
 
-func (cc *cacheController) export() int {
+func (cc *cacheController) writeBack() int {
 	additionalCycles := 0
 	for _, line := range cc.l1d.ExistingLines() {
 		addr := line.Boundary[0]
