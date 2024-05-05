@@ -777,7 +777,7 @@ func TestBenchmarks(t *testing.T) {
 		},
 	}
 
-	primeOutput := make([]string, totalVersions)
+	primeOutput := make([]benchResult, totalVersions)
 	t.Run("Prime", func(t *testing.T) {
 		for idx, factory := range vms {
 			t.Run(versions[idx], func(t *testing.T) {
@@ -809,7 +809,7 @@ func TestBenchmarks(t *testing.T) {
 		}
 	})
 
-	sumsOutput := make([]string, totalVersions)
+	sumsOutput := make([]benchResult, totalVersions)
 	t.Run("Sum", func(t *testing.T) {
 		for idx, factory := range vms {
 			t.Run(versions[idx], func(t *testing.T) {
@@ -845,7 +845,7 @@ func TestBenchmarks(t *testing.T) {
 		}
 	})
 
-	cpyOutput := make([]string, totalVersions)
+	cpyOutput := make([]benchResult, totalVersions)
 	t.Run("String copy", func(t *testing.T) {
 		for idx, factory := range vms {
 			t.Run(versions[idx], func(t *testing.T) {
@@ -880,7 +880,7 @@ func TestBenchmarks(t *testing.T) {
 		}
 	})
 
-	lengthOutput := make([]string, totalVersions)
+	lengthOutput := make([]benchResult, totalVersions)
 	t.Run("String length", func(t *testing.T) {
 		for idx, factory := range vms {
 			t.Run(versions[idx], func(t *testing.T) {
@@ -912,7 +912,7 @@ func TestBenchmarks(t *testing.T) {
 		}
 	})
 
-	bubbleOutput := make([]string, totalVersions)
+	bubbleOutput := make([]benchResult, totalVersions)
 	t.Run("Bubble sort", func(t *testing.T) {
 		for idx, factory := range vms {
 			t.Run(versions[idx], func(t *testing.T) {
@@ -951,17 +951,19 @@ func TestBenchmarks(t *testing.T) {
 		}
 	})
 
-	output := `| Machine | Prime number | Sum of array | String copy | String length | Bubble sort |
-|:------:|:-----:|:-----:|:-----:|:-----:|:-----:|
+	output := `| Machine | Prime number | Sum of array | String copy | String length | Bubble sort | Avg |
+|:------:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|
 `
-	output += fmt.Sprintf("| Apple M1 | %.1f ns | %.1f ns | %.1f ns | %.1f ns | %.1f ns |\n", m1PrimeExecutionTime, m1SumsExecutionTime, m1StringCopyExecutionTime, m1StringLengthExecutionTime, m1BubbleSortExecutionTime)
+	output += fmt.Sprintf("| Apple M1 | %.1f ns | %.1f ns | %.1f ns | %.1f ns | %.1f ns | 1.0 |\n", m1PrimeExecutionTime, m1SumsExecutionTime, m1StringCopyExecutionTime, m1StringLengthExecutionTime, m1BubbleSortExecutionTime)
 	var keys []string
 	for _, k := range versions {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	for idx := range keys {
-		output += fmt.Sprintf("| %s | %s | %s | %s | %s | %s |\n", versions[idx], primeOutput[idx], sumsOutput[idx], cpyOutput[idx], lengthOutput[idx], bubbleOutput[idx])
+		sum := primeOutput[idx].slower + sumsOutput[idx].slower + cpyOutput[idx].slower + lengthOutput[idx].slower + bubbleOutput[idx].slower
+		avg := sum / 5
+		output += fmt.Sprintf("| %s | %.0f ns, %.1fx slower | %.0f ns, %.1fx slower | %.0f ns, %.1fx slower | %.0f ns, %.1fx slower | %.0f ns, %.1fx slower | %.1f |\n", versions[idx], primeOutput[idx].executionNs, primeOutput[idx].slower, sumsOutput[idx].executionNs, sumsOutput[idx].slower, cpyOutput[idx].executionNs, cpyOutput[idx].slower, lengthOutput[idx].executionNs, lengthOutput[idx].slower, bubbleOutput[idx].executionNs, bubbleOutput[idx].slower, avg)
 	}
 	fmt.Println(output)
 }

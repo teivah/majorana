@@ -1,9 +1,5 @@
 package proc
 
-import (
-	"fmt"
-)
-
 const (
 	m1Frequency        = 3_200_000_000
 	secondToNanosecond = 1_000_000_000
@@ -15,37 +11,42 @@ const (
 	m1BubbleSortExecutionTime   = 42182.
 )
 
-func primeStats(cycles int) string {
+type benchResult struct {
+	executionNs float64
+	slower      float64
+}
+
+func primeStats(cycles int) benchResult {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1PrimeExecutionTime
-	return fmt.Sprintf("%.0f ns, %.1fx slower", ns, slower)
+	return benchResult{ns, slower}
 }
 
-func sumStats(cycles int) string {
+func sumStats(cycles int) benchResult {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1SumsExecutionTime
-	return fmt.Sprintf("%.0f ns, %.1fx slower", ns, slower)
+	return benchResult{ns, slower}
 }
 
-func stringCopyStats(cycles int) string {
+func stringCopyStats(cycles int) benchResult {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1StringCopyExecutionTime
-	return fmt.Sprintf("%.0f ns, %.1fx slower", ns, slower)
+	return benchResult{ns, slower}
 }
 
-func stringLengthStats(cycles int) string {
+func stringLengthStats(cycles int) benchResult {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1StringLengthExecutionTime
-	return fmt.Sprintf("%.0f ns, %.1fx slower", ns, slower)
+	return benchResult{ns, slower}
 }
 
-func bubbleSortStats(cycles int) string {
+func bubbleSortStats(cycles int) benchResult {
 	s := float64(cycles) / m1Frequency
 	ns := s * secondToNanosecond
 	slower := ns / m1BubbleSortExecutionTime
-	return fmt.Sprintf("%.0f ns, %.1fx slower", ns, slower)
+	return benchResult{ns, slower}
 }
