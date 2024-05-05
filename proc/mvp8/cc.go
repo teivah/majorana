@@ -106,7 +106,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 			})
 		case l1WriteBack:
 			cc.assertAddrInState(req.alignedAddr, modified)
-			//cc.msi.staleState = true
+			cc.msi.staleState = true
 			cycles1 := latency.L3Access
 			cycles2 := latency.MemoryAccess
 			cycles3 := latency.L3Access

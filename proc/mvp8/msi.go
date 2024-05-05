@@ -210,7 +210,6 @@ func (m *msi) l1Lock(id int, addrs []int32) (msiResponse, func(), *comp.Sem) {
 			}, func() {
 				m.setL1State(id, addrs, modified)
 				m.getL1Sem(addrs).Unlock()
-				m.staleState = true
 			}, m.getL1Sem(addrs)
 	case modified:
 		if !m.getL1Sem(addrs).Lock() {
@@ -327,6 +326,7 @@ func (m *msi) setL1State(id int, addrs []int32, state msiState) {
 		alignedAddr: getL1AlignedMemoryAddress(addrs),
 	}
 	m.states[e] = state
+	m.staleState = true
 }
 
 // sendNewL1MSICommand sends a new MSI command to a specific core (snoop)
