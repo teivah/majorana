@@ -19,7 +19,7 @@ import (
 	"github.com/teivah/majorana/proc/mvp6-3"
 	"github.com/teivah/majorana/proc/mvp7-0"
 	mvp7_1 "github.com/teivah/majorana/proc/mvp7-1"
-	mvp7_2 "github.com/teivah/majorana/proc/mvp7-2"
+	mvp7_2 "github.com/teivah/majorana/proc/mvp8"
 	"github.com/teivah/majorana/risc"
 	"github.com/teivah/majorana/test"
 )
@@ -647,7 +647,7 @@ func TestBenchmarks(t *testing.T) {
 		"MVP-6.3",
 		"MVP-7.0",
 		"MVP-7.1",
-		"MVP-7.2",
+		"MVP-8",
 	}
 	const (
 		versionMVP1 = iota
@@ -661,7 +661,7 @@ func TestBenchmarks(t *testing.T) {
 		versionMVP6_3
 		versionMVP7_0
 		versionMVP7_1
-		versionMVP7_2
+		versionMVP8
 		totalVersions
 	)
 
@@ -678,7 +678,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 301710,
 			versionMVP7_0: 301714,
 			versionMVP7_1: 301714,
-			versionMVP7_2: 301864,
+			versionMVP8:   301864,
 		},
 		"Sum": {
 			versionMVP1:   10409494,
@@ -692,7 +692,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 321432,
 			versionMVP7_0: 137257,
 			versionMVP7_1: 137257,
-			versionMVP7_2: 126282,
+			versionMVP8:   126282,
 		},
 		"String copy": {
 			versionMVP1:   32349405,
@@ -706,7 +706,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 1956067,
 			versionMVP7_0: 303003,
 			versionMVP7_1: 303003,
-			versionMVP7_2: 277645,
+			versionMVP8:   277645,
 		},
 		"String length": {
 			versionMVP1:   19622376,
@@ -720,7 +720,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 641250,
 			versionMVP7_0: 163635,
 			versionMVP7_1: 163635,
-			versionMVP7_2: 160378,
+			versionMVP8:   160378,
 		},
 		"Bubble sort": {
 			versionMVP1:   158852511,
@@ -734,7 +734,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 2677345,
 			versionMVP7_0: 24232735,
 			versionMVP7_1: 1229965,
-			versionMVP7_2: 949616,
+			versionMVP8:   949616,
 		},
 	}
 
@@ -772,7 +772,7 @@ func TestBenchmarks(t *testing.T) {
 		versionMVP7_1: func(m int) virtualMachine {
 			return mvp7_1.NewCPU(false, m, 2)
 		},
-		versionMVP7_2: func(m int) virtualMachine {
+		versionMVP8: func(m int) virtualMachine {
 			return mvp7_2.NewCPU(false, m, 3)
 		},
 	}

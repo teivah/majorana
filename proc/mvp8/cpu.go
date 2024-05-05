@@ -1,4 +1,4 @@
-package mvp7_2
+package mvp8
 
 import (
 	"github.com/teivah/majorana/common/latency"

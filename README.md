@@ -144,24 +144,28 @@ L1D per core, MSI protocol implementation; yet, lots of "false sharing"
 
 The CU syncs to the MSI when there was an eviction (lost a cycle) but then tells that a particular instruction has to be executed by a specific core.
 
+#### MVP-8
+
+L3
+
 ## Benchmarks
 
 All the benchmarks are executed at a fixed CPU clock frequency of 3.2 GHz.
 
 Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency). This benchmark was on a different micro-architecture, different ISA, etc. is hardly comparable with the MVP benchmarks. Yet, it gives us a reference to show how good (or bad :) the MVP implementations are.
 
-| Machine | Prime number | Sum of array | String copy | String length | Bubble sort | Avg |
-|:------:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|
+| Machine  | Prime number | Sum of array | String copy | String length | Bubble sort | Avg |
+|:--------:|:-----:|:-----:|:-----:|:-----:|:-----:|:-----:|
 | Apple M1 | 31703.0 ns | 1300.0 ns | 3232.0 ns | 3231.0 ns | 42182.0 ns | 1.0 |
-| MVP-1 | 24365508 ns, 768.6x slower | 3252967 ns, 2502.3x slower | 10109189 ns, 3127.8x slower | 6131992 ns, 1897.9x slower | 49641410 ns, 1176.8x slower | 1894.7 |
-| MVP-2 | 422921 ns, 13.3x slower | 510824 ns, 392.9x slower | 2275302 ns, 704.0x slower | 1235514 ns, 382.4x slower | 13409097 ns, 317.9x slower | 362.1 |
-| MVP-3 | 422922 ns, 13.3x slower | 145409 ns, 111.9x slower | 1313097 ns, 406.3x slower | 273310 ns, 84.6x slower | 1993983 ns, 47.3x slower | 132.7 |
-| MVP-4 | 141242 ns, 4.5x slower | 108045 ns, 83.1x slower | 1213745 ns, 375.5x slower | 212257 ns, 65.7x slower | 1495782 ns, 35.5x slower | 112.9 |
-| MVP-5 | 125594 ns, 4.0x slower | 106765 ns, 82.1x slower | 1204146 ns, 372.6x slower | 209058 ns, 64.7x slower | 1483345 ns, 35.2x slower | 111.7 |
-| MVP-6.0 | 125581 ns, 4.0x slower | 104288 ns, 80.2x slower | 1204999 ns, 372.8x slower | 209992 ns, 65.0x slower | 855390 ns, 20.3x slower | 108.5 |
-| MVP-6.1 | 109932 ns, 3.5x slower | 100448 ns, 77.3x slower | 1198406 ns, 370.8x slower | 200391 ns, 62.0x slower | 836670 ns, 19.8x slower | 106.7 |
-| MVP-6.2 | 109932 ns, 3.5x slower | 100448 ns, 77.3x slower | 1198406 ns, 370.8x slower | 200391 ns, 62.0x slower | 836670 ns, 19.8x slower | 106.7 |
-| MVP-6.3 | 94284 ns, 3.0x slower | 100448 ns, 77.3x slower | 611271 ns, 189.1x slower | 200391 ns, 62.0x slower | 836670 ns, 19.8x slower | 70.2 |
-| MVP-7.0 | 94286 ns, 3.0x slower | 42893 ns, 33.0x slower | 94688 ns, 29.3x slower | 51136 ns, 15.8x slower | 7572730 ns, 179.5x slower | 52.1 |
-| MVP-7.1 | 94286 ns, 3.0x slower | 42893 ns, 33.0x slower | 94688 ns, 29.3x slower | 51136 ns, 15.8x slower | 384364 ns, 9.1x slower | 18.0 |
-| MVP-7.2 | 94332 ns, 3.0x slower | 39463 ns, 30.4x slower | 86764 ns, 26.8x slower | 50118 ns, 15.5x slower | 296755 ns, 7.0x slower | 16.5 |
+|  MVP-1   | 24365508 ns, 768.6x slower | 3252967 ns, 2502.3x slower | 10109189 ns, 3127.8x slower | 6131992 ns, 1897.9x slower | 49641410 ns, 1176.8x slower | 1894.7 |
+|  MVP-2   | 422921 ns, 13.3x slower | 510824 ns, 392.9x slower | 2275302 ns, 704.0x slower | 1235514 ns, 382.4x slower | 13409097 ns, 317.9x slower | 362.1 |
+|  MVP-3   | 422922 ns, 13.3x slower | 145409 ns, 111.9x slower | 1313097 ns, 406.3x slower | 273310 ns, 84.6x slower | 1993983 ns, 47.3x slower | 132.7 |
+|  MVP-4   | 141242 ns, 4.5x slower | 108045 ns, 83.1x slower | 1213745 ns, 375.5x slower | 212257 ns, 65.7x slower | 1495782 ns, 35.5x slower | 112.9 |
+|  MVP-5   | 125594 ns, 4.0x slower | 106765 ns, 82.1x slower | 1204146 ns, 372.6x slower | 209058 ns, 64.7x slower | 1483345 ns, 35.2x slower | 111.7 |
+| MVP-6.0  | 125581 ns, 4.0x slower | 104288 ns, 80.2x slower | 1204999 ns, 372.8x slower | 209992 ns, 65.0x slower | 855390 ns, 20.3x slower | 108.5 |
+| MVP-6.1  | 109932 ns, 3.5x slower | 100448 ns, 77.3x slower | 1198406 ns, 370.8x slower | 200391 ns, 62.0x slower | 836670 ns, 19.8x slower | 106.7 |
+| MVP-6.2  | 109932 ns, 3.5x slower | 100448 ns, 77.3x slower | 1198406 ns, 370.8x slower | 200391 ns, 62.0x slower | 836670 ns, 19.8x slower | 106.7 |
+| MVP-6.3  | 94284 ns, 3.0x slower | 100448 ns, 77.3x slower | 611271 ns, 189.1x slower | 200391 ns, 62.0x slower | 836670 ns, 19.8x slower | 70.2 |
+| MVP-7.0  | 94286 ns, 3.0x slower | 42893 ns, 33.0x slower | 94688 ns, 29.3x slower | 51136 ns, 15.8x slower | 7572730 ns, 179.5x slower | 52.1 |
+| MVP-7.1  | 94286 ns, 3.0x slower | 42893 ns, 33.0x slower | 94688 ns, 29.3x slower | 51136 ns, 15.8x slower | 384364 ns, 9.1x slower | 18.0 |
+| MVP-8  | 94332 ns, 3.0x slower | 39463 ns, 30.4x slower | 86764 ns, 26.8x slower | 50118 ns, 15.5x slower | 296755 ns, 7.0x slower | 16.5 |
