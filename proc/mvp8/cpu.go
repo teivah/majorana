@@ -265,6 +265,7 @@ func (m *CPU) Stats() map[string]any {
 	appendStats(root, m.decodeUnit.stats())
 	appendStats(root, m.controlUnit.stats())
 	appendStats(root, m.msi.stats())
+	appendStats(root, m.cacheControllers[0].stats())
 	return root
 }
 

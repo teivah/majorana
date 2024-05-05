@@ -9,6 +9,12 @@ import (
 	"github.com/teivah/majorana/risc"
 )
 
+var (
+	// Monitoring
+	l1WriteBackToMemory int
+	l1WriteBackToL3     int
+)
+
 type ccReadReq struct {
 	cycle int
 	addrs []int32
@@ -127,6 +133,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 						cycles2--
 						return false
 					}
+					l1WriteBackToMemory++
 					cc.mmu.writeToMemory(req.alignedAddr, memory)
 					_, evicted := cc.l1d.EvictCacheLine(req.alignedAddr)
 					if !evicted {
@@ -139,6 +146,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 						cycles3--
 						return false
 					}
+					l1WriteBackToL3++
 					cc.writeToL3(req.alignedAddr, memory)
 					_, evicted := cc.l1d.EvictCacheLine(req.alignedAddr)
 					if !evicted {
@@ -514,4 +522,11 @@ func (cc *cacheController) writeBack() int {
 
 func (cc *cacheController) isEmpty() bool {
 	return cc.read.IsStart() && cc.write.IsStart() && cc.snoop.IsStart()
+}
+
+func (cc *cacheController) stats() map[string]any {
+	return map[string]any{
+		"cc_l1_writeback_to_memory": l1WriteBackToMemory,
+		"cc_l1_writeback_to_l3":     l1WriteBackToL3,
+	}
 }
