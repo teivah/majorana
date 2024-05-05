@@ -272,7 +272,6 @@ func (m *msi) evictL1ExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *ms
 	}]
 	switch state {
 	case shared, invalid:
-		//fmt.Println(id, "send msi evict", alignedAddr, state)
 		return m.sendNewL1MSICommand(id, alignedAddr, l1Evict)
 	case modified:
 		return m.sendNewL1MSICommand(id, alignedAddr, l1WriteBack)
@@ -330,7 +329,6 @@ func (m *msi) sendNewL1MSICommand(id int, alignedAddr comp.AlignedAddress, reque
 	} else {
 		newCommand := &msiCommandInfo{
 			callback: func() {
-				//fmt.Println(id, "callback", alignedAddr, invalid)
 				m.states[msiEntry{id, alignedAddr}] = invalid
 				delete(m.commands, cmdRequest)
 			},
@@ -364,7 +362,6 @@ func (m *msi) sendNewL3MSICommand(id int, alignedAddr comp.AlignedAddress, reque
 	} else {
 		newCommand := &msiCommandInfo{
 			callback: func() {
-				//fmt.Println(id, "callback", alignedAddr, invalid)
 				delete(m.commands, cmdRequest)
 			},
 			request: request,

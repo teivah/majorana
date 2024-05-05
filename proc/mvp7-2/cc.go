@@ -87,13 +87,11 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 			cc.assertAddrInState(req.alignedAddr, shared)
 			cc.msi.staleState = true
 			cc.snoop.Append(func(struct{}) bool {
-				//fmt.Println(cc.id, "l1 evict run", req.alignedAddr)
 				_, _ = cc.l1d.EvictCacheLine(req.alignedAddr)
 				info.done()
 				return true
 			})
 		case l3Evict:
-			//fmt.Println(cc.id, "l3 evict", req.alignedAddr)
 			cc.msi.staleState = true
 			cc.snoop.Append(func(struct{}) bool {
 				mu := cc.msi.getL3Lock([]int32{int32(req.alignedAddr)})
@@ -124,7 +122,6 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 					// Cache line was evicted
 					// TODO Cycles
 					cc.mmu.writeToMemory(req.alignedAddr, memory)
-					//fmt.Println(cc.id, "l1 write back run", req.alignedAddr, req.alignedAddr+l1DCacheLineSize)
 					_, evicted := cc.l1d.EvictCacheLine(req.alignedAddr)
 					if !evicted {
 						panic("invalid state")
@@ -134,7 +131,6 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				} else {
 					// TODO Cycles
 					cc.writeToL3(req.alignedAddr, memory)
-					//fmt.Println(cc.id, "l1 write back run", req.alignedAddr, req.alignedAddr+l1DCacheLineSize)
 					_, evicted := cc.l1d.EvictCacheLine(req.alignedAddr)
 					if !evicted {
 						panic("invalid state")
@@ -144,7 +140,6 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				}
 			})
 		case l3WriteBack:
-			//fmt.Println(cc.id, "l3 write back", req.alignedAddr, req.alignedAddr+l3CacheLineSize)
 			cycles := latency.MemoryAccess
 			cc.snoop.Append(func(struct{}) bool {
 				if cycles > 0 {
@@ -423,7 +418,6 @@ func (cc *cacheController) coWriteToL1(r ccWriteReq) ccWriteResp {
 			return ccWriteResp{}
 		}
 
-		//fmt.Println(cc.id, "write to l1", r.addrs)
 		cc.writeToL1(r.addrs, r.data)
 		cc.post()
 		cc.post = nil
