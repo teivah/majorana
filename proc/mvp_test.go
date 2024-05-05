@@ -397,12 +397,7 @@ func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to 
 				assert.Equal(t, int8(0), vm.Context().Memory[4])
 			}
 
-			if stats {
-				t.Logf("Cycle: %d", cycle)
-				for k, v := range vm.Stats() {
-					t.Log(k, v)
-				}
-			}
+			printStats(t, stats, cycle, vm)
 		})
 
 		t.Run(fmt.Sprintf("Prime - with extra memory - %d", i), func(t *testing.T) {
@@ -426,12 +421,7 @@ func testPrime(t *testing.T, factory func(int) virtualMachine, memory, from, to 
 				assert.Equal(t, int8(0), vm.Context().Memory[4])
 			}
 
-			if stats {
-				t.Logf("Cycle: %d", cycle)
-				for k, v := range vm.Stats() {
-					t.Log(k, v)
-				}
-			}
+			printStats(t, stats, cycle, vm)
 		})
 
 	}
@@ -464,12 +454,7 @@ func testSums(t *testing.T, factory func(int) virtualMachine, memory, from, to i
 			}
 			assert.Equal(t, int32(sumArray(s)), vm.Context().Registers[risc.A0])
 
-			if stats {
-				t.Logf("Cycle: %d", cycle)
-				for k, v := range vm.Stats() {
-					t.Log(k, v)
-				}
-			}
+			printStats(t, stats, cycle, vm)
 		})
 	}
 }
@@ -492,12 +477,7 @@ func testStringLength(t *testing.T, factory func(int) virtualMachine, memory int
 		got := bytes.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
 		assert.Equal(t, int32(length), got)
 
-		if stats {
-			t.Logf("Cycle: %d", cycle)
-			for k, v := range vm.Stats() {
-				t.Log(k, v)
-			}
-		}
+		printStats(t, stats, cycle, vm)
 	})
 }
 
@@ -521,12 +501,7 @@ func testStringCopy(t *testing.T, factory func(int) virtualMachine, memory int, 
 			assert.Equal(t, int8('1'), v, i)
 		}
 
-		if stats {
-			t.Logf("Cycle: %d", cycle)
-			for k, v := range vm.Stats() {
-				t.Log(k, v)
-			}
-		}
+		printStats(t, stats, cycle, vm)
 	})
 }
 
@@ -554,12 +529,7 @@ func testBubbleSort(t *testing.T, length int, factory func(int) virtualMachine, 
 			require.Equal(t, int32(i+1), n)
 		}
 
-		if stats {
-			t.Logf("Cycle: %d", cycle)
-			for k, v := range vm.Stats() {
-				t.Log(k, v)
-			}
-		}
+		printStats(t, stats, cycle, vm)
 	})
 }
 
@@ -574,12 +544,7 @@ func testConditionalBranch(t *testing.T, factory func(int) virtualMachine, stats
 		require.NoError(t, err)
 		assert.Equal(t, int32(0), vm.Context().Registers[risc.T1])
 		assert.Equal(t, int32(2), vm.Context().Registers[risc.T2])
-		if stats {
-			t.Logf("Cycle: %d", cycle)
-			for k, v := range vm.Stats() {
-				t.Log(k, v)
-			}
-		}
+		printStats(t, stats, cycle, vm)
 	})
 }
 
@@ -603,13 +568,24 @@ func testSpectre(t *testing.T, factory func(int) virtualMachine, stats bool) {
 		require.NoError(t, err)
 		got := bytes.I32FromBytes(vm.Context().Memory[0], vm.Context().Memory[1], vm.Context().Memory[2], vm.Context().Memory[3])
 		assert.NotEqual(t, int32(secret), got)
-		if stats {
-			t.Logf("Cycle: %d", cycle)
-			for k, v := range vm.Stats() {
-				t.Log(k, v)
-			}
-		}
+		printStats(t, stats, cycle, vm)
 	})
+}
+
+func printStats(t *testing.T, stats bool, cycle int, vm virtualMachine) {
+	if !stats {
+		return
+	}
+	t.Logf("Cycle: %d", cycle)
+	s := vm.Stats()
+	keys := make([]string, 0, len(s))
+	for k := range s {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		t.Log(k, s[k])
+	}
 }
 
 //func TestMvp1Jal(t *testing.T) {

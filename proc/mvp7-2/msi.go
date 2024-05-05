@@ -56,8 +56,10 @@ type msi struct {
 	l3Write map[comp.AlignedAddress]bool
 
 	// Monitoring
-	evictRequestCount     int
-	writeBackRequestCount int
+	l1EvictRequestCount     int
+	l1WriteBackRequestCount int
+	l3EvictRequestCount     int
+	l3WriteBackRequestCount int
 }
 
 type msiEntry struct {
@@ -286,8 +288,10 @@ func (m *msi) evictL1ExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *ms
 
 func (m *msi) evictL3ExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *msiCommandInfo {
 	if m.l3Write[alignedAddr] {
+		m.l3WriteBackRequestCount++
 		return m.sendNewL3MSICommand(id, alignedAddr, l3WriteBack)
 	}
+	m.l3EvictRequestCount++
 	return m.sendNewL3MSICommand(id, alignedAddr, l3Evict)
 }
 
@@ -342,9 +346,9 @@ func (m *msi) sendNewL1MSICommand(id int, alignedAddr comp.AlignedAddress, reque
 		}
 		m.commands[cmdRequest] = newCommand
 		if request == l1Evict {
-			m.evictRequestCount++
+			m.l1EvictRequestCount++
 		} else if request == l1WriteBack {
-			m.writeBackRequestCount++
+			m.l1WriteBackRequestCount++
 		}
 		return newCommand
 	}
