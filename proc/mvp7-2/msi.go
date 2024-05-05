@@ -1,6 +1,9 @@
 package mvp7_2
 
 import (
+	"fmt"
+	"sync"
+
 	"github.com/teivah/majorana/proc/comp"
 )
 
@@ -46,6 +49,8 @@ type msi struct {
 	// An eviction happened, the CU has to synchronize the state
 	staleState bool
 	commands   map[msiCommandRequest]*msiCommandInfo
+	// A line is locked when it's being fetched
+	l3Lock map[comp.AlignedAddress]*sync.Mutex
 
 	// Monitoring
 	evictRequestCount     int
@@ -87,6 +92,7 @@ func newMSI() *msi {
 		pendings: make(map[comp.AlignedAddress]*comp.Sem),
 		states:   make(map[msiEntry]msiState),
 		commands: make(map[msiCommandRequest]*msiCommandInfo),
+		l3Lock:   make(map[comp.AlignedAddress]*sync.Mutex),
 	}
 }
 
@@ -164,7 +170,7 @@ func (m *msi) readRequest(id int, alignedAddr comp.AlignedAddress) []*msiCommand
 		}
 		switch state {
 		case modified:
-			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, l1WriteBack))
+			pendings = append(pendings, m.sendNewL1MSICommand(e.id, alignedAddr, l1WriteBack))
 		}
 	}
 	return pendings
@@ -229,9 +235,9 @@ func (m *msi) writeRequest(id int, alignedAddr comp.AlignedAddress) []*msiComman
 		}
 		switch state {
 		case modified:
-			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, l1WriteBack))
+			pendings = append(pendings, m.sendNewL1MSICommand(e.id, alignedAddr, l1WriteBack))
 		case shared:
-			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, l1Evict))
+			pendings = append(pendings, m.sendNewL1MSICommand(e.id, alignedAddr, l1Evict))
 		}
 	}
 	return pendings
@@ -250,9 +256,9 @@ func (m *msi) invalidationRequest(id int, alignedAddr comp.AlignedAddress) []*ms
 		// We want to evict the line with or without write-back first
 		switch state {
 		case modified:
-			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, l1WriteBack))
+			pendings = append(pendings, m.sendNewL1MSICommand(e.id, alignedAddr, l1WriteBack))
 		case shared:
-			pendings = append(pendings, m.sendNewMSICommand(e.id, alignedAddr, l1Evict))
+			pendings = append(pendings, m.sendNewL1MSICommand(e.id, alignedAddr, l1Evict))
 		}
 	}
 	return pendings
@@ -265,28 +271,19 @@ func (m *msi) evictL1ExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *ms
 		alignedAddr: alignedAddr,
 	}]
 	switch state {
-	case shared:
-		return m.sendNewMSICommand(id, alignedAddr, l1Evict)
+	case shared, invalid:
+		//fmt.Println(id, "send msi evict", alignedAddr, state)
+		return m.sendNewL1MSICommand(id, alignedAddr, l1Evict)
 	case modified:
-		return m.sendNewMSICommand(id, alignedAddr, l1WriteBack)
+		return m.sendNewL1MSICommand(id, alignedAddr, l1WriteBack)
 	default:
-		return nil
+		panic(fmt.Sprintf("unknown %d", state))
 	}
 }
 
 func (m *msi) evictL3ExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *msiCommandInfo {
-	state := m.states[msiEntry{
-		id:          id,
-		alignedAddr: alignedAddr,
-	}]
-	switch state {
-	case shared:
-		return m.sendNewMSICommand(id, alignedAddr, l3Evict)
-	case modified:
-		return m.sendNewMSICommand(id, alignedAddr, l3WriteBack)
-	default:
-		return nil
-	}
+	// TODO Only evict sometimes?
+	return m.sendNewL3MSICommand(id, alignedAddr, l3WriteBack)
 }
 
 func (m *msi) getSem(addrs []int32) *comp.Sem {
@@ -315,8 +312,8 @@ func (m *msi) setState(id int, addrs []int32, state msiState) {
 	m.states[e] = state
 }
 
-// sendNewMSICommand sends a new MSI command to a specific core (snoop)
-func (m *msi) sendNewMSICommand(id int, alignedAddr comp.AlignedAddress, request requestType) *msiCommandInfo {
+// sendNewL1MSICommand sends a new MSI command to a specific core (snoop)
+func (m *msi) sendNewL1MSICommand(id int, alignedAddr comp.AlignedAddress, request requestType) *msiCommandInfo {
 	cmdRequest := msiCommandRequest{
 		id:          id,
 		alignedAddr: alignedAddr,
@@ -333,6 +330,7 @@ func (m *msi) sendNewMSICommand(id int, alignedAddr comp.AlignedAddress, request
 	} else {
 		newCommand := &msiCommandInfo{
 			callback: func() {
+				//fmt.Println(id, "callback", alignedAddr, invalid)
 				m.states[msiEntry{id, alignedAddr}] = invalid
 				delete(m.commands, cmdRequest)
 			},
@@ -346,4 +344,42 @@ func (m *msi) sendNewMSICommand(id int, alignedAddr comp.AlignedAddress, request
 		}
 		return newCommand
 	}
+}
+
+// sendNewL3MSICommand sends a new MSI command to a specific core (snoop)
+func (m *msi) sendNewL3MSICommand(id int, alignedAddr comp.AlignedAddress, request requestType) *msiCommandInfo {
+	cmdRequest := msiCommandRequest{
+		id:          id,
+		alignedAddr: alignedAddr,
+		request:     request,
+	}
+	if existingCommand, exists := m.commands[cmdRequest]; exists {
+		if existingCommand.request != request {
+			panic("invalid state")
+		}
+		// It means a similar command was already issued and not yet completed
+		// In this case, we don't create a new command, we reuse the pending one
+		m.commands[cmdRequest] = existingCommand
+		return existingCommand
+	} else {
+		newCommand := &msiCommandInfo{
+			callback: func() {
+				//fmt.Println(id, "callback", alignedAddr, invalid)
+				delete(m.commands, cmdRequest)
+			},
+			request: request,
+		}
+		m.commands[cmdRequest] = newCommand
+		return newCommand
+	}
+}
+
+func (m *msi) getL3Lock(addrs []int32) *sync.Mutex {
+	addr := getL3AlignedMemoryAddress(addrs)
+	mu, exists := m.l3Lock[addr]
+	if !exists {
+		mu = &sync.Mutex{}
+		m.l3Lock[addr] = mu
+	}
+	return mu
 }

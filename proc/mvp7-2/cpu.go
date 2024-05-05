@@ -16,7 +16,8 @@ const (
 	l1DCacheLineSize = 64 * bytes
 	l1DCacheSize     = 1 * kilobytes
 	l3CacheLineSize  = 128 * bytes
-	l3CacheSize      = 1 * kilobytes
+	// TODO Increase
+	l3CacheSize = 1 * kilobytes
 )
 
 type CPU struct {
@@ -235,7 +236,8 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 		}
 	}
 
-	m.l3.EvictExtraLines()
+	// TODO Why 30 L1 lines??
+	//m.l3.EvictExtraLines()
 	for _, cc := range m.cacheControllers {
 		cycle += cc.export()
 	}
@@ -250,6 +252,11 @@ func (m *CPU) Run(app risc.Application) (int, error) {
 func (m *CPU) exportL3() int {
 	additionalCycles := 0
 	for _, line := range m.l3.Lines() {
+		mu := m.msi.getL3Lock([]int32{int32(line.Boundary[0])})
+		if !mu.TryLock() {
+			panic("invalid state")
+		}
+		mu.Unlock()
 		additionalCycles += latency.MemoryAccess
 		m.memoryManagementUnit.writeToMemory(line.Boundary[0], line.Data)
 	}
