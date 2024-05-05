@@ -164,4 +164,4 @@ Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency
 | MVP-6.3 | 94284 ns, 3.0x slower | 100448 ns, 77.3x slower | 611271 ns, 189.1x slower | 200391 ns, 62.0x slower | 836670 ns, 19.8x slower | 70.2 |
 | MVP-7.0 | 94286 ns, 3.0x slower | 42893 ns, 33.0x slower | 94688 ns, 29.3x slower | 51136 ns, 15.8x slower | 7572730 ns, 179.5x slower | 52.1 |
 | MVP-7.1 | 94286 ns, 3.0x slower | 42893 ns, 33.0x slower | 94688 ns, 29.3x slower | 51136 ns, 15.8x slower | 384364 ns, 9.1x slower | 18.0 |
-| MVP-7.2 | 94332 ns, 3.0x slower | 39623 ns, 30.5x slower | 87494 ns, 27.1x slower | 50218 ns, 15.5x slower | 302969 ns, 7.2x slower | 16.7 |
+| MVP-7.2 | 94332 ns, 3.0x slower | 39463 ns, 30.4x slower | 86764 ns, 26.8x slower | 50118 ns, 15.5x slower | 296755 ns, 7.0x slower | 16.5 |

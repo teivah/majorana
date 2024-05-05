@@ -145,10 +145,10 @@ func (ctx *Context) RATCommit() {
 }
 
 func (ctx *Context) RATRollback(sequenceID int32) {
-	for register, tu := range ctx.transactionRAT.Values() {
-		if tu.sequenceID < sequenceID {
-			ctx.committedRAT.Write(register, tu.value)
-		}
+	for register, tu := range ctx.transactionRAT.FindValues(func(u transactionUnit) bool {
+		return u.sequenceID < sequenceID
+	}) {
+		ctx.committedRAT.Write(register, tu.value)
 	}
 	ctx.transactionRAT = comp.NewRAT[RegisterType, transactionUnit](ratLength)
 }

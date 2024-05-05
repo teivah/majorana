@@ -70,3 +70,27 @@ func (r *RAT[K, V]) Values() map[K]V {
 	}
 	return m
 }
+
+func (r *RAT[K, V]) FindValues(predicate func(V) bool) map[K]V {
+	m := make(map[K]V)
+	for k, v := range r.idx {
+		found := false
+		for i := v; i >= 0; i-- {
+			if predicate(r.values[k][i]) {
+				m[k] = r.values[k][i]
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+		for i := r.length - 1; i > v; i-- {
+			if predicate(r.values[k][i]) {
+				m[k] = r.values[k][i]
+				break
+			}
+		}
+	}
+	return m
+}

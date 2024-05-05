@@ -692,7 +692,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 321432,
 			versionMVP7_0: 137257,
 			versionMVP7_1: 137257,
-			versionMVP7_2: 126793,
+			versionMVP7_2: 126282,
 		},
 		"String copy": {
 			versionMVP1:   32349405,
@@ -706,7 +706,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 1956067,
 			versionMVP7_0: 303003,
 			versionMVP7_1: 303003,
-			versionMVP7_2: 279981,
+			versionMVP7_2: 277645,
 		},
 		"String length": {
 			versionMVP1:   19622376,
@@ -720,7 +720,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 641250,
 			versionMVP7_0: 163635,
 			versionMVP7_1: 163635,
-			versionMVP7_2: 160697,
+			versionMVP7_2: 160378,
 		},
 		"Bubble sort": {
 			versionMVP1:   158852511,
@@ -734,7 +734,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 2677345,
 			versionMVP7_0: 24232735,
 			versionMVP7_1: 1229965,
-			versionMVP7_2: 969502,
+			versionMVP7_2: 949616,
 		},
 	}
 
@@ -773,7 +773,7 @@ func TestBenchmarks(t *testing.T) {
 			return mvp7_1.NewCPU(false, m, 2)
 		},
 		versionMVP7_2: func(m int) virtualMachine {
-			return mvp7_2.NewCPU(false, m, 2)
+			return mvp7_2.NewCPU(false, m, 3)
 		},
 	}
 
