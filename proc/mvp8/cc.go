@@ -369,9 +369,8 @@ func (cc *cacheController) coWrite(r ccWriteReq) ccWriteResp {
 			}
 		} else if resp.writeToL1 {
 			return cc.write.ExecuteWithCheckpoint(r, cc.coWriteToL1)
-		} else {
-			panic("invalid state")
 		}
+		panic("invalid state")
 	})
 }
 
