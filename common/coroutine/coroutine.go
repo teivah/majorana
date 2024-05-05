@@ -64,6 +64,20 @@ func (c *Coroutine[A, B]) ExecuteWithCheckpoint(a A, f func(A) B) B {
 	return f(a)
 }
 
+func (c *Coroutine[A, B]) ExecuteWithCheckpointAfter(a A, cycles int, f func(A) B) B {
+	c.current = f
+	c.isStart = false
+	remaining := cycles
+	var zero B
+	return c.ExecuteWithCheckpoint(a, func(a A) B {
+		if remaining > 0 {
+			remaining--
+			return zero
+		}
+		return f(a)
+	})
+}
+
 func (c *Coroutine[A, B]) Reset() {
 	c.current = c.start
 	c.isStart = true
