@@ -100,6 +100,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 				}
 
 				_, _ = cc.l3.EvictCacheLine(req.alignedAddr)
+				cc.msi.l3ReleaseWriteNotify(req.alignedAddr)
 				info.done()
 				mu.Unlock()
 				return true
@@ -167,6 +168,7 @@ func (cc *cacheController) coSnoop(struct{}) struct{} {
 
 				cc.mmu.writeToMemory(req.alignedAddr, memory)
 				_, evicted := cc.l3.EvictCacheLine(req.alignedAddr)
+				cc.msi.l3ReleaseWriteNotify(req.alignedAddr)
 				if !evicted {
 					panic("invalid state")
 				}
@@ -521,6 +523,8 @@ func (cc *cacheController) writeToL1(addrs []int32, data []int8) {
 }
 
 func (cc *cacheController) writeToL3(l1Addr comp.AlignedAddress, data []int8) {
+	l3Addr := getL3AlignedMemoryAddress([]int32{int32(l1Addr)})
+	cc.msi.l3WriteNotify(l3Addr)
 	cc.l3.Write(int32(l1Addr), data)
 }
 

@@ -51,6 +51,9 @@ type msi struct {
 	commands   map[msiCommandRequest]*msiCommandInfo
 	// A line is locked when it's being fetched
 	l3Lock map[comp.AlignedAddress]*sync.Mutex
+	// Indicates whether an L3 line is pending write (used to know whether a
+	// cache eviction should be a simple eviction or a write-back)
+	l3Write map[comp.AlignedAddress]bool
 
 	// Monitoring
 	evictRequestCount     int
@@ -93,6 +96,7 @@ func newMSI() *msi {
 		states:   make(map[msiEntry]msiState),
 		commands: make(map[msiCommandRequest]*msiCommandInfo),
 		l3Lock:   make(map[comp.AlignedAddress]*sync.Mutex),
+		l3Write:  make(map[comp.AlignedAddress]bool),
 	}
 }
 
@@ -281,8 +285,10 @@ func (m *msi) evictL1ExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *ms
 }
 
 func (m *msi) evictL3ExtraCacheLine(id int, alignedAddr comp.AlignedAddress) *msiCommandInfo {
-	// TODO Only evict sometimes?
-	return m.sendNewL3MSICommand(id, alignedAddr, l3WriteBack)
+	if m.l3Write[alignedAddr] {
+		return m.sendNewL3MSICommand(id, alignedAddr, l3WriteBack)
+	}
+	return m.sendNewL3MSICommand(id, alignedAddr, l3Evict)
 }
 
 func (m *msi) getSem(addrs []int32) *comp.Sem {
@@ -379,4 +385,12 @@ func (m *msi) getL3Lock(addrs []int32) *sync.Mutex {
 		m.l3Lock[addr] = mu
 	}
 	return mu
+}
+
+func (m *msi) l3WriteNotify(addr comp.AlignedAddress) {
+	m.l3Write[addr] = true
+}
+
+func (m *msi) l3ReleaseWriteNotify(addr comp.AlignedAddress) {
+	m.l3Write[addr] = false
 }

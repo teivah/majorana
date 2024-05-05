@@ -716,7 +716,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 321432,
 			versionMVP7_0: 137257,
 			versionMVP7_1: 137257,
-			versionMVP7_2: 137257,
+			versionMVP7_2: 126793,
 		},
 		"String copy": {
 			versionMVP1:   32349405,
@@ -730,7 +730,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 1956067,
 			versionMVP7_0: 303003,
 			versionMVP7_1: 303003,
-			versionMVP7_2: 303003,
+			versionMVP7_2: 393655,
 		},
 		"String length": {
 			versionMVP1:   19622376,
@@ -744,7 +744,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 641250,
 			versionMVP7_0: 163635,
 			versionMVP7_1: 163635,
-			versionMVP7_2: 163635,
+			versionMVP7_2: 160697,
 		},
 		"Bubble sort": {
 			versionMVP1:   158852511,
@@ -758,7 +758,7 @@ func TestBenchmarks(t *testing.T) {
 			versionMVP6_3: 2677345,
 			versionMVP7_0: 24232735,
 			versionMVP7_1: 1229959,
-			versionMVP7_2: 1008464,
+			versionMVP7_2: 1008415,
 		},
 	}
 
