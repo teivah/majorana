@@ -4,6 +4,19 @@
 
 ## Majorana Virtual Processors (MVP)
 
+- MVP-1: Basic
+- MVP-2: L1I
+- MVP-3: L1D
+- MVP-4: pipelining
+- MVP-5: branch target buffer
+- MVP-6.0: superscalar processor
+- MVP-6.1: forwarding
+- MVP-6.2: commit / rollback conditional branches
+- MVP-6.3: register renaming
+- MVP-7.0: MSI protocol
+- MVP-7.1: prevent high-rate of cache line eviction
+- MVP-8: L3
+
 ### MVP-1
 
 MVP-1 is the first RISC-V virtual machine. It does not implment any of the known CPI optimizations and keep a very simple micro-architecture divided into four stages:
@@ -197,7 +210,6 @@ In this scenario, each core can only write a single change to their L1D before t
 
 > [!NOTE]  
 > Average performance change compared to MVP-6.3: 25% faster.
-
 
 #### MVP-7.1
 
