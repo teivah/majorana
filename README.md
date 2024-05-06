@@ -6,42 +6,50 @@
 
 ### MVP-1
 
-MVP-1 is the first version of the RISC-V virtual machine.
-It does not implement any of the known CPU optimizations, such as pipelining, out-of-order execution, multiple execution units, etc.
+MVP-1 is the first RISC-V virtual machine. It does not implment any of the known CPI optimizations and keep a very simple micro-architecture divided into four stages:
 
-Here is the microarchitecture, divided into 4 classic stages:
 * Fetch: fetch an instruction from the main memory
 * Decode: decode the instruction
 * Execute: execute the RISC-V instruction
-* Write: write-back the result to a register or the main memory
+* Write: write-back the result to a register or main memory
 
 ![](res/majorana-mvp-1.drawio.png)
 
 ### MVP-2
 
-Compared to MVP-1, we add a cache for instructions called L1I (Level 1 Instructions) with a size of 64 KB. The caching policy is straightforward: as soon as we meet an instruction that is not present in L1I, we fetch a cache line of 64 KB instructions from the main memory, and we cache it into L1I.
+One of the main issues is with MVP-1 is that we need to fetch each instruction from memory. To tackle that, MVP-2 includes a cache for instructions called L1I (Level 1 Instructions) with a size of 64 bytes.
 
 ![](res/majorana-mvp-2.drawio.png)
 
+The caching policy is the following: each time the processor meets an instruction that is not present in L1I, it fetches a cache line of 64 bytes from the main memory (a cache line is a contiguous block of memory), and it replaces the existing 64 bytes cache with this new line.
+
+> [!NOTE]  
+> Average performance change compared to MVP-1: 80% faster.
+
 ### MVP-3
 
-From MVP-3, we introduce a proper memory management unit (MMU). The MMU consists of an 1KB L1I (present from L1I) and a new 1KB L1D to cache data:
+Caching instructions is important; yet, caching data is at least equally important.
+
+MVP-3 introduces a component called Memory Management Unit (MMU). The MMU is the component on top of the existing L1I and a new cache for data: L1D.
 
 ![](res/majorana-mvp-3.drawio.png)
 
-When the execute unit wants to access a memory address, it requests it to the MMU that either returns the value directly from L1D or from memory. In the latter case, the MMU fetches a whole cache line of 64 bytes from memory and push that into L1D. L1D eviction policy is based on a LRU cache (Least-Recently Used).
+When the execute unit wants to access a memory address, it requests it to the MMU that either returns the value directly from L1D or from memory. In the latter case, the MMU fetches a whole cache line of 64 bytes from memory and push that into L1D. The L1D eviction policy is based on LRU (Least-Recently Used). L1D can contain up to blocks of 64 bytes (1 KB).
 
-The introduction of an L1D doesn't have any impact for benchmarks not reliant on frequent memory access (obviously); however, it yields significant performance improvements for those that do (up to 40% faster).
+> [!NOTE]  
+> Average performance change compared to MVP-2: 63% faster.
 
 ### MVP-4
 
-MVP-4 keeps the same microarchitecture as MVP-4 with 4 stages and an MMU. Yet, this version implements [pipelining](https://en.wikipedia.org/wiki/Instruction_pipelining).
+MVP-4 implements one of the most important optimizations with processors: [pipelining](https://en.wikipedia.org/wiki/Instruction_pipelining).
 
 In a nutshell, pipelining allows keeping every stage as busy as possible. For example, as soon as the fetch unit has fetched an instruction, it will not wait for the instruction to be decoded, executed and written. It will fetch another instruction straight away during the next cycle(s).
 
 This way, the first instruction can be executed in 4 cycles (assuming the fetch is done from L1I), whereas the next instructions will be executed in only 1 cycle.
 
 One of the complexity with pipelining is to handle branches. What if we fetch a [bge](https://msyksphinz-self.github.io/riscv-isadoc/html/rvi.html#bge) instruction for example? The next instruction fetched will not be necessarily the one we should have fetched/decoded/executed/written. As a solution, we implemented the first version of branch prediction handled by the branch unit.
+
+![](res/majorana-mvp-4.drawio.png)
 
 The branch unit takes the hypothesis that a conditional branch will **not** be taken. Hence, after having fetched an instruction, regardless if it's a conditional branch, we will fetch the next instruction after it. If the prediction was wrong, we need to flush the pipeline, revert the program counter to the destination marked by the conditional branch instruction, and continue the execution.
 
@@ -57,11 +65,12 @@ div t2, t0, t1   # Read from t1
 The processor must wait for `ADDI` to be executed and to get its result written in T1 before to execute `DIV` (as div depends on T1).
 In this case, we implement what we call pipeline interclock by delaying the execution of `DIV`.
 
-![](res/majorana-mvp-4.drawio.png)
+> [!NOTE]  
+> Average performance change compared to MVP-3: 15% faster.
 
 ### MVP-5
 
-One issue with MVP-3 is when it met an unconditional branches. For example:
+One issue with MVP-4 is when it meets an unconditional branches. For example:
 
 ```asm
 main:
@@ -88,11 +97,14 @@ The workflow is now the following:
 
 This helps in preventing a full pipeline flush. Facing an unconditional branch now takes only a few cycles to be resolved.
 
+> [!NOTE]  
+> Average performance change compared to MVP-4: 1.1% faster.
+
 ### MVP-6
 
 #### MVP-6.0
 
-The next step is to implement a so-called superscalar processor. A superscalar processor can execute multiple instructions during a clock cycle by dispatching multiple instructions to different execution units. This is one of the magical things with modern CPUs: even sequential code can be executed in parallel!
+The next step is to implement another very important optimization: superscalar processor. A superscalar processor can execute multiple instructions during a clock cycle by dispatching multiple instructions to different execution units. This is one of the magical things with modern CPUs: even sequential code can be executed in parallel!
 
 The fetch unit and the decode unit are now capable to fetch/decode two instruction within a single cycle. Yet, before to dispatch the executions to the execute units, a new stage comes in: the control unit.
 
@@ -100,24 +112,32 @@ The fetch unit and the decode unit are now capable to fetch/decode two instructi
 
 The control unit plays a pivotal role in coordinating the execution of multiple instructions simultaneously. It performs dependency checking between the decoded instructions to guarantee it won't lead to any hazard.
 
-One _small_ issue: MVP-5.0 is not always faster in all the benchmarks. Indeed, when an application is branch-heavy, it performed slightly worst that MVP-4. The main reason being that the control unit logic is very basic and because of that, on average it dispatches less than 0.6 instructions per cycle. Yet, if branches are scarce, it performs significantly better than MVP-4 (~40% in the string copy benchmark).
+One _small_ issue: MVP-6.0 is not always faster in all the benchmarks. Indeed, when an application is branch-heavy, it performed slightly worst that MVP-5. The main reason being that the control unit logic is very basic and because of that, on average it dispatches less than 0.6 instructions per cycle. Yet, if branches are scarce, it performs significantly better than MVP-5.
 
-// TODO: Slower? Because L3
+Another important consideration, we switched from an L1D, an extremely fast cache to a slower L3 cache. Indeed, an L1 cache is says on-die, meaning integrated directly onto the same silicon die as the processor core. In MVP-6, as we have two cores, it requires solving complex problem related to cache coherency. What if core #1 modifies a memory address in its own L1D that is also read by core #2? We don't solve this problem yet in MVP-6.0 and we move to shared off-die cache; hence a slower one.
+
+> [!NOTE]  
+> Average performance change compared to MVP-5: 2.8% faster.
 
 #### MVP-6.1
 
-For MVP-6.1, the microarchitecture is the same as MVP-6.1. The only difference lies in the control unit, where we started to implement a new concept called forwarding. Consider a data hazard mentioned previously:
+MVP-6.1 shares the same micro-architecture is the same as MVP-6.0. The only difference lies in the control unit, where we started to implement a new concept called forwarding. Consider a data hazard mentioned previously:
 
 ```asm
 addi t1, zero, 2 # Write to t1
 div t2, t0, t1   # Read from t1
 ``` 
 
-Instruction 1 writes to `T1`, while instruction 2 reads from `T2`. Therefore, instruction 2 has to wait for `ADDI` to write the result to `T1` before it gets executed, hence slowing down the execution. With forwarding, we can alleviate the effects of this problem: the result of the `ADDI` instruction is fed directly back into the ALU's input port. `DIV` doesn't have to wait for the execution of `ADDI` to be written in `T1` anymore.
+Instruction 1 writes to `T1`, while instruction 2 reads from `T2`. This is called a read-after-write hazard. Therefore, instruction 2 has to wait for `ADDI` to write the result to `T1` before it gets executed, hence slowing down the execution.
+
+With forwarding, we can alleviate the effects of this problem: the result of the `ADDI` instruction is fed directly back into the EU's input port. `DIV` doesn't have to wait for the execution of `ADDI` to be written in `T1` any more.
+
+> [!NOTE]  
+> Average performance change compared to MVP-6.0: 1.6% faster.
 
 #### MVP-6.2
 
-// TODO MVP-6.1 was vulnerable to branch condition tests initially as the CU allows more instructions
+MVP-6.1 was vulnerable to some specific branch conditions tests, somewhat similar to Spectre:
 
 ```asm
 main:
@@ -128,25 +148,78 @@ end:
     ret            # t1 = 1 instead of 0
 ```
 
-New feature: commit / rollback conditional branches
+If `beqz` is taken, the next instruction to be executed should be `ret`. With MVP-6.1, not only `li` was executed but the main problem was that register `t1` was modified; leading to an incorrect execution.
+
+To tackle this problem, MVP-6.2 implements a new feature to commit / rollback conditional branches. Indeed, in the previous case, the `li` instruction is executed; yet its result isn't committed unless the branch unit guarantees that the branch was not taken. If the branch isn't taken, the result of `li` is rollbacked.
+
+> [!NOTE]  
+> Average performance change compared to MVP-6.1: identical.
 
 #### MVP-6.3
 
-Register renaming to tackle waw and war
+MVP 6.1 tackled only one specific set of hazard problems: read-after-write. Yet, two other hazard types can also occur:
+
+- Write-after-write: make sure the result is the one from the latter instruction
+- Write-after-read: make sure the read doesn't use the write result of the next instruction
+
+Both hazards were not handled by the control unit. In one of these two cases, the control unit wasn't dispatching the instruction.
+
+MVP-6.3 deals with these two hazard types using register renaming, an optimization technique that allows multiple logical registers to be mapped to a smaller number of physical registers, enabling more efficient out-of-order execution of instructions.
+
+> [!NOTE]  
+> Average performance change compared to MVP-6.2: 34% faster.
 
 ### MVP-7
 
 #### MVP-7.0
 
-L1D per core, MSI protocol implementation; yet, lots of "false sharing"
+As we mentioned in MVP-6.0, the first superscalar processor, the cache for data was off-die; hence, slow: L3. MVP-7.0 deals with this problem by implementing the MSI protocol. MSI (Modified, Shared, Invalid) is a cache coherence protocol to manage the consistency of shared memory locations across multiple caches by tracking the state (Modified, Shared, Invalid) of each cache line.
+
+Thanks to the MSI protocol, we can now use again an L1D cache:
+
+![](res/majorana-mvp-7.drawio.png)
+
+One interesting observation, the performance boost compared to MVP-6.3 isn't really the one expected. The problem is the rate of cache line evictions is too important in MVP-7.0. The worst scenario is the following (bear in mind that the MSI protocol allows a single writer):
+
+```
+Core #0 wants to write to cache line identified by the memory address 1024
+Core #0 writes to its L1D
+Core #1 wants to write to cache line identified by the memory address 1024
+The cache line in core #0 L1D is evicted
+Core #1 writes to its L1D
+Core #0 wants to write to cache line identified by the memory address 1024
+The cache line in core #1 L1D is evicted
+Core #0 writes to its L1D
+...
+```
+
+In this scenario, each core can only write a single change to their L1D before that this cache line is evicted and fetched by the other core. It's similar to the concept of false sharing, applied to a single thread.
+
+> [!NOTE]  
+> Average performance change compared to MVP-6.3: 25% faster.
+
 
 #### MVP-7.1
 
-The CU syncs to the MSI when there was an eviction (lost a cycle) but then tells that a particular instruction has to be executed by a specific core.
+MVP-7.1 tackles the problem described in MVP-7.0. Now, when an eviction occurs, the CU wastes an an instruction to sync with the MSI state to know which core is the current reader/writer for each cache line. Instead of distributing blindly an instruction to any available execution unit, it routes the request to a given execution unit.
+
+For example, if core #1 already wrote to the line identified by the memory addresss 1024, the control unit will route this instruction to #1; hence, limiting the number of cache line evictions and write-backs to memory.
+
+> [!NOTE]  
+> Average performance change compared to MVP-7.0: 65% faster.
 
 #### MVP-8
 
-L3
+In MVP-7.0, we replaced L3 by two L1D, one per core. MVP-8 reintroduces a shared L3 cache:
+
+![](res/majorana-mvp-8.drawio.png)
+
+One of the benefit is that when an updated line has to be written-back, instead of doing it to memory, MVP-8 writes it back to L3 instead. Hence, saving a few precious cycles.
+
+Having two layers of caching for data, L1D and L3, is not straightforward. The strategy chosen was to keep an inclusive cache hierarchy. Said differently, L3 is a superset of L1D. No memory address can be cached in L1D without being cached first in L3. Such a strategy reduces the need for unnecessary write-backs to memory and makes the mental process easier to handle.
+
+> [!NOTE]  
+> Average performance change compared to MVP-7.1: 10% faster.
 
 ## Benchmarks
 
