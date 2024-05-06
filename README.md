@@ -254,3 +254,11 @@ Meanwhile, we have executed a benchmark on an Apple M1 (same CPU clock frequency
 | MVP-7.0 | 94286 ns, 3.0x slower | 42893 ns, 33.0x slower | 94688 ns, 29.3x slower | 51136 ns, 15.8x slower | 7572730 ns, 179.5x slower | 52.1 |
 | MVP-7.1 | 94286 ns, 3.0x slower | 42893 ns, 33.0x slower | 94688 ns, 29.3x slower | 51136 ns, 15.8x slower | 384364 ns, 9.1x slower | 18.0 |
 | MVP-8 | 94332 ns, 3.0x slower | 39463 ns, 30.4x slower | 79578 ns, 24.6x slower | 50118 ns, 15.5x slower | 294985 ns, 7.0x slower | 16.1 |
+
+## Tribute
+
+Ettore Majorana is probably one of the greatest physicists who ever lived; yet, one of the least recognized figures in history.
+
+If you don't know him, you should read about his life and what he brought to physics.
+
+![](res/Ettore_Majorana.jpg)
