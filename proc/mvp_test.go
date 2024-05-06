@@ -964,7 +964,7 @@ func TestBenchmarks(t *testing.T) {
 	for idx := range keys {
 		sum := primeOutput[idx].slower + sumsOutput[idx].slower + cpyOutput[idx].slower + lengthOutput[idx].slower + bubbleOutput[idx].slower
 		avg := sum / 5
-		output += fmt.Sprintf("| %s | %.0f ns, %.1fx slower | %.0f ns, %.1fx slower | %.0f ns, %.1fx slower | %.0f ns, %.1fx slower | %.0f ns, %.1fx slower | %.1f |\n", versions[idx], primeOutput[idx].executionNs, primeOutput[idx].slower, sumsOutput[idx].executionNs, sumsOutput[idx].slower, cpyOutput[idx].executionNs, cpyOutput[idx].slower, lengthOutput[idx].executionNs, lengthOutput[idx].slower, bubbleOutput[idx].executionNs, bubbleOutput[idx].slower, avg)
+		output += fmt.Sprintf("| %s | %.0f ns, %.1fx slower | %.0f ns, %.1fx slower | %.0f ns, %.1fx slower | %.0f ns, %.1fx slower | %.0f ns, %.1fx slower | %.1fx slower |\n", versions[idx], primeOutput[idx].executionNs, primeOutput[idx].slower, sumsOutput[idx].executionNs, sumsOutput[idx].slower, cpyOutput[idx].executionNs, cpyOutput[idx].slower, lengthOutput[idx].executionNs, lengthOutput[idx].slower, bubbleOutput[idx].executionNs, bubbleOutput[idx].slower, avg)
 	}
 	fmt.Println(output)
 }
