@@ -342,7 +342,7 @@ func TestMvp7_1_3x3(t *testing.T) {
 	testSpectre(t, factory, false)
 }
 
-func TestMvp7_2_2x2(t *testing.T) {
+func TestMvp8_0_2x2(t *testing.T) {
 	t.Parallel()
 	factory := func(memory int) virtualMachine {
 		return mvp8.NewCPU(false, memory, 2)
@@ -356,7 +356,7 @@ func TestMvp7_2_2x2(t *testing.T) {
 	testSpectre(t, factory, false)
 }
 
-func TestMvp7_2_3x3(t *testing.T) {
+func TestMvp8_0_3x3(t *testing.T) {
 	t.Parallel()
 	factory := func(memory int) virtualMachine {
 		return mvp8.NewCPU(false, memory, 3)
