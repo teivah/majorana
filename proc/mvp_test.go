@@ -19,7 +19,7 @@ import (
 	"github.com/teivah/majorana/proc/mvp6-3"
 	"github.com/teivah/majorana/proc/mvp7-0"
 	"github.com/teivah/majorana/proc/mvp7-1"
-	"github.com/teivah/majorana/proc/mvp8"
+	"github.com/teivah/majorana/proc/mvp8-0"
 	"github.com/teivah/majorana/risc"
 	"github.com/teivah/majorana/test"
 )
@@ -345,7 +345,7 @@ func TestMvp7_1_3x3(t *testing.T) {
 func TestMvp8_0_2x2(t *testing.T) {
 	t.Parallel()
 	factory := func(memory int) virtualMachine {
-		return mvp8.NewCPU(false, memory, 2)
+		return mvp8_0.NewCPU(false, memory, 2)
 	}
 	testPrime(t, factory, memory, testFrom, testTo, false)
 	testSums(t, factory, memory, testFrom, testTo, false)
@@ -359,7 +359,7 @@ func TestMvp8_0_2x2(t *testing.T) {
 func TestMvp8_0_3x3(t *testing.T) {
 	t.Parallel()
 	factory := func(memory int) virtualMachine {
-		return mvp8.NewCPU(false, memory, 3)
+		return mvp8_0.NewCPU(false, memory, 3)
 	}
 	testPrime(t, factory, memory, testFrom, testTo, false)
 	testSums(t, factory, memory, testFrom, testTo, false)
@@ -774,7 +774,7 @@ func TestBenchmarks(t *testing.T) {
 			return mvp7_1.NewCPU(false, m, 2)
 		},
 		versionMVP8: func(m int) virtualMachine {
-			return mvp8.NewCPU(false, m, 3)
+			return mvp8_0.NewCPU(false, m, 3)
 		},
 	}
 

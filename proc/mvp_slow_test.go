@@ -14,7 +14,7 @@ import (
 	mvp6_3 "github.com/teivah/majorana/proc/mvp6-3"
 	mvp7_0 "github.com/teivah/majorana/proc/mvp7-0"
 	mvp7_1 "github.com/teivah/majorana/proc/mvp7-1"
-	mvp7_2 "github.com/teivah/majorana/proc/mvp8"
+	mvp7_2 "github.com/teivah/majorana/proc/mvp8-0"
 )
 
 const (

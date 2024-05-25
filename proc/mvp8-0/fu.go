@@ -1,4 +1,4 @@
-package mvp8
+package mvp8_0
 
 import (
 	co "github.com/teivah/majorana/common/coroutine"

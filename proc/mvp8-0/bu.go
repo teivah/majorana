@@ -1,4 +1,4 @@
-package mvp8
+package mvp8_0
 
 import (
 	"github.com/teivah/majorana/risc"
