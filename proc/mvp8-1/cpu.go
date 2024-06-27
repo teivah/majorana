@@ -11,6 +11,7 @@ const (
 	bytes     = 1
 	kilobytes = 1024
 
+	// TODO L2
 	l1ICacheLineSize = 64 * bytes
 	l1ICacheSize     = 1 * kilobytes
 	l1DCacheLineSize = 64 * bytes
