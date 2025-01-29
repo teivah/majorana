@@ -19,7 +19,7 @@
 
 ### MVP-1
 
-MVP-1 is the first RISC-V virtual machine. It does not implement any of the known CPI optimizations and keeps a very simple micro-architecture divided into four stages:
+MVP-1 is the first RISC-V virtual machine. It does not implement any of the known CPU optimizations and keeps a very simple micro-architecture divided into four stages:
 
 * Fetch: fetch an instruction from the main memory
 * Decode: decode the instruction
